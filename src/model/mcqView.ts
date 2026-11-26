@@ -1,6 +1,6 @@
 import { MCQ_SCHEME, mcqTag, mcqTagKey, mcqTopic, type SchemeTopic } from './topicSchemes';
 import { isPatternTag, parsePatternTag } from './patterns';
-import { isSubTopicCode, isTopicCode, parentCode, topicOf, TOPICS, type Topic, type TopicNames } from './topics';
+import { isSubTopicCode, isTopicCode, matchesTopic, parentCode, topicDisplay, topicHeading, topicOf, TOPICS, type Topic, type TopicNames } from './topics';
 
 /**
  * **The MCQ view** of a question's tags (k-0569, `Outbox/k-0569/PLAN.md` § 3): which of the
@@ -157,6 +157,10 @@ VIEW_SECTIONS.forEach((section, s) => {
   section.children.forEach((child, c) => ORDER.set(child.code, s * 1000 + 1 + c));
 });
 /** Sort key: sections in order; inside one, MCQ topics in list order, then `pick`, then `edb` (EDB order). */
+export function viewOrder(code: string): number {
+  return orderOf(code);
+}
+
 function orderOf(code: string): number {
   const known = ORDER.get(code);
   if (known !== undefined) return known;
@@ -229,6 +233,14 @@ export function matchesView(tags: readonly string[] | undefined, code: string): 
   return node.kind === 'section' ? codes.some((own) => viewSectionOf(own) === code) : codes.includes(code);
 }
 
+/**
+ * A bank query's topic: a view code reads through the MCQ view (`matchesView`); an EDB code
+ * the view does not name ('C.ped', which reads as an MCQ topic) as before (`matchesTopic`).
+ */
+export function matchesBankTopic(tags: readonly string[] | undefined, code: string): boolean {
+  return viewTopicOf(code) ? matchesView(tags, code) : matchesTopic(tags, code);
+}
+
 /** Has some view code at all: what "tagged" means in the bank (same as having a known EDB code or MCQ topic). */
 export const hasViewTopic = (tags: readonly string[] | undefined): boolean => viewCodesOf(tags).length > 0;
 
@@ -251,36 +263,78 @@ export function viewHeading(code: string, names: TopicNames = 'en'): string {
   return `${node.parent ?? node.code} · ${viewDisplay(code, names)}`;
 }
 
+/** A code as a bank screen names it: a view code by the view, any other EDB code ('C.ped') by `topics.ts`, a free tag as stored. */
+export function bankTopicDisplay(code: string, names: TopicNames = 'en'): string {
+  return viewTopicOf(code) ? viewDisplay(code, names) : topicDisplay(code, names);
+}
+
+/** The same with its section letter first ("C · Per-unit Tax"). */
+export function bankTopicHeading(code: string, names: TopicNames = 'en'): string {
+  return viewTopicOf(code) ? viewHeading(code, names) : topicHeading(code, names);
+}
+
+/**
+ * A tag list as a bank row's tag line reads it: the view codes it falls under, then its
+ * free tags as stored, and a code this build cannot read at all (a later build's 'K') as
+ * stored too, so nothing kept is hidden. EDB codes and `@mcq:` tags never show raw; 題型
+ * are left to the caller.
+ */
+export function viewTagList(tags: readonly string[]): string[] {
+  return [
+    ...viewCodesOf(tags),
+    ...tags.filter((tag) => (isTopicCode(tag) ? readCode(tag) === undefined : mcqTagKey(tag) === undefined && !isPatternTag(tag))),
+  ];
+}
+
 /* ------------------------------------------------------------------------------------ */
 /* Writing                                                                              */
 /* ------------------------------------------------------------------------------------ */
 
+/** The EDB codes in a list that already stand for a topic: fine codes it covers, or a section letter meaning only it (D, G). */
+function codesSaying(topic: SchemeTopic, tags: readonly string[]): string[] {
+  return tags.filter(
+    (own) => isTopicCode(own) && topicOf(own) !== undefined && mcqCovers(topic, own) && (isSubTopicCode(own) || ONLY_TOPIC.get(own) === topic.key),
+  );
+}
+
+/** `next` in `before`'s order (what stays keeps its place), then what is new, in `next`'s order. */
+function inPlace(before: readonly string[], next: readonly string[]): string[] {
+  const wanted = new Set(next);
+  const kept = before.filter((tag) => wanted.has(tag));
+  return [...new Set([...kept, ...next.filter((tag) => !before.includes(tag))])];
+}
+
+/** A list without `codes` and the 題型 that hang on them. */
+function withoutCodes(tags: readonly string[], codes: ReadonlySet<string>): string[] {
+  return tags.filter((tag) => !codes.has(tag) && !(isPatternTag(tag) && codes.has(parsePatternTag(tag)!.topic)));
+}
+
 /**
- * A tag list made to fall under exactly `want` (view codes), as one write:
- *  - an MCQ topic keeps the EDB codes already there that it covers, else gains all its own;
+ * A tag list made to fall under exactly `want` (view codes, or EDB codes), as one write
+ * (the topic picker's Apply, "Set topic … replace"):
+ *  - an MCQ topic keeps the EDB codes already there that say it, else gains all its own;
  *    its `@mcq:` tag is written only when those codes alone do not say it;
- *  - a section, `pick` or `edb` code is kept as the EDB code it is;
- *  - every other topic code and `@mcq:` tag goes; a 題型 stays while its sub-topic does;
- *    free and other system tags stay where they were.
- * Pure. `want` codes this build cannot read are ignored.
+ *  - a section, `pick` or `edb` code, or an EDB code that reads as an MCQ topic, is itself;
+ *  - every other code and `@mcq:` tag this build reads goes; what it cannot read (a later
+ *    build's 'C.new' or 'K', a later list's key) stays; a 題型 stays while its sub-topic does;
+ *    free and other system tags stay, after the topics (as `replaceTopics` always wrote).
  */
 export function withViewCodes(tags: readonly string[], want: readonly string[]): string[] {
-  const codesBefore = tags.filter((tag) => isTopicCode(tag));
   const codes: string[] = [];
   const keys: string[] = [];
   for (const code of new Set(want)) {
     const node = viewTopicOf(code);
-    if (!node) continue;
+    if (!node) {
+      if (topicOf(code)) codes.push(code);
+      continue;
+    }
     if (node.kind === 'mcq') {
       const topic = mcqTopic(node.key!)!;
       keys.push(topic.key);
-      // Its fine codes already there (a section letter alone is not enough: it gains its own).
-      const kept = codesBefore.filter((own) => isSubTopicCode(own) && topicOf(own) && mcqCovers(topic, own));
+      const kept = codesSaying(topic, tags);
       codes.push(...(kept.length > 0 ? kept : topic.edb));
-    } else if (node.kind === 'section') {
-      // A later build's 'C.new' read as 'C' stays as stored.
-      const later = codesBefore.filter((own) => own !== code && !topicOf(own) && readCode(own) === code);
-      codes.push(...(later.length > 0 ? later : [code]));
+    } else if (node.kind === 'section' && tags.some((own) => isTopicCode(own) && !topicOf(own) && readCode(own) === code)) {
+      // A later build's 'C.new', kept below, already says the section.
     } else {
       codes.push(code);
     }
@@ -289,26 +343,52 @@ export function withViewCodes(tags: readonly string[], want: readonly string[]):
   const said = new Set(viewCodesOf(finalCodes));
   const mcqTags = keys.filter((key) => !said.has(mcqTag(key))).map(mcqTag);
   const rest = tags.filter((tag) => {
-    if (isTopicCode(tag) || mcqTagKey(tag) !== undefined) return false;
+    if (isTopicCode(tag)) return !topicOf(tag);
+    const key = mcqTagKey(tag);
+    if (key !== undefined) return !mcqTopic(key);
     if (isPatternTag(tag)) return finalCodes.includes(parsePatternTag(tag)!.topic);
     return true;
   });
   return [...new Set([...finalCodes, ...mcqTags, ...rest])];
 }
 
-/** Add one view code (an MCQ topic picked for a `pick` row takes that row's place). */
+/**
+ * One view code added, touching nothing else: a section, `pick` or `edb` code (or an EDB
+ * code) goes on as itself; an MCQ topic gains its EDB codes when none there says it, and its
+ * `@mcq:` tag when the codes alone do not (so picking one for a `pick` row resolves it).
+ */
 export function addViewCode(tags: readonly string[], code: string): string[] {
   const node = viewTopicOf(code);
-  if (!node) return [...tags];
-  const before = viewCodesOf(tags);
-  const kept = node.kind === 'mcq' ? before.filter((own) => !viewTopicOf(own)?.candidates?.includes(node.key!)) : before;
-  return withViewCodes(tags, [...kept, code]);
+  if (node?.kind !== 'mcq') return tags.includes(code) ? [...tags] : [...tags, code];
+  if (viewCodesOf(tags).includes(code)) return [...tags];
+  const topic = mcqTopic(node.key!)!;
+  const withCodes = codesSaying(topic, tags).length > 0 ? [...tags] : inPlace(tags, [...tags, ...topic.edb]);
+  return viewCodesOf(withCodes).includes(code) ? withCodes : [...withCodes, mcqTag(topic.key)];
 }
 
-/** Take one view code off (and, for a section, everything in it). */
+/**
+ * One view code taken off, touching nothing else. An MCQ topic: its `@mcq:` tag, and the EDB
+ * codes that said it unless another topic left on the list still needs them, with their 題型.
+ * A section: its letter, and a later build's codes there. Any other code: itself, as stored.
+ */
 export function removeViewCode(tags: readonly string[], code: string): string[] {
   const node = viewTopicOf(code);
-  const before = viewCodesOf(tags);
-  const kept = node?.kind === 'section' ? before.filter((own) => viewSectionOf(own) !== code) : before.filter((own) => own !== code);
-  return kept.length === before.length ? [...tags] : withViewCodes(tags, kept);
+  if (node?.kind === 'mcq') {
+    const topic = mcqTopic(node.key!)!;
+    const others = viewCodesOf(tags).filter((own) => own !== code);
+    const needed = (own: string) =>
+      others.some((other) => {
+        if (other === own) return true;
+        const key = mcqTagKey(other);
+        const otherTopic = key ? mcqTopic(key) : undefined;
+        return otherTopic !== undefined && mcqCovers(otherTopic, own);
+      });
+    const gone = new Set(tags.filter((own) => isTopicCode(own) && topicOf(own) && mcqCovers(topic, own) && !needed(own)));
+    gone.add(mcqTag(topic.key));
+    return withoutCodes(tags, gone);
+  }
+  if (node?.kind === 'section') {
+    return withoutCodes(tags, new Set([code, ...tags.filter((own) => isTopicCode(own) && !topicOf(own) && readCode(own) === code)]));
+  }
+  return withoutCodes(tags, new Set([code]));
 }

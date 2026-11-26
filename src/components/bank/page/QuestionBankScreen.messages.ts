@@ -96,6 +96,7 @@ export const BANK_SCREEN_MESSAGES = defineMessages({
   topicsBack: { en: 'Topics', zh: '課題' },
   bankTitle: { en: 'Question bank 題庫', zh: '題庫' },
   untagged: { en: 'Untagged', zh: '未標記' },
+  pickTitle: { en: 'Pick the MCQ topic', zh: '選定 MCQ 課題' },
   leftBefore: { en: '', zh: '尚餘 ' },
   leftAfter: { en: ' left', zh: ' 條' },
   bankBack: { en: 'Question bank', zh: '題庫' },

@@ -1,5 +1,6 @@
 'use client';
 
+import { viewTagList } from '@/model/mcqView';
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Button, Segmented } from '@/components/ui';
 import { marksLabel, SourceText, sourceLabel, tagTitle, typeLabel, sittingLabel, usedLabel } from '@/components/bank/BankRow';
@@ -10,7 +11,6 @@ import type { BankItemTone, BankMark } from '@/assist/bankRun';
 import type { BankGroup, BankRow } from '@/library/types';
 import type { PatternId } from '@/library/patterns';
 import { isNewerThanBuild } from '@/model/migrations';
-import { isPatternTag } from '@/model/patterns';
 import { useMessages } from '@/i18n/language';
 import type { LanguageMode, VersionMode } from '@/model/types';
 import { distinctVersions, patternLines, rowKey, type ClassChoice } from './bankPage';
@@ -619,7 +619,8 @@ function Stage({
   const { worksheet, failed } = useOwningDocument(row);
   const owned = worksheet?.questions.find((q) => q.id === row.questionId);
   const mcq = owned?.type === 'mcq' ? owned : undefined;
-  const topicTags = row.tags.filter((tag) => !isPatternTag(tag));
+  // MCQ topics as the bank groups them (k-0569), then free tags; never raw EDB codes or @mcq: tags.
+  const topicTags = viewTagList(row.tags);
   const byPart = topicsByPart(row);
   const patterns = patternLines(row.tags);
   // Which part tests the heading it is listed under: said above the paper, marked on it.
@@ -725,7 +726,7 @@ function Stage({
               ) : byPart ? (
                 <span className="grid" data-fact-by-part>
                   {byPart.map((line) => {
-                    const names = line.tags.filter((tag) => !isPatternTag(tag));
+                    const names = viewTagList(line.tags);
                     return (
                       <span key={line.label} className="flex min-w-0 gap-1.5" title={tagTitle(line.tags, language)}>
                         <span className="shrink-0 text-ink-muted">{line.label}</span>

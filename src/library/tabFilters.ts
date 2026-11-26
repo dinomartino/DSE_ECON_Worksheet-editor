@@ -3,7 +3,7 @@ import { flowItemLabel } from '@/model/flow';
 import { rootIdOf } from '@/model/lineage';
 import { computeNumbering } from '@/model/numbering';
 import { holdsPatterns, samePatternName } from '@/model/patterns';
-import { topicHeading } from '@/model/topics';
+import { bankTopicHeading as topicHeading } from '@/model/mcqView';
 import { distinctDocLabels } from './docLabels';
 import type { Worksheet } from '@/model/types';
 import { classRefs, type ClassRef } from './cohort';

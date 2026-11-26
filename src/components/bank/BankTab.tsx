@@ -32,7 +32,8 @@ import { useBank } from '@/library/useBank';
 import { escapeClears } from './escapeClears';
 import { resolveMessages } from '@/i18n/catalogue';
 import { uiLanguage, useMessages, useUiLanguage } from '@/i18n/language';
-import { TOPICS, topicDisplay, topicHeading, topicNamesFor, type TopicNames } from '@/model/topics';
+import { topicNamesFor, type TopicNames } from '@/model/topics';
+import { bankTopicDisplay as topicDisplay, bankTopicHeading as topicHeading, VIEW_SECTIONS } from '@/model/mcqView';
 import { useViewLanguage } from '@/settings/paperLanguage';
 import { listQuestionTypes } from '@/registry';
 import { useAppDialogs } from '@/store/appDialogs';
@@ -54,9 +55,9 @@ import { rowExcerpt, versionDiff } from './bankText';
 const PAGE = 60;
 const FILL_COUNTS = [1, 2, 3, 4, 5, 6, 8, 10] as const;
 
-/** Each topic an optgroup: the whole topic first, then its sub-topics. */
+/** Each section an optgroup (the teacher's MCQ topics, k-0569): the whole section first, then its MCQ topics. */
 function topicGroups(names: TopicNames, allOf: (code: string, name: string) => string) {
-  return TOPICS.map((topic) => ({
+  return VIEW_SECTIONS.map((topic) => ({
     label: `${topic.code} · ${topicDisplay(topic.code, names)}`,
     options: [
       { value: topic.code, label: allOf(topic.code, topicDisplay(topic.code, names)) },

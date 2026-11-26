@@ -1,11 +1,11 @@
-import { matchesTopic } from '@/model/topics';
+import { matchesBankTopic } from '@/model/mcqView';
 import type { ClassTarget } from './cohort';
 import { lastUse, usedWith } from './history';
 import type { BankGroup } from './types';
 
 export interface FillOptions {
   count: number;
-  /** Topic code; a group qualifies when any of its versions matches (`matchesTopic`). */
+  /** Topic code; a group qualifies when any of its versions matches (`matchesBankTopic`: an MCQ view code or an EDB code). */
   topic?: string;
   typeId?: string;
   /** The paper's classes: questions already used with their students rank after every fresh one. */
@@ -30,7 +30,7 @@ export function pickFill(groups: readonly BankGroup[], options: FillOptions): Ba
       ({ group }) =>
         !excluded.has(group.rootId) &&
         (!typeId || group.rows[0]?.typeId === typeId) &&
-        (!topic || group.rows.some((row) => matchesTopic(row.tags, topic))),
+        (!topic || group.rows.some((row) => matchesBankTopic(row.tags, topic))),
     )
     .map(({ group, order }) => ({
       group,

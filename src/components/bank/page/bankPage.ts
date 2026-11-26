@@ -1,5 +1,5 @@
 import { roundMinutes, MINUTES_PER_MARK } from '@/model/paperSummary';
-import { rollupTopic, topicOf, TOPICS } from '@/model/topics';
+import { hasViewTopic, VIEW_SECTIONS, viewCodesOf, viewOrder, viewSections, viewTagList, viewTopicOf } from '@/model/mcqView';
 import { uiLanguage } from '@/i18n/language';
 import { resolveMessages, type TextKey } from '@/i18n/catalogue';
 import type { UiLanguage } from '@/settings/language';
@@ -10,7 +10,7 @@ import { cohortLabel, schoolYearEnd, schoolYearLabel, type ClassTarget } from '@
 import { refsOf, rowUsedWith } from '@/library/history';
 import { rowHasPattern, type PatternId } from '@/library/patterns';
 import { searchRows } from '@/library/search';
-import { isPatternTag, parsePatternTag } from '@/model/patterns';
+import { parsePatternTag } from '@/model/patterns';
 import type { BankGroup, BankLang, BankRow } from '@/library/types';
 import type { WorksheetSummary } from '@/storage/types';
 import { BANK_PAGE_MESSAGES as M } from './bankPage.messages';
@@ -26,25 +26,24 @@ const words = (lang: UiLanguage) => resolveMessages(M, lang);
  * papers counts once, as the list shows it once.
  */
 
-/** A review's scope: every question, one topic code, or those with no topic. */
+/**
+ * A review's scope: every question, one topic (a view code of the teacher's MCQ topics,
+ * `model/mcqView.ts`: a section, `@mcq:<key>`, or an EDB code still to be sorted), or those
+ * with no topic.
+ */
 export type TopicPick = 'all' | 'untagged' | string;
 
 /**
- * A row has a topic when any of its tags falls under a known code (`rollupTopic`: a later
+ * A row has a topic when any of its tags falls under a known code or MCQ topic (a later
  * build's 'C.new' counts under C); free tags do not count.
  */
 export function hasTopic(row: Pick<BankRow, 'tags'>): boolean {
-  return row.tags.some((tag) => rollupTopic(tag) !== undefined);
+  return hasViewTopic(row.tags);
 }
 
-/** The coarse codes a row falls under ('C.ped' → 'C', and a later build's 'C.new' → 'C'), each once. */
+/** The sections a row falls under in the MCQ view ('C.ped' → 'C', 'A.circular-flow' → 'F'), each once. */
 export function coarseCodes(row: Pick<BankRow, 'tags'>): string[] {
-  const codes = new Set<string>();
-  for (const tag of row.tags) {
-    const topic = rollupTopic(tag);
-    if (topic) codes.add(topic.parent ?? topic.code);
-  }
-  return [...codes];
+  return viewSections(row.tags);
 }
 
 export interface CoverageBar {
@@ -62,6 +61,8 @@ export interface Coverage {
   max: number;
   /** Distinct questions with no topic code. */
   untagged: number;
+  /** Distinct questions under an EDB topic several MCQ topics share, none picked (k-0569). */
+  toPick: number;
   /** Distinct questions in the bank. */
   total: number;
   /** Type ids present anywhere, in registry order (the legend). */
@@ -89,11 +90,12 @@ export function barPercent(count: number, max: number): number {
   return count > 0 && max > 0 ? Math.max(2, (count / max) * 100) : 0;
 }
 
-/** One bar per coarse topic (A–J, EL1, EL2), each question counted once per topic it touches. */
+/** One bar per section (Mentor's A–J, then EL1, EL2), each question counted once per section it touches. */
 export function coverage(rows: readonly BankRow[]): Coverage {
   const typeOrder = listQuestionTypes().map((type) => type.id);
   const byTopic = new Map<string, Map<string, Set<string>>>();
   const untagged = new Set<string>();
+  const toPick = new Set<string>();
   const all = new Set<string>();
   const seenTypes = new Set<string>();
   const docs = new Map<string, BankRow['docKind']>();
@@ -103,6 +105,7 @@ export function coverage(rows: readonly BankRow[]): Coverage {
     seenTypes.add(row.typeId);
     const codes = coarseCodes(row);
     if (codes.length === 0) untagged.add(row.rootId);
+    if (viewCodesOf(row.tags).some((code) => viewTopicOf(code)?.kind === 'pick')) toPick.add(row.rootId);
     for (const code of codes) {
       const types = byTopic.get(code) ?? new Map<string, Set<string>>();
       byTopic.set(code, types);
@@ -115,7 +118,7 @@ export function coverage(rows: readonly BankRow[]): Coverage {
   for (const types of byTopic.values()) for (const roots of types.values()) for (const root of roots) untagged.delete(root);
 
   const ordered = [...typeOrder.filter((id) => seenTypes.has(id)), ...[...seenTypes].filter((id) => !typeOrder.includes(id)).sort()];
-  const bars = TOPICS.map((topic) => {
+  const bars = VIEW_SECTIONS.map((topic) => {
     const types = byTopic.get(topic.code);
     const byType = ordered.map((typeId) => ({ typeId, count: types?.get(typeId)?.size ?? 0 }));
     const roots = new Set<string>();
@@ -129,6 +132,7 @@ export function coverage(rows: readonly BankRow[]): Coverage {
     bars,
     max,
     untagged: untagged.size,
+    toPick: toPick.size,
     total: all.size,
     typeIds: ordered,
     papers: kinds.filter((kind) => kind === 'paper').length,
@@ -449,7 +453,7 @@ export interface TraySummary {
   marks: number;
   /** Estimated working minutes at the classroom pace (`paperSummary.ts`). */
   minutes: number;
-  /** Topic codes by how many picked questions carry them, most first; ties by guide order. */
+  /** View codes (MCQ topics, sections, codes to sort) by how many picked questions carry them, most first; ties by list order. */
   mix: { code: string; count: number }[];
 }
 
@@ -458,14 +462,10 @@ export function rowMinutes(row: Pick<BankRow, 'typeId' | 'marks'>): number {
   return getQuestionType(row.typeId)?.summary?.minutesPerItem ?? row.marks * MINUTES_PER_MARK.classroom;
 }
 
-const GUIDE_ORDER = new Map(
-  TOPICS.flatMap((topic) => [topic, ...topic.children]).map((topic, index) => [topic.code, index] as const),
-);
-
 export function traySummary(rows: readonly BankRow[]): TraySummary {
   const mix = new Map<string, number>();
   for (const row of rows) {
-    for (const tag of new Set(row.tags)) if (topicOf(tag)) mix.set(tag, (mix.get(tag) ?? 0) + 1);
+    for (const code of viewCodesOf(row.tags)) mix.set(code, (mix.get(code) ?? 0) + 1);
   }
   return {
     count: rows.length,
@@ -473,7 +473,7 @@ export function traySummary(rows: readonly BankRow[]): TraySummary {
     minutes: roundMinutes(rows.reduce((sum, row) => sum + rowMinutes(row), 0)),
     mix: [...mix]
       .map(([code, count]) => ({ code, count }))
-      .sort((a, b) => b.count - a.count || (GUIDE_ORDER.get(a.code) ?? 0) - (GUIDE_ORDER.get(b.code) ?? 0)),
+      .sort((a, b) => b.count - a.count || viewOrder(a.code) - viewOrder(b.code)),
   };
 }
 
@@ -589,9 +589,14 @@ export function bankCountLabel(coverage: Pick<Coverage, 'total' | 'papers' | 'ba
   return [m.countQuestions(coverage.total), m.countWorksheets(coverage.papers), ...(coverage.banks ? [m.countBanks(coverage.banks)] : [])].join(' · ');
 }
 
-/** "C.ped Price elasticity of demand" lines for the preview's Topics; 題型 are listed apart (`patternLines`). */
+/**
+ * The preview's Topics lines: each MCQ topic (or section, or code still to sort) the tags
+ * fall under, with its name, then the free tags as stored; 題型 are listed apart
+ * (`patternLines`). EDB codes and `@mcq:` tags are read through the view, never listed raw.
+ */
 export function tagLines(tags: readonly string[], view: LanguageMode = paperLanguage()): { code: string; name?: string }[] {
-  return tags.filter((tag) => !isPatternTag(tag)).map((tag) => (topicOf(tag) ? { code: tag, name: tagName(tag, view) } : { code: tag }));
+  const codes = new Set(viewCodesOf(tags));
+  return viewTagList(tags).map((code) => (codes.has(code) ? { code, name: tagName(code, view) } : { code }));
 }
 
 /** A row's 題型 as the preview lists them: sub-topic code and name. */

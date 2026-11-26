@@ -1,7 +1,8 @@
 'use client';
 
 import type { PatternItem } from '@/library/patterns';
-import { topicNamesFor, topicOf } from '@/model/topics';
+import { viewTopicOf } from '@/model/mcqView';
+import { topicNamesFor } from '@/model/topics';
 import { useMessages } from '@/i18n/language';
 import { useViewLanguage } from '@/settings/paperLanguage';
 import { barPercent, typeName, type Coverage } from './bankPage';
@@ -25,6 +26,7 @@ export function TopicCards({
   classUsage,
   onTopic,
   onUntagged,
+  onPick,
   onAll,
   onClassGap,
 }: {
@@ -36,10 +38,12 @@ export function TopicCards({
   classUsage?: ClassUsage;
   onTopic: (code: string) => void;
   onUntagged: () => void;
+  /** Open "Pick the MCQ topic" (k-0569); absent hides its strip. */
+  onPick?: () => void;
   onAll: () => void;
   onClassGap: (choice: ClassUsage['choice']) => void;
 }) {
-  const { bars, max, untagged, total } = coverage;
+  const { bars, max, untagged, toPick, total } = coverage;
   const view = useViewLanguage();
   const names = topicNamesFor(view, 'wide');
   const m = useMessages(TOPIC_CARDS_MESSAGES);
@@ -55,6 +59,18 @@ export function TopicCards({
           >
             {m.untaggedLead(untagged)}
             <span className="font-normal">{untagged === 1 ? m.tagIt : m.tagThem}</span>
+          </button>
+        )}
+        {toPick > 0 && onPick && (
+          <button
+            type="button"
+            onClick={onPick}
+            title={m.pickTitle}
+            data-bank-pick
+            className="cursor-pointer rounded-lg bg-accent-soft px-3.5 py-2.5 text-left text-[13px] font-semibold tabular-nums text-accent-ink transition-[filter] duration-150 ease-out-soft hover:brightness-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            {m.pickLead(toPick)}
+            <span className="font-normal">{m.pickThem}</span>
           </button>
         )}
         {classUsage && (
@@ -78,7 +94,7 @@ export function TopicCards({
 
       <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4" aria-label={m.topics}>
         {bars.map((bar) => {
-          const topic = topicOf(bar.code);
+          const topic = viewTopicOf(bar.code);
           const split = bar.byType.filter((part) => part.count > 0);
           const splitTitle = split.map((part) => `${part.count} ${typeName(part.typeId)}`).join(w.sep);
           const own = patterns?.get(bar.code) ?? [];

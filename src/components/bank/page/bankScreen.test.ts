@@ -7,6 +7,7 @@ import { docWith, partedQuestion, row } from '@/library/testKit';
 import { cartTopicLabel } from './bankCart';
 import {
   alsoInText,
+  mcqTextTopics,
   entryIndex,
   partsTesting,
   testsThisText,
@@ -49,10 +50,12 @@ describe('levels', () => {
   });
 
   it('round-trips a stored level and refuses anything it does not know', () => {
-    for (const level of [TOPICS_LEVEL, { kind: 'untagged' }, { kind: 'review', topic: 'C.ped' }, { kind: 'review', topic: 'all' }] as BankLevel[]) {
+    for (const level of [TOPICS_LEVEL, { kind: 'untagged' }, { kind: 'untagged', pick: true }, { kind: 'review', topic: '@mcq:elasticity' }, { kind: 'review', topic: 'C.intervention' }, { kind: 'review', topic: 'E.policy' }, { kind: 'review', topic: 'all' }] as BankLevel[]) {
       expect(parseLevel(serializeLevel(level))).toEqual(level);
     }
     expect(parseLevel(serializeLevel({ kind: 'review', topic: 'all', search: true }))).toEqual(TOPICS_LEVEL);
+    // An EDB code an older build stored is not a view code: back to the topics.
+    expect(parseLevel('{"kind":"review","topic":"C.ped"}')).toEqual(TOPICS_LEVEL);
     expect(parseLevel('{"kind":"review","topic":"Z.nope"}')).toEqual(TOPICS_LEVEL);
     expect(parseLevel('not json')).toEqual(TOPICS_LEVEL);
     expect(parseLevel(null)).toEqual(TOPICS_LEVEL);
@@ -60,33 +63,34 @@ describe('levels', () => {
 });
 
 describe('railSections', () => {
-  it('sections a coarse topic by sub-topic in guide order, with General for the coarse code alone', () => {
+  it('sections a section by MCQ topic in list order, then codes to pick, then General for the section alone', () => {
     const groups = groupRows([
       row({ rootId: 'ped', tags: ['C.ped'], docUpdatedAt: '2026-03-01T00:00:00.000Z' }),
       row({ rootId: 'eq', tags: ['C.equilibrium'], docUpdatedAt: '2026-02-01T00:00:00.000Z' }),
       row({ rootId: 'coarse', tags: ['C', 'free tag'], docUpdatedAt: '2026-01-01T00:00:00.000Z' }),
-      row({ rootId: 'ped2', tags: ['C.ped', 'C.equilibrium'], docUpdatedAt: '2025-12-01T00:00:00.000Z' }),
+      row({ rootId: 'ped2', tags: ['C.ped', 'C.surplus'], docUpdatedAt: '2025-12-01T00:00:00.000Z' }),
     ]);
     const sections = railSections(groups, 'C');
     expect(sections.map((s) => [s.key, s.label, s.entries.map((e) => e.group.rootId)])).toEqual([
-      ['C.equilibrium', 'Demand, supply and price', ['eq', 'ped2']],
-      ['C.ped', 'Price elasticity of demand', ['ped', 'ped2']],
+      ['@mcq:elasticity', 'Elasticity', ['ped', 'ped2']],
+      ['@mcq:consumer-producer-surplus', 'Consumer/Producer Surplus', ['ped2']],
+      ['C.equilibrium', 'Demand, supply and price · pick the MCQ topic', ['eq']],
       ['general', 'General', ['coarse']],
     ]);
-    expect(railOrder(sections).map((e) => e.group.rootId)).toEqual(['eq', 'ped2', 'ped', 'ped2', 'coarse']);
+    expect(railOrder(sections).map((e) => e.group.rootId)).toEqual(['ped', 'ped2', 'ped2', 'eq', 'coarse']);
   });
 
-  it('a question under two sub-topics is listed under each, saying where else', () => {
-    const groups = groupRows([row({ rootId: 'x', tags: ['C.pes', 'C.ped'] })]);
+  it('a question under two MCQ topics is listed under each, saying where else', () => {
+    const groups = groupRows([row({ rootId: 'x', tags: ['C.surplus', 'C.ped'] })]);
     const sections = railSections(groups, 'C');
-    // Guide order: PED before PES, whatever order the tags were given in.
+    // List order: Elasticity before Surplus, whatever order the tags were given in.
     expect(sections.map((s) => [s.key, s.entries.map((e) => e.alsoIn)])).toEqual([
-      ['C.ped', [['Price elasticity of supply']]],
-      ['C.pes', [['Price elasticity of demand']]],
+      ['@mcq:elasticity', [['Consumer/Producer Surplus']]],
+      ['@mcq:consumer-producer-surplus', [['Elasticity']]],
     ]);
     const order = railOrder(sections);
     expect(new Set(order.map((e) => e.key)).size).toBe(2);
-    expect(order.map((e) => e.query)).toEqual([{ topic: 'C.ped' }, { topic: 'C.pes' }]);
+    expect(order.map((e) => e.query)).toEqual([{ topic: '@mcq:elasticity' }, { topic: '@mcq:consumer-producer-surplus' }]);
   });
 
   it('All questions lists a question under every coarse topic it touches', () => {
@@ -118,9 +122,10 @@ describe('railSections', () => {
     ]);
   });
 
-  it('a fine topic is one section', () => {
-    const groups = groupRows([row({ rootId: 'x', tags: ['C.ped'] })]);
-    expect(railSections(groups, 'C.ped').map((s) => s.key)).toEqual(['C.ped']);
+  it('an MCQ topic, or a code to pick, is one section', () => {
+    const groups = groupRows([row({ rootId: 'x', tags: ['C.ped'] }), row({ rootId: 'y', tags: ['C.intervention'] })]);
+    expect(railSections(groups, '@mcq:elasticity').map((s) => s.key)).toEqual(['@mcq:elasticity']);
+    expect(railSections(groups, 'C.intervention').map((s) => s.key)).toEqual(['C.intervention']);
     expect(railSections([], 'C')).toEqual([]);
   });
 });
@@ -129,43 +134,67 @@ describe('suggestTopics', () => {
   it('ranks the same worksheet first: most questions, then nearest, then the whole bank', () => {
     const rows = [
       row({ docId: 'w', rootId: 't', number: 5, tags: [] }),
-      row({ docId: 'w', rootId: 'a', number: 1, tags: ['H.money'] }),
-      row({ docId: 'w', rootId: 'b', number: 2, tags: ['H.money', 'I.monetary'] }),
-      row({ docId: 'w', rootId: 'c', number: 6, tags: ['H.banks', 'my free tag'] }),
+      row({ docId: 'w', rootId: 'a', number: 1, tags: ['H.money-demand'] }),
+      row({ docId: 'w', rootId: 'b', number: 2, tags: ['H.money-demand', 'I.cycles'] }),
+      row({ docId: 'w', rootId: 'c', number: 6, tags: ['H.interest', 'my free tag'] }),
       row({ docId: 'w', rootId: 'd', number: 9, tags: ['F.price-level'] }),
-      // Elsewhere: C.ped is the most used overall, then A.
+      // Elsewhere: Elasticity is the most used overall, then Positive & Normative statements.
+      // A code with several MCQ topics (C.intervention) is still to be sorted, never offered.
+      row({ docId: 'y', rootId: 'h', tags: ['C.intervention'] }),
       row({ docId: 'x', rootId: 'e', tags: ['C.ped'] }),
       row({ docId: 'x', rootId: 'f', tags: ['C.ped'] }),
-      row({ docId: 'y', rootId: 'g', tags: ['A'] }),
+      row({ docId: 'y', rootId: 'g', tags: ['A.positive-normative'] }),
     ];
     const target = rows[0];
-    expect(suggestTopics(target, rows)).toEqual(['H.money', 'H.banks', 'I.monetary', 'F.price-level', 'C.ped']);
-    expect(suggestTopics(target, rows, 7)).toEqual(['H.money', 'H.banks', 'I.monetary', 'F.price-level', 'C.ped', 'A']);
+    const best = ['@mcq:money-demand', '@mcq:money-market-equilibrium', '@mcq:business-cycle', '@mcq:real-nominal-gdp', '@mcq:elasticity'];
+    expect(suggestTopics(target, rows)).toEqual(best);
+    expect(suggestTopics(target, rows, 7)).toEqual([...best, '@mcq:positive-normative-statements']);
   });
 
   it('with nothing tagged nearby, offers the most-used topics; with nothing tagged at all, none', () => {
     const rows = [
       row({ docId: 'w', rootId: 't', tags: [] }),
       row({ docId: 'x', rootId: 'a', tags: ['E.equity'] }),
-      row({ docId: 'x', rootId: 'b', tags: ['J.trade'] }),
-      row({ docId: 'y', rootId: 'c', tags: ['J.trade'] }),
+      row({ docId: 'x', rootId: 'b', tags: ['J.bop'] }),
+      row({ docId: 'y', rootId: 'c', tags: ['J.bop'] }),
     ];
-    expect(suggestTopics(rows[0], rows)).toEqual(['J.trade', 'E.equity']);
+    expect(suggestTopics(rows[0], rows)).toEqual(['@mcq:balance-of-payment', '@mcq:equity']);
     expect(suggestTopics(rows[0], [rows[0]])).toEqual([]);
   });
 
   it('puts the topics the question\'s own words point to first, three at most, then the neighbours', () => {
     const rows = [
       row({ docId: 'w', rootId: 't', number: 2, tags: [] }),
-      row({ docId: 'w', rootId: 'a', number: 1, tags: ['H.money'] }),
+      row({ docId: 'w', rootId: 'a', number: 1, tags: ['H.money-demand'] }),
       row({ docId: 'x', rootId: 'b', tags: ['C.ped'] }),
     ];
-    const text = [{ code: 'C.intervention' }, { code: 'H.money' }, { code: 'C.equilibrium' }, { code: 'C.surplus' }];
-    expect(suggestTopics(rows[0], rows, 5, text)).toEqual(['C.intervention', 'H.money', 'C.equilibrium', 'C.ped']);
-    // A code this build does not know is never offered.
-    expect(suggestTopics(rows[0], rows, 5, [{ code: 'C.later' }])).toEqual(['H.money', 'C.ped']);
+    // The text's topics arrive as MCQ topics (mcqTextTopics); three at most.
+    const text = [{ code: '@mcq:price-ceiling' }, { code: '@mcq:function-of-money' }, { code: '@mcq:basic-supply-demand' }, { code: '@mcq:consumer-producer-surplus' }];
+    expect(suggestTopics(rows[0], rows, 5, text)).toEqual([
+      '@mcq:price-ceiling',
+      '@mcq:function-of-money',
+      '@mcq:basic-supply-demand',
+      '@mcq:money-demand',
+      '@mcq:elasticity',
+    ]);
+    // An EDB code, a section or a code this build does not know is never offered.
+    expect(suggestTopics(rows[0], rows, 5, [{ code: 'C.later' }, { code: 'C.intervention' }, { code: 'C' }])).toEqual(['@mcq:money-demand', '@mcq:elasticity']);
     // Nothing tagged anywhere: the text alone still suggests.
-    expect(suggestTopics(rows[0], [rows[0]], 5, [{ code: 'J.trade' }])).toEqual(['J.trade']);
+    expect(suggestTopics(rows[0], [rows[0]], 5, [{ code: '@mcq:in-trade-concept' }])).toEqual(['@mcq:in-trade-concept']);
+  });
+
+  it('turns glossary hits on EDB codes into MCQ topics, naming the topic a term names', () => {
+    expect(mcqTextTopics([{ code: 'C.intervention', hits: 1, terms: ['price ceiling'] }])).toEqual([
+      { code: '@mcq:price-ceiling', hits: 1, terms: ['price ceiling'] },
+    ]);
+    // One MCQ topic: that topic; hits on the same topic merge, most mentioned first.
+    expect(
+      mcqTextTopics([
+        { code: 'C.ped', hits: 1, terms: ['elasticity'] },
+        { code: 'C.pes', hits: 2, terms: ['pes'] },
+        { code: 'C.surplus', hits: 1, terms: ['surplus'] },
+      ]).map((topic) => [topic.code, topic.hits]),
+    ).toEqual([['@mcq:elasticity', 3], ['@mcq:consumer-producer-surplus', 1]]);
   });
 
   it('names the terms behind each suggestion from the text, in both languages', () => {
@@ -181,7 +210,7 @@ describe('suggestTopics', () => {
   it('never counts the question itself, or a copy of it', () => {
     const rows = [row({ docId: 'w', rootId: 't', tags: [] }), row({ docId: 'w', rootId: 't', tags: ['G.ad'] })];
     // The copy's tag still counts overall (it is a real use), but not as a neighbour.
-    expect(suggestTopics(rows[0], rows)).toEqual(['G.ad']);
+    expect(suggestTopics(rows[0], rows)).toEqual(['@mcq:adas']);
   });
 
   it('reads the class on the most recently sat paper and counts the questions its cohort has seen', () => {
@@ -216,13 +245,13 @@ describe('a question tagged by part on the review page', () => {
   const [lq] = rowsOf(docWith([question]));
   const labels = (query: SlotQuery) => partsTesting(lq, query).map((slot) => slot.label);
 
-  it('is listed under each sub-topic of the topic, each entry naming the other', () => {
+  it('is listed under each MCQ topic of the section, each entry naming the other', () => {
     const sections = railSections(groupRows([lq]), 'C');
     expect(sections.map((s) => [s.key, s.entries.map((e) => [e.query, e.alsoIn])])).toEqual([
-      ['C.law-of-demand', [[{ topic: 'C.law-of-demand' }, ['Price elasticity of demand']]]],
-      ['C.ped', [[{ topic: 'C.ped' }, ['Law of demand']]]],
+      ['@mcq:relative-price-law-of-demand', [[{ topic: '@mcq:relative-price-law-of-demand' }, ['Elasticity']]]],
+      ['@mcq:elasticity', [[{ topic: '@mcq:elasticity' }, ['Relative Price & Law of Demand']]]],
     ]);
-    expect(alsoInText(sections[0].entries[0].alsoIn)).toBe('Also in Price elasticity of demand');
+    expect(alsoInText(sections[0].entries[0].alsoIn)).toBe('Also in Elasticity');
     expect(alsoInText([])).toBeUndefined();
   });
 
@@ -250,10 +279,10 @@ describe('a question tagged by part on the review page', () => {
     expect(testsWhatText([], { topic: 'C' })).toBeUndefined();
   });
 
-  it('lists a question once per 題型 it carries for the sub-topic, parts apart', () => {
+  it('lists a question once per 題型 it carries for the MCQ topic, parts apart', () => {
     const two = partedQuestion([{ tags: ['C.ped', 'C.ped::Calculate PED'] }, { tags: ['C.ped', 'C.ped::Factors'] }]);
     const [row2] = rowsOf(docWith([two]));
-    const [ped] = railSections(groupRows([row2]), 'C.ped');
+    const [ped] = railSections(groupRows([row2]), '@mcq:elasticity');
     expect(ped.parts!.map((p) => [p.label, p.entries.map((e) => e.alsoIn)])).toEqual([
       ['Calculate PED', [['Factors']]],
       ['Factors', [['Calculate PED']]],
@@ -294,6 +323,6 @@ describe('a question tagged by part on the review page', () => {
   });
 
   it('reads in the cart by its first part’s topic', () => {
-    expect(cartTopicLabel(lq.tags)).toBe('C · Law of demand +2');
+    expect(cartTopicLabel(lq.tags)).toBe('C · Relative Price & Law of Demand +2');
   });
 });

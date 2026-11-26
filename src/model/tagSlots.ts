@@ -1,6 +1,7 @@
 import { getQuestionType } from '@/registry';
 import type { TagSlotInfo } from '@/registry/types';
 import { PATTERN_SEPARATOR } from './patterns';
+import { isMcqTag } from './topicSchemes';
 import { isTopicCode, stringTags } from './topics';
 import type { Question } from './types';
 
@@ -19,9 +20,12 @@ import type { Question } from './types';
  * - free tags stay on the question; a part holds topic codes and 題型 only.
  */
 
-/** A topic code (known or not) or a 題型: what a part may hold. System `@` tags are not. */
+/**
+ * A topic code (known or not), a 題型, or an MCQ topic (`@mcq:<key>`, k-0569, which sits
+ * beside the codes it names): what a part may hold. Other system `@` tags are not.
+ */
 export function isTopicalTag(tag: string): boolean {
-  return isTopicCode(tag) || (typeof tag === 'string' && tag.includes(PATTERN_SEPARATOR));
+  return isTopicCode(tag) || (typeof tag === 'string' && tag.includes(PATTERN_SEPARATOR)) || isMcqTag(tag);
 }
 
 /** One slot as a state holds it: where it is, and its own list (absent = inherits). */

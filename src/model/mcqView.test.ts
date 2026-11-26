@@ -111,7 +111,7 @@ describe('the MCQ view of EDB codes (k-0569 § 3)', () => {
 describe('writing MCQ topics (k-0569 § 3)', () => {
   it('picks a topic for a several-topic code: the code stays, the @mcq: tag says which', () => {
     const next = addViewCode(['C.intervention', 'mock 2026'], '@mcq:quota');
-    expect(next).toEqual(['C.intervention', '@mcq:quota', 'mock 2026']);
+    expect(next).toEqual(['C.intervention', 'mock 2026', '@mcq:quota']);
     expect(viewCodesOf(next)).toEqual(['@mcq:quota']);
   });
 

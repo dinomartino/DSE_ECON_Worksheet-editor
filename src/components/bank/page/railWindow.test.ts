@@ -7,10 +7,10 @@ import { railOrder, railSections } from './bankScreen';
 import { ReviewPage, type ReviewState } from './ReviewPage';
 import { estimatedHeight, RAIL_WINDOW_FROM, railRows, rowAt, rowOffsets, scrollToShow, visibleRange } from './railWindow';
 
-/** `count` questions under two sub-topics of C. */
+/** `count` questions under two MCQ topics of C. */
 function bank(count: number) {
   const rows = Array.from({ length: count }, (_, i) =>
-    row({ rootId: `q${i}`, questionId: `q${i}`, docId: `d${i % 40}`, tags: [i % 2 ? 'C.ped' : 'C.equilibrium'], excerpt: { en: `Question ${i}`, zh: '' } }),
+    row({ rootId: `q${i}`, questionId: `q${i}`, docId: `d${i % 40}`, tags: [i % 2 ? 'C.surplus' : 'C.ped'], excerpt: { en: `Question ${i}`, zh: '' } }),
   );
   const sections = railSections(groupRows(rows), 'C', 'en');
   return { sections, order: railOrder(sections) };

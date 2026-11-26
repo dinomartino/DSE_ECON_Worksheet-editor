@@ -6,8 +6,9 @@ import { Dialog, NoticeInsetSpacer } from '@/components/ui/Dialog';
 import type { StateEdit } from '@/library/tagWrites';
 import { thenState } from '@/library/tagWrites';
 import { holdsPatterns } from '@/model/patterns';
-import { sameTagState, type TagState } from '@/model/tagSlots';
-import { TOPICS, topicNamesFor, topicOf, type Topic } from '@/model/topics';
+import { effectiveSlotTags, sameTagState, type TagState } from '@/model/tagSlots';
+import { topicNamesFor } from '@/model/topics';
+import { VIEW_SECTIONS, viewCodesOf, viewOrder, viewSectionOf, viewTopicOf, type ViewTopic } from '@/model/mcqView';
 import type { LanguageMode } from '@/model/types';
 import { useViewLanguage } from '@/settings/paperLanguage';
 import { useMessages, useUiLanguage } from '@/i18n/language';
@@ -18,6 +19,7 @@ import {
   applyDraft,
   partLines,
   patternAt,
+  patternCodeOf,
   patternEditAt,
   sameAsPart,
   targetName,
@@ -63,9 +65,12 @@ export interface PickedPatterns {
 }
 
 /**
- * Tick topics from the guide's list. Edits one question's codes (its free tags are kept by
- * the caller) or, in bulk, adds, removes or replaces codes on many. The dialog pads its
- * own body and keeps its actions in the footer.
+ * Tick topics from the teacher's MCQ topics (k-0569; sections, their MCQ topics, and any
+ * EDB code the questions in hand still hold that no single MCQ topic names). Edits one
+ * question's topics (its free tags are kept by the caller) or, in bulk, adds, removes or
+ * replaces them on many; codes in and out are view codes (`model/mcqView.ts`). A 題型
+ * hangs on its topic's EDB sub-topic (`patternCodeOf`). The dialog pads its own body and
+ * keeps its actions in the footer.
  */
 export function TopicPickerDialog<M extends string = never>({
   title,
@@ -83,7 +88,7 @@ export function TopicPickerDialog<M extends string = never>({
 }: {
   title: string;
   description: string;
-  /** Codes ticked on open; free tags are ignored here. */
+  /** Tags or view codes ticked on open, read through the MCQ view; free tags are ignored here. */
   initial: readonly string[];
   /** The confirm button's words, given how many topics are ticked. */
   confirmLabel: string | ((ticked: number) => string);
@@ -108,7 +113,7 @@ export function TopicPickerDialog<M extends string = never>({
   const view = useViewLanguage();
   const [chosenPatterns, setChosenPatterns] = useState<Record<string, string | null | undefined>>(() => ({ ...(patterns?.initial ?? {}) }));
   const [onlyPattern, setOnlyPattern] = useState<ReadonlySet<string>>(new Set());
-  const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(initial.filter((tag) => topicOf(tag))));
+  const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(viewCodesOf(initial)));
   const toggle = (code: string) =>
     setPicked((current) => {
       const next = new Set(current);
@@ -116,21 +121,32 @@ export function TopicPickerDialog<M extends string = never>({
       else next.add(code);
       return next;
     });
-  // Guide order, so a question's tags read A before C and a coarse code before its fine ones.
-  const ordered = () => GUIDE_CODES.filter((code) => picked.has(code));
-  const keepsTopic = (code: string) => Boolean(patternRemoval?.get(code)) && onlyPattern.has(code);
+  // List order, so a question's topics read A before C and a section before its topics.
+  const ordered = () => [...picked].sort((a, b) => viewOrder(a) - viewOrder(b));
+  /** The EDB sub-topic a ticked topic's 題型 hangs on. */
+  const patternCode = (code: string) => patternCodeOf(code, initial);
+  const keepsTopic = (code: string) => {
+    const at = patternCode(code);
+    return at !== undefined && Boolean(patternRemoval?.get(at)) && onlyPattern.has(at);
+  };
   const done = () => {
     const codes = ordered();
     const chosen: Record<string, string | null | undefined> = {};
-    if (patterns) for (const code of codes.filter(holdsPatterns)) chosen[code] = chosenPatterns[code];
-    for (const code of codes.filter(keepsTopic)) chosen[code] = null;
+    for (const code of codes) {
+      const at = patternCode(code);
+      if (!at || !holdsPatterns(at)) continue;
+      if (patterns) chosen[at] = chosenPatterns[at];
+      if (keepsTopic(code)) chosen[at] = null;
+    }
     onDone(
       codes.filter((code) => !keepsTopic(code)),
       { patterns: chosen },
     );
   };
-  const patternFor = (child: Topic) => {
-    if (!picked.has(child.code) || !holdsPatterns(child.code)) return null;
+  const patternFor = (topic: ViewTopic) => {
+    const code = patternCode(topic.code);
+    if (!picked.has(topic.code) || !code) return null;
+    const child = { code };
     const carrying = patternRemoval?.get(child.code) ?? 0;
     if (patternRemoval) {
       if (carrying === 0) return null;
@@ -149,7 +165,7 @@ export function TopicPickerDialog<M extends string = never>({
             }
             className="h-3 w-3 shrink-0 translate-y-[1px] cursor-pointer accent-[var(--accent)]"
           />
-          {m.keepOnly(topicName(child.code, view))}
+          {m.keepOnly(topicName(topic.code, view))}
           <span className="tabular-nums text-ink-subtle">{m.onCount(carrying)}</span>
         </label>
       );
@@ -211,8 +227,6 @@ export function TopicPickerDialog<M extends string = never>({
   );
 }
 
-const GUIDE_CODES = TOPICS.flatMap((topic) => [topic, ...topic.children]).map((topic) => topic.code);
-
 /**
  * Edit topics for one question with parts: a part column ("Whole question", then each part
  * and sub-part) beside the topic list. Ticks on the whole question go on every part; a
@@ -256,8 +270,11 @@ export function PartTopicPickerDialog({
   const untagged = lines.filter((entry) => draft.slots.find((slot) => slot.key === entry.key)?.leaf && entry.codes.length === 0);
   const changed = edits.length > 0 && !sameTagState(draft, state);
 
-  const patternFor = (child: Topic) => {
-    if (!patterns || !ticks.ticked.has(child.code) || !holdsPatterns(child.code)) return null;
+  const patternFor = (topic: ViewTopic) => {
+    if (!patterns || !ticks.ticked.has(topic.code)) return null;
+    const code = patternCodeOf(topic.code, partTags(draft, at));
+    if (!code) return null;
+    const child = { code };
     const { name, mixed } = patternAt(draft, at, child.code);
     return (
       <div className="mb-1 ml-[28px] mr-2">
@@ -331,6 +348,12 @@ export function PartTopicPickerDialog({
       </div>
     </Dialog>
   );
+}
+
+/** The tags a target holds (the whole question: every part's), for `patternCodeOf`. */
+function partTags(state: TagState, at: string | undefined): string[] {
+  if (at !== undefined) return effectiveSlotTags(state).get(at) ?? [];
+  return [state.tags, ...state.slots.map((slot) => slot.own ?? [])].flat();
 }
 
 /**
@@ -418,26 +441,33 @@ function TopicChecklist({
   partial?: ReadonlyMap<string, string[]>;
   count?: (code: string) => number | undefined;
   onToggle: (code: string) => void;
-  /** Under a sub-topic: its 題型 picker, or nothing. */
-  below: (child: Topic) => ReactNode;
+  /** Under a topic: its 題型 picker, or nothing. */
+  below: (child: ViewTopic) => ReactNode;
 }) {
   const m = useMessages(TOPIC_PICKER_MESSAGES);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState<ReadonlySet<string>>(
-    () => new Set(openFor.flatMap((tag) => (topicOf(tag)?.parent ? [topicOf(tag)!.parent!] : []))),
+    () => new Set(openFor.flatMap((code) => (viewTopicOf(code)?.parent ? [viewSectionOf(code)!] : []))),
   );
   const needle = query.trim().toLowerCase();
-  const matches = (topic: Topic) =>
+  const matches = (topic: ViewTopic) =>
     !needle || topic.code.toLowerCase().includes(needle) || topic.en.toLowerCase().includes(needle) || topic.zh.includes(needle);
+  // EDB codes in hand that no single MCQ topic names ("Market intervention", to be picked; "Policy concerns"):
+  // listed after the section's MCQ topics, so they can be seen and taken off.
+  const extras = useMemo(
+    () => [...new Set([...openFor, ...ticked])].map(viewTopicOf).filter((node): node is ViewTopic => node?.kind === 'pick' || node?.kind === 'edb'),
+    [openFor, ticked],
+  );
   const shown = useMemo(
     () =>
-      TOPICS.map((topic) => ({ topic, children: topic.children.filter((child) => matches(child) || matches(topic)) })).filter(
-        ({ topic, children }) => matches(topic) || children.length > 0,
-      ),
+      VIEW_SECTIONS.map((topic) => {
+        const all = [...topic.children, ...extras.filter((node) => node.parent === topic.code).sort((a, b) => viewOrder(a.code) - viewOrder(b.code))];
+        return { topic, all, children: all.filter((child) => matches(child) || matches(topic)) };
+      }).filter(({ topic, children }) => matches(topic) || children.length > 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [needle],
+    [needle, extras],
   );
-  const check = (topic: Topic) => (
+  const check = (topic: ViewTopic) => (
     <TopicCheck
       topic={topic}
       checked={ticked.has(topic.code)}
@@ -458,14 +488,14 @@ function TopicChecklist({
         className="h-8 w-full rounded-lg border border-line bg-surface px-2.5 text-[12.5px] text-ink outline-none transition-colors placeholder:text-ink-subtle focus:border-accent focus:ring-2 focus:ring-accent/25"
       />
       <ul className="mt-3 space-y-0.5">
-        {shown.map(({ topic, children }) => {
+        {shown.map(({ topic, all, children }) => {
           const expanded = Boolean(needle) || open.has(topic.code);
-          const inside = countIn(topic, ticked);
+          const inside = all.filter((child) => ticked.has(child.code)).length;
           return (
             <li key={topic.code}>
               <div className="flex items-center gap-1">
                 {check(topic)}
-                {topic.children.length > 0 && !needle && (
+                {all.length > 0 && !needle && (
                   <button
                     type="button"
                     onClick={() =>
@@ -479,7 +509,7 @@ function TopicChecklist({
                     className="shrink-0 cursor-pointer rounded px-1.5 py-0.5 text-[11px] tabular-nums text-ink-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     aria-expanded={expanded}
                   >
-                    {expanded ? m.hide : m.subTopics(topic.children.length)}
+                    {expanded ? m.hide : m.subTopics(all.length)}
                     {!expanded && inside > 0 && m.insideTicked(inside)}
                   </button>
                 )}
@@ -503,10 +533,6 @@ function TopicChecklist({
   );
 }
 
-function countIn(topic: Topic, picked: ReadonlySet<string>): number {
-  return topic.children.filter((child) => picked.has(child.code)).length;
-}
-
 function TopicCheck({
   topic,
   checked,
@@ -514,7 +540,7 @@ function TopicCheck({
   count,
   onToggle,
 }: {
-  topic: Topic;
+  topic: ViewTopic;
   checked: boolean;
   /** On some parts only: their labels, and the box shows half-ticked. */
   where?: readonly string[];
@@ -547,6 +573,8 @@ function TopicCheck({
         ) : (
           topic[names]
         )}
+        {topic.kind === 'pick' && <span className="ml-1.5 text-[11px] text-ink-subtle">{m.pickNote}</span>}
+        {topic.kind === 'edb' && <span className="ml-1.5 text-[11px] text-ink-subtle">{m.edbNote}</span>}
       </span>
       {partial && (
         <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle" title={m.partialTitle(where.join(', '))}>

@@ -15,12 +15,12 @@ describe('the review rail by 題型', () => {
     row({ rootId: 'lq', typeId: LQ, tags: ['C.ped', 'C.ped::Calculate PED'] }),
     row({ rootId: 'fac', typeId: MCQ, tags: ['C.ped', 'C.ped::Factors'] }),
     row({ rootId: 'calc2', typeId: MCQ, tags: ['C.ped', 'C.ped::calculate ped'] }),
-    row({ rootId: 'pes', typeId: MCQ, tags: ['C.pes'] }),
+    row({ rootId: 'surplus', typeId: MCQ, tags: ['C.surplus'] }),
   ]);
 
-  it('groups a sub-topic by 題型 (MCQ, then LQ), with the questions without one last', () => {
+  it('groups an MCQ topic by 題型 (MCQ, then LQ), with the questions without one last', () => {
     const sections = railSections(groups, 'C');
-    const ped = sections.find((s) => s.key === 'C.ped')!;
+    const ped = sections.find((s) => s.key === '@mcq:elasticity')!;
     expect(ped.parts!.map((p) => [p.label, p.kind, p.entries.map((e) => e.group.rootId)])).toEqual([
       ['Calculate PED', 'MCQ', ['calc', 'calc2']],
       ['Factors', 'MCQ', ['fac']],
@@ -29,13 +29,13 @@ describe('the review rail by 題型', () => {
     ]);
     // Reading order follows the parts, so ↑ ↓ walk what the rail shows.
     expect(ped.entries.map((e) => e.group.rootId)).toEqual(['calc', 'calc2', 'fac', 'lq', 'none']);
-    expect(railOrder(sections).map((e) => e.group.rootId)).toEqual(['calc', 'calc2', 'fac', 'lq', 'none', 'pes']);
-    // A sub-topic with no 題型 at all is not split.
-    expect(sections.find((s) => s.key === 'C.pes')!.parts).toBeUndefined();
+    expect(railOrder(sections).map((e) => e.group.rootId)).toEqual(['calc', 'calc2', 'fac', 'lq', 'none', 'surplus']);
+    // An MCQ topic with no 題型 at all is not split.
+    expect(sections.find((s) => s.key === '@mcq:consumer-producer-surplus')!.parts).toBeUndefined();
   });
 
-  it('inside one sub-topic too; never in the coarse sections of All questions', () => {
-    expect(railSections(groups, 'C.ped')[0].parts).toHaveLength(4);
+  it('inside one MCQ topic too; never in the coarse sections of All questions', () => {
+    expect(railSections(groups, '@mcq:elasticity')[0].parts).toHaveLength(4);
     expect(railSections(groups, 'all').every((s) => s.parts === undefined)).toBe(true);
   });
 });
@@ -63,9 +63,9 @@ describe('a 題型 is not a topic', () => {
     const cover = coverage([only, row({ rootId: 'y', tags: ['C.ped', 'C.ped::Factors'] })]);
     expect(cover.untagged).toBe(1);
     expect(cover.bars.find((bar) => bar.code === 'C')!.total).toBe(1);
-    expect(traySummary([row({ tags: ['C.ped', 'C.ped::Factors'] })]).mix.map((m) => m.code)).toEqual(['C.ped']);
+    expect(traySummary([row({ tags: ['C.ped', 'C.ped::Factors'] })]).mix.map((m) => m.code)).toEqual(['@mcq:elasticity']);
     const target = row({ docId: 'd', rootId: 't', number: 2 });
-    expect(suggestTopics(target, [row({ docId: 'd', rootId: 'u', number: 1, tags: ['C.ped', 'C.ped::Factors'] })])).toEqual(['C.ped']);
+    expect(suggestTopics(target, [row({ docId: 'd', rootId: 'u', number: 1, tags: ['C.ped', 'C.ped::Factors'] })])).toEqual(['@mcq:elasticity']);
   });
 });
 
@@ -93,7 +93,12 @@ describe('a topic code this build does not list', () => {
   it('shows an unknown coarse code as its code, never as a topic', () => {
     expect(hasTopic(unknownCoarse)).toBe(false);
     expect(coarseCodes(unknownCoarse)).toEqual([]);
-    expect(tagLines(['K', 'C.new'])).toEqual([{ code: 'K' }, { code: 'C.new' }]);
+    // A later sub-topic reads as its section, named; it is never listed as 'C.new'.
+    expect(tagLines(['C.new'])).toEqual([{ code: 'C', name: 'Market and Price' }]);
+  });
+
+  it('does not hide a stored tag it cannot read as a topic', () => {
+    expect(tagLines(['K', 'C.new']).map((line) => line.code)).toContain('K');
   });
 });
 

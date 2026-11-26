@@ -15,6 +15,15 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question bank sorts your questions by your MCQ topics.** By topic now follows the 72
+  topics of DSEcon Mentor's MCQ section (Price Ceiling, Per-unit Tax, Monetary Base…) in the site's
+  sections A–J, instead of the EDB syllabus points: the topic cards, the list, the filter, the tag
+  line and the topic pickers all use them, in the 題庫 tab and in a question's Topics row too.
+  Nothing in your saved papers changes: a question's existing topics are read as the matching MCQ
+  topic. Where one syllabus point covers several MCQ topics (Market intervention: ceiling, floor,
+  quota, tax, subsidy), the topics page offers **Pick the MCQ topic**, one question at a time with
+  the choices as numbered keys. The syllabus coverage check still works by the EDB syllabus.
+  <!-- zh: **題庫按你的 MCQ 課題排列題目。** 「按課題」現在跟從 DSEcon Mentor MCQ 部分的 72 個課題（價格上限、從量稅、貨幣基礎……），按網站的 A 至 J 部分排列，不再按 EDB 課程要點：課題卡、清單、篩選、標籤行及課題選擇器都使用這些課題，題庫分頁及題目的「課題」一欄亦然。已儲存的試卷不會改變：題目現有的課題會讀作相應的 MCQ 課題。若一個課程要點涵蓋多個 MCQ 課題（政府干預：價格上限、價格下限、配額、從量稅、從量津貼），課題頁會提供「選定 MCQ 課題」，逐題顯示，選項以數字鍵選擇。課程覆蓋檢查仍按 EDB 課程。 -->
 - **The Question studio answers change requests faster on DSEcon Mentor credits.** Once drafts
   are on the page, a message that changes a draft ("Q2 太易", "the options are too long"), asks for
   one more like a draft, or doesn't say which draft is read first by Jev, a fast model made for
