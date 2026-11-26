@@ -1,4 +1,5 @@
 import { AiError, isAiError, type AiErrorInfo } from '@/ai/types';
+import { buildDecide, completeIn, suggestionsFromDecide } from './jev';
 import { buildRequest, itemKey, parseTagReply, questionChars, questionItems, suggestionOf, TAG_CHUNK, TAG_CHUNK_CHARS } from './prompt';
 import type { TagDeps, TagOutcome, TagQuestion, TagSuggestion } from './types';
 
@@ -7,6 +8,11 @@ import type { TagDeps, TagOutcome, TagQuestion, TagSuggestion } from './types';
  * per part, u-g13t), each chunk one request, several at once as the provider allows
  * (`preset.concurrency`). A cut-off or unreadable reply is asked once more, then split in two.
  * Stop keeps every suggestion already back. Never rejects.
+ *
+ * On DSEcon Mentor credits (k-0567) a client with `decide` sends each chunk to Jev instead
+ * (`jev.ts`), one request at a time: the TypeSafe key is shared with Mentor's student chat
+ * router, so a 500-question run is 50 requests in a row, about one a second. When Mentor
+ * doesn't offer it (an older Mentor, switched off) the run carries on with the prompt.
  */
 
 export function chunkQuestions(questions: readonly TagQuestion[], max = TAG_CHUNK, maxChars = TAG_CHUNK_CHARS): TagQuestion[][] {
@@ -37,6 +43,27 @@ interface Run {
   deps: TagDeps;
   whyLanguage: 'en' | 'zh';
   signal: AbortSignal;
+  /** Jev through Mentor's `/ai/decide` (k-0567); false once Mentor said it doesn't offer it. */
+  jev: boolean;
+}
+
+/** One `/ai/decide` request for `chunk`, or null when Mentor doesn't offer it. Throws AiError. */
+async function tagChunkJev(run: Run, chunk: TagQuestion[], retried = false): Promise<Map<string, Answer> | null> {
+  if (run.signal.aborted) throw new AiError({ kind: 'cancelled', provider: run.deps.preset.id, message: 'Stopped.', fatal: false, actions: [] });
+  const result = await run.deps.client.decide!(buildDecide(chunk, run.signal));
+  if (!result) return null;
+  const answers = suggestionsFromDecide(chunk, result);
+  // A question (or part) left unanswered is asked once more on its own; the fuller answer is kept.
+  const missing = chunk.filter((q) => !completeIn(q, answers.get(q.rootId)));
+  if (missing.length && !retried) {
+    for (const q of missing) {
+      const again = await tagChunkJev(run, [q], true);
+      const answer = again?.get(q.rootId);
+      const before = answers.get(q.rootId);
+      if (answer && (!before || (answer.parts?.length ?? 1) >= (before.parts?.length ?? 1))) answers.set(q.rootId, answer);
+    }
+  }
+  return answers;
 }
 
 /** One request for `chunk`: each question's suggestion, or null. Throws AiError. */
@@ -86,14 +113,18 @@ export async function runTagging(questions: readonly TagQuestion[], deps: TagDep
   const answered = new Map<string, Answer>();
   onProgress(0, questions.length);
   const queue = chunkQuestions(questions);
-  const run: Run = { deps, whyLanguage, signal };
+  const run: Run = { deps, whyLanguage, signal, jev: typeof deps.client.decide === 'function' };
   let fatal: AiErrorInfo | undefined;
   let stopped = false;
   const worker = async () => {
     while (queue.length && !fatal && !signal.aborted) {
       const chunk = queue.shift()!;
       try {
-        const answers = await tagChunk(run, chunk);
+        let answers = run.jev ? await tagChunkJev(run, chunk) : null;
+        if (!answers) {
+          run.jev = false;
+          answers = await tagChunk(run, chunk);
+        }
         const fresh: TagSuggestion[] = [];
         for (const q of chunk) {
           const answer = answers.get(q.rootId) ?? null;
@@ -112,7 +143,8 @@ export async function runTagging(questions: readonly TagQuestion[], deps: TagDep
       onProgress(answered.size, questions.length);
     }
   };
-  const workers = Math.max(1, Math.min(deps.preset.concurrency, queue.length));
+  // Jev: one request at a time (the shared TypeSafe rate limit); the prompt: as the provider allows.
+  const workers = run.jev ? 1 : Math.max(1, Math.min(deps.preset.concurrency, queue.length));
   await Promise.all(Array.from({ length: workers }, worker));
 
   const suggestions: TagSuggestion[] = [];

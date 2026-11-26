@@ -1,4 +1,4 @@
-import type { Adapter } from './adapters/adapter';
+import { trimBase, type Adapter } from './adapters/adapter';
 import { anthropicAdapter } from './adapters/anthropic';
 import { geminiAdapter } from './adapters/gemini';
 import { mentorAdapter } from './adapters/mentor';
@@ -19,6 +19,9 @@ import {
   type CompletionRequest,
   type CompletionResult,
   type ConnectionTest,
+  type DecideAnswer,
+  type DecideRequest,
+  type DecideResult,
   type HttpDeps,
   type OutputDialect,
   type ProviderConfig,
@@ -70,6 +73,43 @@ export function newRequestKey(): string {
 
 /** The key for the `n`th body one logical request sends (a step down the rungs is a different request). */
 const keyFor = (base: string, n: number) => (n === 0 ? base : `${base}-${n}`);
+
+/** A key Mentor accepts (CONTRACT v1.3). */
+const DECIDE_KEY = /^[A-Za-z0-9._:-]{8,100}$/;
+/** Jev answers in well under a second; the server's Gemini fallback can take ~45 s. */
+const DECIDE_TIMEOUT_MS = 60_000;
+
+/** `/ai/decide`'s 200 body (CONTRACT v1.7 §3a), checked; null when it isn't one. */
+export function readDecide(body: unknown): Omit<DecideResult, 'ms'> | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const b = body as { answers?: unknown; mentor?: unknown };
+  if (typeof b.answers !== 'object' || b.answers === null || Array.isArray(b.answers)) return null;
+  const answers: Record<string, DecideAnswer> = {};
+  for (const [name, a] of Object.entries(b.answers as Record<string, unknown>)) {
+    if (typeof a !== 'object' || a === null) continue;
+    const x = a as Record<string, unknown>;
+    if (x.type === 'noul' && typeof x.noul === 'number' && x.noul >= 0 && x.noul <= 1) answers[name] = { type: 'noul', noul: x.noul };
+    else if (x.type === 'choice' && typeof x.choice === 'string') {
+      const probabilities: Record<string, number> = {};
+      if (typeof x.probabilities === 'object' && x.probabilities !== null) {
+        for (const [o, p] of Object.entries(x.probabilities as Record<string, unknown>)) if (typeof p === 'number' && p >= 0 && p <= 1) probabilities[o] = p;
+      }
+      answers[name] = { type: 'choice', choice: x.choice, confidence: typeof x.confidence === 'number' ? x.confidence : null, probabilities };
+    }
+  }
+  const m = (typeof b.mentor === 'object' && b.mentor !== null ? b.mentor : {}) as Record<string, unknown>;
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+  const u = (typeof m.usage === 'object' && m.usage !== null ? m.usage : {}) as Record<string, unknown>;
+  const usage = { input: n(u.inputTokens), output: n(u.outputTokens), thinking: n(u.thinkingTokens), cached: n(u.cachedTokens) };
+  return {
+    answers,
+    model: typeof m.model === 'string' ? m.model : 'unknown',
+    fallback: m.fallback === true,
+    ...(Object.values(usage).some((v) => v !== undefined) ? { usage } : {}),
+    ...(n(m.charged) !== undefined ? { charged: n(m.charged) } : {}),
+    ...(n(m.balance) !== undefined ? { balance: n(m.balance) } : {}),
+  };
+}
 
 function log(info: AiErrorInfo): void {
   if (info.kind !== 'cancelled') console.warn('AI request failed', { kind: info.kind, status: info.status });
@@ -265,6 +305,48 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
     }
   }
 
+  /**
+   * Mentor's `/ai/decide` (k-0567, CONTRACT v1.7 §3a): typed questions answered by Jev. Null
+   * when this Mentor doesn't offer it (404 from an older one, `decide_off`, a feature it
+   * doesn't take): the caller sends the job through `complete`. One try: the server already
+   * falls back to Gemini itself when Jev fails.
+   */
+  async function decide(req: DecideRequest): Promise<DecideResult | null> {
+    const note: RelayOutcome = {};
+    try {
+      const problem = blocked(false);
+      if (problem) throw new AiError(problem);
+      const started = http.now();
+      const headers: Record<string, string> = { 'content-type': 'application/json', authorization: `Bearer ${key ?? ''}` };
+      const requestKey = req.requestKey ?? newRequestKey();
+      if (DECIDE_KEY.test(requestKey)) headers['idempotency-key'] = requestKey;
+      const res = await request(
+        { url: `${trimBase(cfg.baseUrl)}/decide`, headers, body: JSON.stringify({ feature: req.feature, state: req.state, questions: req.questions }) },
+        req.signal,
+        DECIDE_TIMEOUT_MS,
+      );
+      const relay = relayErrorOf(res.body);
+      const field = typeof res.body === 'object' && res.body !== null ? (res.body as { field?: unknown }).field : undefined;
+      if (res.status === 404 || res.status === 405 || (res.status === 503 && relay?.code === 'decide_off') || (res.status === 400 && field === 'feature')) return null;
+      if (res.status < 200 || res.status >= 300) {
+        noteFailure(note, res);
+        throw httpFailure(res, model);
+      }
+      const out = readDecide(res.body);
+      if (!out) throw new AiError(aiErrorInfo('badOutput', provider, { status: res.status }));
+      if (out.balance !== undefined) note.balance = out.balance;
+      const result: DecideResult = { ...out, ms: http.now() - started };
+      recordUsage({ job, feature: req.feature, provider, family: preset.family, relay: true, model: result.model, usage: result.usage, charged: result.charged, ms: result.ms, at: Date.now() });
+      return result;
+    } catch (error) {
+      const info = mapThrown(provider, error, null);
+      log(info);
+      throw isAiError(error) ? error : new AiError(info);
+    } finally {
+      report(note);
+    }
+  }
+
   return {
     async stream(req, onText) {
       const note: RelayOutcome = {};
@@ -295,6 +377,8 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
         report(note);
       }
     },
+
+    ...(preset.relay === 'mentor' ? { decide: (req: DecideRequest) => decide(req) } : {}),
 
     async listModels(signal) {
       if (blocked(false) || preset.relay) return [];

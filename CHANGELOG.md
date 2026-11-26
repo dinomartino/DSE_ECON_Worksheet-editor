@@ -22,12 +22,14 @@ a version heading is edited afterwards.
   replaces its topics only when you accept. Topics always come from the bank's own syllabus
   list. It uses your AI as the other AI tools do (DSEcon Mentor credits, with an estimate first,
   or your own key), sends several questions per request, shows progress and can be stopped.
-  With DSEcon Mentor credits it runs on the cheaper Gemini Flash-Lite, so tagging 100
-  questions uses about 22 credits; with your own Gemini key, the Flash-Lite switch covers it too.
+  With DSEcon Mentor credits it runs on Jev, a fast model made for choosing from a list: tagging
+  100 questions uses about 12 credits and takes seconds, and under each suggestion you see the
+  topic's syllabus points in place of the AI's reason. With your own key it runs on your chosen
+  model (with your own Gemini key, the Flash-Lite switch covers it too).
   A question with parts gets a suggestion for each part, (a), (b), (b)(i) and so on, and you
   accept, change, skip or undo each part on its own, or accept all its parts at once; each part
   keeps its own topics.
-  <!-- zh: **AI 可為未標記的題目建議課題。** 在題庫按 ✦ AI →「標記課題」，AI 會為每條未標記的題目（這條題目、已剔選的題目、所有顯示的題目或「所有未標記」）建議課程綱要的部分及課題，如有合適的會一併建議你自己的題型，並附簡短原因及把握程度。接受前不會儲存任何內容：可逐條接受、用課題選擇器更改、略過，或全部接受；「復原」可取消已接受的建議。已有課題的題目不會更改；如對已有課題的題目使用「重新建議課題」，只有在你接受後才會取代原有課題。課題一律來自題庫所用的課程綱要。與其他 AI 工具一樣使用你的 AI（DSEcon Mentor 點數，事先顯示估算；或你自己的金鑰），每次傳送多條題目，顯示進度，可隨時停止。使用 DSEcon Mentor 點數時會用較便宜的 Gemini Flash-Lite，標記 100 條題目約用 22 點；使用自己的 Gemini key 時，Flash-Lite 開關亦包括此工作。有分題的題目會按每個分題（(a)、(b)、(b)(i) 等）建議課題，你可逐個分題接受、更改、略過或復原，亦可一次接受所有分題；每個分題會保留各自的課題。 -->
+  <!-- zh: **AI 可為未標記的題目建議課題。** 在題庫按 ✦ AI →「標記課題」，AI 會為每條未標記的題目（這條題目、已剔選的題目、所有顯示的題目或「所有未標記」）建議課程綱要的部分及課題，如有合適的會一併建議你自己的題型，並附簡短原因及把握程度。接受前不會儲存任何內容：可逐條接受、用課題選擇器更改、略過，或全部接受；「復原」可取消已接受的建議。已有課題的題目不會更改；如對已有課題的題目使用「重新建議課題」，只有在你接受後才會取代原有課題。課題一律來自題庫所用的課程綱要。與其他 AI 工具一樣使用你的 AI（DSEcon Mentor 點數，事先顯示估算；或你自己的金鑰），每次傳送多條題目，顯示進度，可隨時停止。使用 DSEcon Mentor 點數時會用專為從清單中作選擇而設的快速模型 Jev：標記 100 條題目約用 12 點，數秒完成，每項建議下會顯示該課題的課程綱要要點，取代 AI 的原因說明。使用自己的金鑰時會用你所選的模型（使用自己的 Gemini key 時，Flash-Lite 開關亦包括此工作）。有分題的題目會按每個分題（(a)、(b)、(b)(i) 等）建議課題，你可逐個分題接受、更改、略過或復原，亦可一次接受所有分題；每個分題會保留各自的課題。 -->
 - **Past paper questions stay out of your question bank until you change them.** A question you
   add from the past paper bank to a worksheet is the exam's question, so your question bank no
   longer lists it as one of yours. Edit what it says (the question, an option, the answer, a
