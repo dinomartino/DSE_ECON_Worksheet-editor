@@ -225,6 +225,15 @@ a version heading is edited afterwards.
   <!-- zh: **匯出的檔案會靜靜註明來自 Econ Studio。** 你匯出的每個 Word 和 Excel 檔案，以及桌面版儲存的每個 PDF，現在都會在檔案本身的內容資訊中附上幾項隱藏資料：程式名稱和版本、匯出時間，以及一個代表該工作紙的隨機編號（同一份工作紙匯出的每個檔案編號都相同）。頁面上不會加入任何內容，所以列印、複製文字或使用屏幕閱讀器時都不會看到，亦不包含任何關於你或你電腦的資料。經列印對話框製作的 PDF（網頁版，或直接儲存 PDF 失敗時）無法附上這些資料。 -->
 
 ### Changed
+- **A picture or graph inside a question's text has a blank line above and below it.** When a
+  diagram sits between two parts of a question (DSE 2021 Paper 1 Q23's production chain, a graph
+  between a part's lines), the page, Word, PDF, the copied question and the bank cards now leave
+  one empty line before and after it, as on the DSEcon Mentor site. Nothing is added above a
+  picture that opens the question, below one that ends it, between the letter and the picture of
+  a picture-only option, or where you already left a blank line; two pictures in a row get one
+  line between them. Your saved papers are not changed, but a paper with such pictures can run
+  a page longer.
+  <!-- zh: **題目文字之間的圖片或圖表上下各留一行空行。** 當圖表位於題目兩段文字之間（例如 DSE 2021 Paper 1 第 23 題的生產鏈、分題文字之間的圖表），頁面、Word、PDF、複製的題目及題庫卡片現在都會在圖片前後各留一行空行，與 DSEcon Mentor 網站一致。題目開首的圖片上方、題目結尾的圖片下方、只有圖片的選項的字母與圖片之間，以及你已留空行的地方，都不會再加空行；兩幅相連的圖片之間只留一行。已儲存的試卷內容不會改變，但有這類圖片的試卷可能會多出一頁。 -->
 - **The Past paper bank lists its topics like your Question bank.** Its topics sit in the same
   sections A–J as your MCQ topics on DSEcon Mentor (Circular Flow under F) with the same names, and a
   question you copy out is filed under its exact MCQ topic.

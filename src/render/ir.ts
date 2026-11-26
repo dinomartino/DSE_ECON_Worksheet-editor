@@ -25,7 +25,7 @@ import type {
   Worksheet,
   FigureGridBlock,
 } from '@/model/types';
-import { isBiTextEmpty, plain, trailingBlankLines } from '@/model/text';
+import { isBiTextEmpty, plain, runLines, trailingBlankLines } from '@/model/text';
 import { defaultFramed } from '@/model/edits';
 import { cellWidthPx, fitToCell } from './cellFit';
 import { isFigureNumberLabel } from './figureLabel';
@@ -1034,77 +1034,174 @@ export function endsInBlankLine(nodes: RenderNode[]): boolean {
 }
 
 /**
+ * A picture or graph: what the question-text gap sits around (§ `renderContentBlocks`).
+ * A figure row and a figure grid are pictures too; they already take the table's line above.
+ */
+function isFigureBlock(block: ContentBlock): boolean {
+  return block.kind === 'image' || block.kind === 'diagram' || block.kind === 'figureRow' || block.kind === 'figureGrid';
+}
+
+/**
+ * The sides of a text the paper prints that have words, in reading order. Without a
+ * language (a caller that does not say) both sides count, as `endsInBlankLine` counts them.
+ */
+function printedSides(text: BiText, language: LanguageMode | undefined): RichText[] {
+  const sides = language === 'en' ? [text.en] : language === 'zh' ? [text.zh] : [text.en, text.zh];
+  return sides.filter((side) => plain(side).trim().length > 0);
+}
+
+/** Does this text print any words in the paper's language? */
+export function hasPrintedText(text: BiText, language: LanguageMode | undefined): boolean {
+  return printedSides(text, language).length > 0;
+}
+
+const opensWithBreak = (runs: RichText): boolean => {
+  const lines = runLines(runs.map((run) => run.text).join(''));
+  return lines.length > 1 && lines[0].trim() === '';
+};
+
+/** Does this block print as, or open with, a blank line: an empty paragraph, or text after a leading break? */
+function opensWithBlankLine(block: ContentBlock, language: LanguageMode | undefined): boolean {
+  if (block.kind !== 'paragraph') return false;
+  const sides = printedSides(block.text, language);
+  if (sides.length === 0) return true;
+  return language === undefined ? sides.some(opensWithBreak) : opensWithBreak(sides[0]);
+}
+
+/**
+ * `endsInBlankLine`, plus an empty paragraph (it prints as one blank line), read in the
+ * paper's language when the caller gives it: a break only the English side ends in is no
+ * blank line on the Chinese paper. A numbered empty line is the question's number, not a gap.
+ */
+function endsInSpentLine(nodes: RenderNode[], language: LanguageMode | undefined): boolean {
+  const last = nodes[nodes.length - 1];
+  if (last?.kind === 'text') {
+    const sides = printedSides(last.text, language);
+    if (sides.length === 0) return !last.listRef;
+    if (language !== undefined) return trailingBlankLines(sides[sides.length - 1]) > 0;
+  }
+  return endsInBlankLine(nodes);
+}
+
+export interface ContentBlockOptions {
+  keepNext?: boolean;
+  teacherOnly?: boolean;
+  indent?: number;
+  /** The paper's language, so the picture gap reads the blank lines that side prints. */
+  language?: LanguageMode;
+  /**
+   * The caller's stream already holds this text's opening words (the stem's numbered first
+   * paragraph, an option's letter line with words on it), so a picture at the head of
+   * `blocks` sits *between* parts of the text and takes its line above. Absent = it opens the text.
+   */
+  afterText?: boolean;
+}
+
+/**
  * Expand content blocks into IR nodes, appending to the caller's stream — appends
  * rather than returns so the table-gap rule can see what the stream already ends in.
+ *
+ * **A picture inside question text takes one blank line above and below it** (k-0576,
+ * the Mentor site's rule from k-0575): a spent line, like every gap on the fixed-line page,
+ * so all backends space it alike. Only *between* parts of the text: nothing above a picture
+ * that opens it (`afterText`), nothing below one that ends it, one line between two
+ * pictures in a row, and none where the text already prints a blank line there (a
+ * trailing or leading break, an empty paragraph). A picture-only option opens and ends
+ * its text, so it gets nothing. Rendering only; the stored blocks never change.
  */
 export function renderContentBlocks(
   nodes: RenderNode[],
   blocks: ContentBlock[],
   style: NodeStyle,
-  options: { keepNext?: boolean; teacherOnly?: boolean; indent?: number } = {},
+  options: ContentBlockOptions = {},
 ): void {
+  let textBefore = options.afterText ?? false;
+  let afterFigure = false;
   for (const block of blocks) {
-    if (block.kind === 'paragraph') {
-      nodes.push({
-        kind: 'text',
-        style,
-        text: block.text,
-        keepNext: options.keepNext,
-        teacherOnly: options.teacherOnly,
-        indent: options.indent,
-        edit: { kind: 'blockText', blockId: block.id },
-        format: block.format,
-      });
-    } else if (block.kind === 'table') {
-      const table = tableNodeFor(block, options);
-      // A table with rows but no cells emits no node at all — an empty <table>
-      // measures zero in the probe but occupies a line on the sheet, so pagination
-      // oscillated forever. Skipped here so *nothing* renders it; the block stays in
-      // the document and the sidebar offers a column back.
-      if (!table) continue;
-      // One blank line before every table, via the gap-counting rule; skipped at the
-      // head of the stream. Carries the caller's keepNext (a plain blank is exactly
-      // where Word would break the stem → gap → table chain).
-      if (nodes.length > 0 && !endsInBlankLine(nodes)) {
-        nodes.push({ ...blankLine(), keepNext: options.keepNext });
-      }
-      nodes.push(table);
-    } else if (block.kind === 'diagram') {
-      nodes.push(diagramNodeFor(block, options));
-    } else if (block.kind === 'figureRow') {
-      // The figure and its companion table, side by side. The row takes the table's
-      // own separating blank line — it contains one, and flush under a paragraph the
-      // frame reads as part of the text above.
-      const table = tableNodeFor(block.table, options);
-      const figure =
-        block.figure.kind === 'diagram'
-          ? diagramNodeFor(block.figure, options)
-          : imageNodeFor(block.figure, options);
-      if (nodes.length > 0 && !endsInBlankLine(nodes)) {
-        nodes.push({ ...blankLine(), keepNext: options.keepNext });
-      }
-      // A row whose table has lost every cell renders as the bare figure — same rule
-      // as a standalone empty table: nothing may render an unmeasurable box.
-      if (!table) {
-        nodes.push(figure);
-        continue;
-      }
-      nodes.push({
-        kind: 'figureRow',
-        figure,
-        table,
-        tableSide: block.tableSide ?? 'right',
-        keepNext: options.keepNext,
-        teacherOnly: options.teacherOnly,
-        blockId: block.id,
-      });
-    } else if (block.kind === 'figureGrid') {
-      renderFigureGrid(nodes, block, options);
-    } else if (block.kind === 'source') {
-      renderSource(nodes, block, style, options);
-    } else {
-      nodes.push(imageNodeFor(block, options));
+    const start = nodes.length;
+    const figure = isFigureBlock(block);
+    const wantsGap =
+      (afterFigure || (figure && textBefore)) &&
+      !opensWithBlankLine(block, options.language) &&
+      !endsInSpentLine(nodes, options.language);
+    renderContentBlock(nodes, block, style, options);
+    // A table with no cells renders nothing, and is no part of the text either side.
+    if (nodes.length === start) continue;
+    // A table, figure row or grid has already opened with its own line.
+    if (wantsGap && nodes[start].kind !== 'spacer') {
+      nodes.splice(start, 0, { ...blankLine(), keepNext: options.keepNext });
     }
+    textBefore = true;
+    afterFigure = figure;
+  }
+}
+
+function renderContentBlock(
+  nodes: RenderNode[],
+  block: ContentBlock,
+  style: NodeStyle,
+  options: ContentBlockOptions,
+): void {
+  if (block.kind === 'paragraph') {
+    nodes.push({
+      kind: 'text',
+      style,
+      text: block.text,
+      keepNext: options.keepNext,
+      teacherOnly: options.teacherOnly,
+      indent: options.indent,
+      edit: { kind: 'blockText', blockId: block.id },
+      format: block.format,
+    });
+  } else if (block.kind === 'table') {
+    const table = tableNodeFor(block, options);
+    // A table with rows but no cells emits no node at all — an empty <table>
+    // measures zero in the probe but occupies a line on the sheet, so pagination
+    // oscillated forever. Skipped here so *nothing* renders it; the block stays in
+    // the document and the sidebar offers a column back.
+    if (!table) return;
+    // One blank line before every table, via the gap-counting rule; skipped at the
+    // head of the stream. Carries the caller's keepNext (a plain blank is exactly
+    // where Word would break the stem → gap → table chain).
+    if (nodes.length > 0 && !endsInBlankLine(nodes)) {
+      nodes.push({ ...blankLine(), keepNext: options.keepNext });
+    }
+    nodes.push(table);
+  } else if (block.kind === 'diagram') {
+    nodes.push(diagramNodeFor(block, options));
+  } else if (block.kind === 'figureRow') {
+    // The figure and its companion table, side by side. The row takes the table's
+    // own separating blank line — it contains one, and flush under a paragraph the
+    // frame reads as part of the text above.
+    const table = tableNodeFor(block.table, options);
+    const figure =
+      block.figure.kind === 'diagram'
+        ? diagramNodeFor(block.figure, options)
+        : imageNodeFor(block.figure, options);
+    if (nodes.length > 0 && !endsInBlankLine(nodes)) {
+      nodes.push({ ...blankLine(), keepNext: options.keepNext });
+    }
+    // A row whose table has lost every cell renders as the bare figure — same rule
+    // as a standalone empty table: nothing may render an unmeasurable box.
+    if (!table) {
+      nodes.push(figure);
+      return;
+    }
+    nodes.push({
+      kind: 'figureRow',
+      figure,
+      table,
+      tableSide: block.tableSide ?? 'right',
+      keepNext: options.keepNext,
+      teacherOnly: options.teacherOnly,
+      blockId: block.id,
+    });
+  } else if (block.kind === 'figureGrid') {
+    renderFigureGrid(nodes, block, options);
+  } else if (block.kind === 'source') {
+    renderSource(nodes, block, style, options);
+  } else {
+    nodes.push(imageNodeFor(block, options));
   }
 }
 
@@ -1161,11 +1258,13 @@ function renderSource(
   nodes: RenderNode[],
   block: Extract<ContentBlock, { kind: 'source' }>,
   style: NodeStyle,
-  options: { keepNext?: boolean; teacherOnly?: boolean; indent?: number },
+  options: ContentBlockOptions,
 ): void {
   const body: RenderNode[] = [];
   renderContentBlocks(body, block.blocks, style, {
     ...options,
+    // The frame opens its own text: what precedes the panel is not this text's words.
+    afterText: undefined,
     // The frame is the boundary: nothing inside it needs to keep with what follows,
     // and the panel as a whole carries the caller's chain.
     keepNext: undefined,

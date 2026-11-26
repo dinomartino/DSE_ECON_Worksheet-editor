@@ -731,6 +731,13 @@ reference paper's model. All vertical rhythm comes from the line box. Consequenc
   line. LibreOffice sets that paragraph at exactly the picture's height, so the preview's
   picture box is exactly that too: no margin, `lineHeight: 0` (`PICTURE_BOX`), or the
   paginator breaks sheets earlier than the file (`pictureGeometry.test.ts`).
+- **A picture inside question text takes a blank line above and below** (k-0576), as
+  `renderContentBlocks` spacers, so every backend spaces it alike. Only *between* parts of
+  one text: the caller says whether its own words come first (`afterText`: the stem's
+  numbered paragraph, a part's, an option's letter line) and the paper's `language`; a
+  picture that opens or ends the text, a picture-only option, a second picture in a row
+  and a side that already prints a blank line there (trailing or leading break, empty
+  paragraph) get none. A table keeps its own rule (a line before, none after).
 - **A picture is placed by `w:jc` on that paragraph**; `align` on
   `ImageBlock`/`DiagramBlock` resolves in the IR, defaulting to **`center`** (every
   reference figure is centred). The preview expresses it as `text-align` — no `mx-auto`.

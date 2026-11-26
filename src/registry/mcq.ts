@@ -9,6 +9,7 @@ import {
   DEFAULT_PAGE_METRICS,
   pushGap,
   renderContentBlocks,
+  hasPrintedText,
   type ColumnsNode,
   type PageMetrics,
   type RenderContext,
@@ -239,6 +240,8 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
     renderContentBlocks(nodes, restBlocks, 'Question Stem', {
       keepNext: true,
       indent: context.indents.stemText,
+      language: context.mode.language,
+      afterText: hasPrintedText(firstBlock.text, context.mode.language),
     });
   } else {
     nodes.push({
@@ -256,6 +259,7 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
     renderContentBlocks(nodes, question.blocks, 'Question Stem', {
       keepNext: true,
       indent: context.indents.stemText,
+      language: context.mode.language,
     });
   }
 
@@ -358,7 +362,12 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
             ],
           },
         ];
-        renderContentBlocks(cell, fitToCell(blocks, cellPx), 'MCQ Option', {});
+        // Under the letter line: a caption on it is the option's words, so its figure
+        // takes the picture gap; a picture-only option takes none (k-0576).
+        renderContentBlocks(cell, fitToCell(blocks, cellPx), 'MCQ Option', {
+          language: context.mode.language,
+          afterText: hasPrintedText(option.text, context.mode.language),
+        });
         return cell;
       });
       // An odd last row squares off with an empty cell, so a lone option keeps the
@@ -409,6 +418,8 @@ function render(question: McqQuestion, context: RenderContext): RenderNode[] {
           // one definition the exporter's `w:ind` and the preview's padding both read —
           // a second copy is how the page and the paper end up disagreeing.
           indent: context.indents.option.left,
+          language: context.mode.language,
+          afterText: hasPrintedText(option.text, context.mode.language),
         });
       }
     });

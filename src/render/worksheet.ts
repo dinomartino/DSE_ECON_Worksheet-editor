@@ -710,6 +710,7 @@ function renderResolved(worksheet: Worksheet, mode: OutputMode): RenderedWorkshe
           // Kept whole as an exam question is, in Word and so in the preview, which
           // reads the same chain (§ keepQuestionWhole).
           keepWhole: shape === 'paper1',
+          language: mode.language,
         };
       }
       const laid = renderLayoutElement(
@@ -901,6 +902,8 @@ interface StimulusRender {
   gapLines: number;
   /** Chain the nodes with keep-next, as an exam question is (§ keepQuestionWhole). */
   keepWhole: boolean;
+  /** The paper's language, for the picture gap inside the stimulus (§ `renderContentBlocks`). */
+  language: LanguageMode;
 }
 
 /**
@@ -1042,7 +1045,7 @@ function renderLayoutElement(
         },
       ];
       pushGap(nodes);
-      renderContentBlocks(nodes, element.blocks, 'Body');
+      renderContentBlocks(nodes, element.blocks, 'Body', { language: stimulus?.language });
       const kept = stimulus?.keepWhole ? keepQuestionWhole(nodes) : nodes;
       return withLeadingGap(kept, stimulus?.gapLines ?? (first ? 0 : ITEM_GAP_LINES));
     }

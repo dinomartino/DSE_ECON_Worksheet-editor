@@ -17,6 +17,7 @@ import {
   diagramNodeFor,
   pushGap,
   renderContentBlocks,
+  hasPrintedText,
   type RenderContext,
   type RenderNode,
 } from '@/render/ir';
@@ -104,6 +105,8 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
     renderContentBlocks(nodes, restBlocks, 'Question Stem', {
       keepNext: true,
       indent: context.indents.stemText,
+      language: context.mode.language,
+      afterText: hasPrintedText(firstBlock.text, context.mode.language),
     });
   } else {
     nodes.push({
@@ -117,6 +120,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
     renderContentBlocks(nodes, question.blocks, 'Question Stem', {
       keepNext: true,
       indent: context.indents.stemText,
+      language: context.mode.language,
     });
   }
 
@@ -205,6 +209,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       renderContentBlocks(nodes, interlude, 'Question Stem', {
         keepNext: true,
         indent: context.indents.stemText,
+        language: context.mode.language,
       });
       pushGap(nodes);
     }
@@ -238,7 +243,12 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         edit: { kind: 'blockText', blockId: partFirst.id },
         listRef: partRef,
       });
-      renderContentBlocks(nodes, partRest, 'Sub-question', { keepNext: true, indent: context.indents.partText });
+      renderContentBlocks(nodes, partRest, 'Sub-question', {
+        keepNext: true,
+        indent: context.indents.partText,
+        language: context.mode.language,
+        afterText: hasPrintedText(partFirst.text, context.mode.language),
+      });
       if (partRest.length > 0) attachMarksToLastText(nodes, partStart, leafMarks);
     } else {
       nodes.push({
@@ -249,7 +259,11 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         keepNext: true,
         listRef: partRef,
       });
-      renderContentBlocks(nodes, part.blocks, 'Sub-question', { keepNext: true, indent: context.indents.partText });
+      renderContentBlocks(nodes, part.blocks, 'Sub-question', {
+        keepNext: true,
+        indent: context.indents.partText,
+        language: context.mode.language,
+      });
       if (part.blocks.length > 0) attachMarksToLastText(nodes, partStart, leafMarks);
     }
 
@@ -311,7 +325,12 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           edit: { kind: 'blockText', blockId: subFirst.id },
           listRef: subRef,
         });
-        renderContentBlocks(nodes, subRest, 'Sub-sub-question', { keepNext: true, indent: context.indents.subPartText });
+        renderContentBlocks(nodes, subRest, 'Sub-sub-question', {
+          keepNext: true,
+          indent: context.indents.subPartText,
+          language: context.mode.language,
+          afterText: hasPrintedText(subFirst.text, context.mode.language),
+        });
         if (subRest.length > 0) attachMarksToLastText(nodes, subStart, subMarks);
       } else {
         nodes.push({
@@ -322,7 +341,11 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           keepNext: true,
           listRef: subRef,
         });
-        renderContentBlocks(nodes, subPart.blocks, 'Sub-sub-question', { keepNext: true, indent: context.indents.subPartText });
+        renderContentBlocks(nodes, subPart.blocks, 'Sub-sub-question', {
+          keepNext: true,
+          indent: context.indents.subPartText,
+          language: context.mode.language,
+        });
         if (subPart.blocks.length > 0) attachMarksToLastText(nodes, subStart, subMarks);
       }
 
