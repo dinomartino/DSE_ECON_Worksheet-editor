@@ -85,6 +85,11 @@ export const ARRANGE_MESSAGES = defineMessages({
     en: 'Print each question’s source (e.g. DSE2024/P1/Q38) on the worksheets made here. Off unless you tick it; a paper can change it later in Setup → Page.',
     zh: '在這裏製作的工作紙上印出每題的出處（例如 DSE2024/P1/Q38）。預設不印，勾選才會印；之後可在「頁面設定 → 頁面」更改。',
   },
+  trayIdle: {
+    en: 'Tick questions to add them in this order, or use a topic’s New worksheet.',
+    zh: '勾選題目即可按此次序加入，或按課題的「開新工作紙」。',
+  },
+  trayIdleTab: { en: 'Tick questions, or use a topic’s Add.', zh: '勾選題目，或按課題的「加入」。' },
   goTo: { en: 'Go to a topic…', zh: '跳到課題…' },
   addHere: { en: 'Add', zh: '加入' },
   addHereTitle: {

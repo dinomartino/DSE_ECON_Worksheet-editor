@@ -563,7 +563,6 @@ export function PastPaperArrange({
               <span className="shrink-0 text-[11.5px] tabular-nums text-ink-subtle" role="status">
                 {m.shown(shownCount, entries.length)}
               </span>
-              {sourcesTick}
               <ShowAllButton shown={everyOpen} onClick={toggleEveryOpen} />
               {anyChanged && (
                 <button type="button" data-arrange-reset-all onClick={resetAll} className={linkButton}>
@@ -587,7 +586,6 @@ export function PastPaperArrange({
               {m.resetAll}
             </button>
           )}
-          {sourcesTick}
           <span className="flex-1" />
           <ExamChips filters={filters} onChange={setFilters} wrap={false} />
           <YearSelects filters={filters} years={browse.years} onChange={setFilters} />
@@ -707,7 +705,13 @@ export function PastPaperArrange({
           </div>
         </div>
 
-        {(orderedSelection.length > 0 || gathering) && (
+        {/* Always shown: Show source sits where questions are added (u-ttj3), and a topic's own button follows it with nothing ticked. */}
+        {orderedSelection.length === 0 && !gathering ? (
+          <div className={`flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line bg-surface ${tab ? 'px-3 py-2' : 'px-6 py-2.5'}`} data-arrange-tray="idle">
+            <span className="min-w-0 flex-1 text-[12px] leading-snug text-ink-subtle">{tab ? m.trayIdleTab : m.trayIdle}</span>
+            {sourcesTick}
+          </div>
+        ) : (
           <div className={`flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-t border-line bg-surface ${tab ? 'px-3 py-2.5' : 'px-6 py-3'}`} role="region" aria-label={m.selected(orderedSelection.length)} data-arrange-tray>
             <span className="text-[13px] font-medium text-ink">{m.selected(orderedSelection.length)}</span>
             <button type="button" onClick={() => setSelected(new Set())} className="cursor-pointer text-[12.5px] text-ink-muted hover:text-ink hover:underline">
@@ -736,7 +740,10 @@ export function PastPaperArrange({
             {gathering && <span className="text-[12px] text-ink-subtle" role="status">{m.gathering}</span>}
             <span className="flex-1" />
             {tab ? (
-              <>
+              // The tab is narrow: a line of its own, Show source first, then the two ways to add.
+              <div className="flex basis-full flex-wrap items-center justify-end gap-x-3 gap-y-2">
+                {sourcesTick}
+                <span className="flex-1" />
                 <button
                   type="button"
                   data-arrange-new
@@ -756,7 +763,7 @@ export function PastPaperArrange({
                 >
                   {m.addHere}
                 </button>
-              </>
+              </div>
             ) : (
             <>
             <button
@@ -767,16 +774,20 @@ export function PastPaperArrange({
             >
               {pm.copyToBank}
             </button>
-            {addControls}
-            <button
-              type="button"
-              data-arrange-add
-              disabled={busy || gathering || orderedSelection.length === 0}
-              onClick={() => void addKeys(orderedSelection, undefined, true)}
-              className="cursor-pointer rounded-lg bg-cta px-3.5 py-1.5 text-[12.5px] font-medium text-on-cta hover:bg-cta-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
-            >
-              {pm.add}
-            </button>
+            {/* Show source, Add to and Add wrap as one: the box never ends up away from Add (u-ttj3). */}
+            <div className="ml-auto flex min-w-0 max-w-full items-center gap-x-3" data-arrange-add-group>
+              {sourcesTick}
+              {addControls}
+              <button
+                type="button"
+                data-arrange-add
+                disabled={busy || gathering || orderedSelection.length === 0}
+                onClick={() => void addKeys(orderedSelection, undefined, true)}
+                className="shrink-0 cursor-pointer rounded-lg bg-cta px-3.5 py-1.5 text-[12.5px] font-medium text-on-cta hover:bg-cta-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50"
+              >
+                {pm.add}
+              </button>
+            </div>
             </>
             )}
           </div>
