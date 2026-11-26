@@ -85,9 +85,10 @@ function parseBody(text: string): unknown {
 
 /**
  * Mentor relay answers a retry can't change (`Outbox/k-0518/CONTRACT.md` §4–5), and `deadline`
- * (v1.3): a 504 that was charged, so asking again would pay twice for the same job.
+ * (v1.3): a 504 that was charged, so asking again would pay twice for the same job. `decide_off`
+ * (v1.7, k-0567): `/ai/decide` is switched off; the caller moves the job to `/ai/generate`.
  */
-const RELAY_FINAL = new Set(['monthly_cap', 'hosted_ai_paused', 'hosted_ai_off', 'deadline', 'duplicate_request']);
+const RELAY_FINAL = new Set(['monthly_cap', 'hosted_ai_paused', 'hosted_ai_off', 'deadline', 'duplicate_request', 'decide_off']);
 const relayFinal = (body: unknown) =>
   typeof body === 'object' && body !== null && RELAY_FINAL.has(String((body as { error?: unknown }).error));
 

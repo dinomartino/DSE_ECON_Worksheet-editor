@@ -166,6 +166,43 @@ export interface AiClient {
   stream?(req: CompletionRequest, onText: (reply: string) => void): Promise<CompletionResult>;
   /** [] on failure. */
   listModels(signal: AbortSignal): Promise<ModelInfo[]>;
+  /**
+   * Typed questions answered by TypeSafe Jev through DSEcon Mentor's `/ai/decide` (k-0567,
+   * CONTRACT v1.7 §3a). Present only on the hosted relay's client. Resolves to null when this
+   * Mentor doesn't offer it for `feature` (an older Mentor, or switched off): send the job
+   * through `complete` as before. Throws AiError like `complete` (credits, sign-in, network).
+   */
+  decide?(req: DecideRequest): Promise<DecideResult | null>;
+}
+/** One typed question (docs.typesafe.ai/primitives): pick one option of `criteria`, or yes/no. */
+export interface DecideQuestion {
+  type: 'choice' | 'noul';
+  instructions: unknown;
+  /** choice: option name → its description (2–255). noul: optional `{ true, false }`. */
+  criteria?: unknown;
+}
+export interface DecideRequest {
+  feature: AiFeature;
+  state: unknown;
+  questions: Record<string, DecideQuestion>;
+  signal: AbortSignal;
+  /** The relay's `Idempotency-Key`, as for `complete`. */
+  requestKey?: string;
+}
+export type DecideAnswer =
+  | { type: 'choice'; choice: string; confidence: number | null; probabilities: Record<string, number> }
+  | { type: 'noul'; noul: number };
+export interface DecideResult {
+  /** By question name; a question with no usable answer is absent. */
+  answers: Record<string, DecideAnswer>;
+  /** `jev-1.14.0`, or the Gemini model that answered after Jev failed. */
+  model: string;
+  /** Jev failed and Mentor's Gemini light model answered (rough probabilities, confidence null). */
+  fallback: boolean;
+  ms: number;
+  usage?: TokenUsage;
+  charged?: number;
+  balance?: number;
 }
 export type ConnectionTest =
   | { ok: true; ms: number; model: string; sample: string; followedGlossary: boolean }

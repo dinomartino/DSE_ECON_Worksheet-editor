@@ -15,6 +15,11 @@ export interface CreditJob {
   outputTokens: number;
   /** The `feature` tag its calls send: the server picks the model, so the rates, by it (v1.6). */
   feature?: AiFeature;
+  /**
+   * The same job's input when Mentor answers it on Jev (`/ai/decide`, k-0567): Jev bills each
+   * question's options with it, and no output. Used when the feature's model is a `jev-` one.
+   */
+  decideInputTokens?: number;
 }
 
 /** Gemini 4 Hydrogen, paid tier, US$ per million tokens (aistudio.google.com/docs/pricing, 2026-11-23). */
@@ -61,6 +66,9 @@ export function ratesFor(account: Pick<MentorAccount, 'rates' | 'models'> | null
 export function creditsFor(job: CreditJob, account: Pick<MentorAccount, 'rates' | 'models'> | null): number | null {
   const rates = ratesFor(account, job.feature);
   if (!rates) return null;
+  const models = account?.models;
+  const model = models && job.feature && Object.hasOwn(models.byFeature, job.feature) ? models.byFeature[job.feature] : undefined;
+  if (model?.startsWith('jev-') && job.decideInputTokens !== undefined) return (job.decideInputTokens * rates.inputPerM) / 1e6;
   return (job.inputTokens * rates.inputPerM + job.outputTokens * rates.outputPerM) / 1e6;
 }
 
@@ -118,12 +126,16 @@ export function polishJob(questions: number, text: string): CreditJob {
  */
 export const TAG_CHUNK = 10;
 export const TAG_SYSTEM_TOKENS = 3000;
+/** On Jev (k-0567): the 53 topic options and the instructions go with every question or part (measured ≈ 3,400). */
+export const TAG_DECIDE_TOKENS_PER_ITEM = 3500;
 export function tagJob(questions: number, text: string, items = questions): CreditJob {
   // A question with parts gets one item per part back (u-g13t), and a request holds ten items.
-  const requests = Math.max(1, Math.ceil(Math.max(questions, items) / TAG_CHUNK));
+  const n = Math.max(questions, items);
+  const requests = Math.max(1, Math.ceil(n / TAG_CHUNK));
   return {
     inputTokens: requests * TAG_SYSTEM_TOKENS + Math.ceil(textTokens(text) * 1.3),
-    outputTokens: requests * 600 + 70 * Math.max(questions, items),
+    outputTokens: requests * 600 + 70 * n,
+    decideInputTokens: n * TAG_DECIDE_TOKENS_PER_ITEM + Math.ceil(textTokens(text) * 1.3),
     feature: 'tag',
   };
 }

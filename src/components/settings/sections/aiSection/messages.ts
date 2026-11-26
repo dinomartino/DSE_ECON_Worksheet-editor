@@ -91,8 +91,8 @@ export const AI_SECTION_MESSAGES = defineMessages({
   mentorNotInUse: { en: 'AI uses your own key now.', zh: '現時 AI 使用你自己的 API key。' },
   mentorUse: { en: 'Use my DSEcon Mentor account', zh: '改用 DSEcon Mentor 帳戶' },
   mentorPrivacy: {
-    en: "Your text goes to DSEcon Mentor's server and on to Google Gemini. Mentor keeps only a usage record (when, which feature, cost), never your text.",
-    zh: '你的文字會傳送到 DSEcon Mentor 的伺服器，再轉交 Google Gemini。Mentor 只保留使用紀錄（時間、功能、費用），不會保留你的文字。',
+    en: "Your text goes to DSEcon Mentor's server and on to Google Gemini; questions you ask it to tag by topic also go to TypeSafe (in the US) to choose the topics. Neither uses them for training. Mentor keeps only a usage record (when, which feature, cost), never your text.",
+    zh: '你的文字會傳送到 DSEcon Mentor 的伺服器，再轉交 Google Gemini；你要求標記課題的題目亦會傳送到 TypeSafe（位於美國）以選出課題。兩者都不會用這些內容訓練模型。Mentor 只保留使用紀錄（時間、功能、費用），不會保留你的文字。',
   },
   mentorNegative: {
     en: 'Your credit balance is below zero after a refund or dispute. Buy credits to continue.',

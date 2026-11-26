@@ -71,8 +71,8 @@ export const PROVIDER_COPY_MESSAGES = defineMessages({
 
   mentorBlurb: { en: 'No key needed: sign in and pay for what you use.', zh: '毋須 API key：登入後按用量付費。' },
   mentorPrivacy: {
-    en: "Sent to DSEcon Mentor's server, which passes them to Google Gemini (paid service: not used to improve Google's products). Mentor keeps a usage record (when, which feature, cost), never the text.",
-    zh: '傳送到 DSEcon Mentor 的伺服器，再轉交 Google Gemini（付費服務：不會用於改進 Google 的產品）。Mentor 只保留使用紀錄（時間、功能、費用），不會保留內容。',
+    en: "Sent to DSEcon Mentor's server, which passes them to Google Gemini (paid service: not used to improve Google's products). Questions you ask it to tag by topic also go to TypeSafe (in the US), which doesn't train on them. Mentor keeps a usage record (when, which feature, cost), never the text.",
+    zh: '傳送到 DSEcon Mentor 的伺服器，再轉交 Google Gemini（付費服務：不會用於改進 Google 的產品）。你要求標記課題的題目亦會傳送到 TypeSafe（位於美國），它不會用這些內容訓練模型。Mentor 只保留使用紀錄（時間、功能、費用），不會保留內容。',
   },
   mentorHk: { en: 'Works in Hong Kong without a VPN.', zh: '在香港毋須 VPN 也可以使用。' },
 
