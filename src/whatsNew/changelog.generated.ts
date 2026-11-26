@@ -207,6 +207,12 @@ a version heading is edited afterwards.
   <!-- zh: **匯出的檔案會靜靜註明來自 Econ Studio。** 你匯出的每個 Word 和 Excel 檔案，以及桌面版儲存的每個 PDF，現在都會在檔案本身的內容資訊中附上幾項隱藏資料：程式名稱和版本、匯出時間，以及一個代表該工作紙的隨機編號（同一份工作紙匯出的每個檔案編號都相同）。頁面上不會加入任何內容，所以列印、複製文字或使用屏幕閱讀器時都不會看到，亦不包含任何關於你或你電腦的資料。經列印對話框製作的 PDF（網頁版，或直接儲存 PDF 失敗時）無法附上這些資料。 -->
 
 ### Changed
+- **On a bilingual paper, a question's source prints once, short.** With Show source on, an
+  English + 中文 paper now prints each source as the short tag alone, such as DSE2024/P1/Q38,
+  even when the source format is Full, instead of the English and Chinese full names side by
+  side. English-only and 中文-only papers keep the format you chose. The same on screen, in
+  print, PDF and Word.
+  <!-- zh: **中英對照試卷的出處只印一次簡寫。** 開啟「顯示出處」後，中英對照試卷的每題出處現在只印簡寫，例如 DSE2024/P1/Q38，即使出處格式設為「完整」亦然，不再並列中英文全稱。純英文或純中文試卷照用你所選的格式。畫面、列印、PDF 及 Word 皆同。 -->
 - **A watermark starts as large as the page allows.** When you put a watermark on a paper, or
   pick another one, it now fills the space inside the margins (keeping its shape) and sits in
   the middle of that space, on screen, in print, PDF and Word. You can still make it smaller

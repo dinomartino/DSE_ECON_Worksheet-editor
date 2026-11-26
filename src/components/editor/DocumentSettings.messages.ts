@@ -223,8 +223,8 @@ export const DOCUMENT_SETTINGS_MESSAGES = defineMessages({
   startEveryQuestion: { en: 'Start every question on a new page', zh: '每題由新頁開始' },
   questionSources: { en: 'Show each question\'s source (year + question no.)', zh: '顯示每題出處（年份及題號）' },
   questionSourcesHint: {
-    en: 'Prints a question\'s source note (its exam, year and question number) in brackets on its own line above the question, where the number starts. Past paper bank questions come with one; add or edit one in an MC question\'s panel.',
-    zh: '在題目上方獨立一行以括號印出其出處（考試、年份及題號），與題號左邊對齊。歷屆試題庫的題目已附出處；亦可在 MC 題目面板加入或修改。',
+    en: 'Prints a question\'s source note (its exam, year and question number) in brackets on its own line above the question, where the number starts. Past paper bank questions come with one; add or edit one in an MC question\'s panel. A bilingual paper prints the short form, such as DSE2024/P1/Q38.',
+    zh: '在題目上方獨立一行以括號印出其出處（考試、年份及題號），與題號左邊對齊。歷屆試題庫的題目已附出處；亦可在 MC 題目面板加入或修改。中英對照試卷會印簡寫，例如 DSE2024/P1/Q38。',
   },
   startEveryQuestionHint: {
     en: 'Each question begins a page, with the heading, lead-in or source above it. The first question, and one right under a New page, stay where they are. A question can still be kept on one page from its own panel.',
