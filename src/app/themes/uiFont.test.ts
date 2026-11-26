@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
  * header and buttons, the AI-made chip) took the paper's Times New Roman / PMingLiU — a
  * 明體 look in 中文. The browser half of this check is `scripts/ai-ui-font-verify.mjs`
  * (with `scripts/ui-font-kit.mjs` in the polish, AI tagging and import-check scripts).
+ * `font-mono` named the equally undefined `--font-geist-mono` until k-0570.
  */
 
 const GLOBALS = readFileSync(new URL('../globals.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -19,10 +20,17 @@ describe('the interface font utility (k-0568)', () => {
     expect(/--font-sans:\s*var\(--ui-font\)\s*;/.test(GLOBALS)).toBe(true);
   });
 
+  it('font-mono is a real monospace stack: system faces, nothing to load, a generic last (k-0570)', () => {
+    const value = GLOBALS.match(/--font-mono:\s*([^;]+);/)?.[1].trim() ?? '';
+    expect(value).not.toMatch(/var\(/);
+    expect(value).toMatch(/^ui-monospace\b/);
+    expect(value).toMatch(/,\s*monospace$/);
+  });
+
   it('every variable a font token reads is defined (an undefined one silently inherits the paper’s face)', () => {
     const defined = new Set([...`${GLOBALS}\n${LIGHT}`.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
-    const tokens = [...GLOBALS.matchAll(/--font-sans:\s*([^;]+);/g)].map((m) => m[1]);
-    expect(tokens.length).toBeGreaterThan(0);
+    const tokens = [...GLOBALS.matchAll(/--font-(?:sans|mono|display):\s*([^;]+);/g)].map((m) => m[1]);
+    expect(tokens.length).toBe(3);
     for (const value of tokens) {
       for (const [, name] of value.matchAll(/var\((--[\w-]+)/g)) expect(defined.has(name), `${name} is not defined`).toBe(true);
     }

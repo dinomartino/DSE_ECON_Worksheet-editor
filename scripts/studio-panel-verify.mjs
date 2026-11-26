@@ -11,6 +11,8 @@ import { check, configure, expect, newPage, results, startBankServer } from './s
  * out, and the draft returns), Reject, Accept all; drafts never print; the chat comes back
  * after a reload, apart from the studio's own chats; the 中文 interface. Nothing real is
  * reached: the AI is `ai-mock-server.mjs`, the Past paper bank an invented export.
+ * A chat writes 1 question by default; the run picks 3 in the ⚙ options first (k-0570), so
+ * Accept, Reject and Accept all each have a draft to act on.
  *
  *   npm run dev -- -p 3216
  *   node scripts/studio-panel-verify.mjs [--url=http://localhost:3216] [--out=/tmp/studio-panel] [--mock-port=8831] [--bank-port=8832]
@@ -97,6 +99,18 @@ const openWrite = async (page) => {
   await page.locator('[data-sidebar-tab="write"]').click();
   await page.locator('[data-write-panel]').waitFor();
 };
+/** The ⚙ options' "How many" buttons (1, 3, 5), pressed state included. */
+const countButtons = (page) => page.locator('[data-write-panel] [data-chat-settings-pop] button[aria-pressed]');
+/** Pick how many questions a request writes, in the panel's ⚙ options; returns the pressed count before. */
+async function chooseCount(page, n) {
+  await page.locator('[data-write-panel] [data-chat-settings]').click();
+  await page.locator('[data-write-panel] [data-chat-settings-pop]').waitFor();
+  const before = await countButtons(page).evaluateAll((els) => els.find((el) => /^[0-9]+$/.test(el.textContent.trim()) && el.getAttribute('aria-pressed') === 'true')?.textContent.trim());
+  await countButtons(page).getByText(String(n), { exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.locator('[data-write-panel] [data-chat-settings-pop]').waitFor({ state: 'detached', timeout: 2000 });
+  return before;
+}
 /** Saved: the autosave has written the paper (it waits a moment after an edit). */
 const saved = async (page, n) => {
   for (let i = 0; i < 40; i += 1) {
@@ -135,6 +149,14 @@ try {
     expect(/after Q4/.test(where), where);
     await shot(page, 'B1-opener');
     return where.replace(/\s+/g, ' ');
+  });
+
+  await check('a request writes 1 question by default; the ⚙ options set it to 3', async () => {
+    const before = await chooseCount(page, 3);
+    expect(before === '1', `default ${before}`);
+    const go = await page.locator('[data-write-gap-go]').innerText();
+    expect(/\b3\b/.test(go), go);
+    return go;
   });
 
   await check('Write 3: the AI picks the key point itself (a step), drafts appear on the page after Q4 as "would be Q5, Q6, Q7"', async () => {
@@ -296,6 +318,7 @@ try {
   await check('中文: the Write tab in 繁體中文', async () => {
     await openPaper(zh.page);
     await openWrite(zh.page);
+    await chooseCount(zh.page, 3);
     await zh.page.locator('[data-write-gap-go]').click();
     await ready(zh.page).nth(2).waitFor({ timeout: 60_000 });
     await zh.page.locator('[data-chat-send]').waitFor({ timeout: 60_000 });

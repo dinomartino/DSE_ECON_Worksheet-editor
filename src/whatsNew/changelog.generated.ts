@@ -295,6 +295,10 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **Codes and keys show in a fixed-width font.** Your DSEcon Mentor sign-in code, API key
+  fields and other codes in Settings were meant to use a fixed-width font but fell back to the
+  ordinary one; they now line up character by character, so a key is easier to check.
+  <!-- zh: **代碼和金鑰改用等寬字體顯示。** 設定中的 DSEcon Mentor 登入代碼、API key 欄位及其他代碼本應使用等寬字體，卻一直顯示為一般字體；現在每個字元對齊，較易核對金鑰。 -->
 - **AI labels and buttons on the page use the app's own font.** An AI draft waiting on your
   paper (✦ AI draft · would be Q3, No problems found, Ask, Reject, Accept) and the AI-made tag
   on a question were drawn in the paper's serif font, so in 中文 they looked like 明體; they now
