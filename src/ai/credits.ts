@@ -126,8 +126,12 @@ export function polishJob(questions: number, text: string): CreditJob {
  */
 export const TAG_CHUNK = 10;
 export const TAG_SYSTEM_TOKENS = 3000;
-/** On Jev (k-0567): the 53 topic options and the instructions go with every question or part (measured ≈ 3,400). */
-export const TAG_DECIDE_TOKENS_PER_ITEM = 3500;
+/**
+ * On Jev (k-0567): the topic options and the instructions go with every question or part. The
+ * teacher's 72 MCQ topics and the electives (k-0569): measured ≈ 3,930 a question with its words
+ * on the 89-question blind set (`Outbox/k-0569/eval/jev`), against ≈ 3,400 for the 53 EDB topics.
+ */
+export const TAG_DECIDE_TOKENS_PER_ITEM = 3800;
 export function tagJob(questions: number, text: string, items = questions): CreditJob {
   // A question with parts gets one item per part back (u-g13t), and a request holds ten items.
   const n = Math.max(questions, items);

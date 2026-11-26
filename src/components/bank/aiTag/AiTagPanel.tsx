@@ -15,7 +15,7 @@ import { Button } from '@/components/ui';
 import { Dialog } from '@/components/ui/Dialog';
 import { useMessages } from '@/i18n/language';
 import { holdsPatterns } from '@/model/patterns';
-import { topicOf } from '@/model/topics';
+import { viewCodesOf, viewSectionOf } from '@/model/mcqView';
 import type { LanguageMode } from '@/model/types';
 import { AI_TAG_MESSAGES } from './AiTag.messages';
 import type { AiTagItem, AiTagPart, AiTagState } from './aiTagStore';
@@ -335,7 +335,7 @@ function PartRow({
 }) {
   const { state, suggestion } = part;
   const conf = suggestion?.conf;
-  const current = part.before.filter((tag) => topicOf(tag));
+  const current = viewCodesOf(part.before);
   const note: Partial<Record<AiTagPart['state'], { words: string; tone: string }>> = {
     waiting: { words: m.waiting, tone: 'text-ink-subtle' },
     saving: { words: m.saving, tone: 'text-ink-muted' },
@@ -455,12 +455,10 @@ function StateLine({ item, m }: { item: AiTagItem; m: Words }) {
 
 /** "C · Price elasticity of demand", in the paper's language. */
 function label(code: string, language: LanguageMode): string {
-  const topic = topicOf(code);
-  return `${topic?.parent ?? code} · ${topicName(code, language)}`;
+  return `${viewSectionOf(code) ?? code} · ${topicName(code, language)}`;
 }
 
 function TopicChip({ code, language, main }: { code: string; language: LanguageMode; main: boolean }) {
-  const topic = topicOf(code);
   return (
     <span
       data-ai-tag-topic={code}
@@ -468,7 +466,7 @@ function TopicChip({ code, language, main }: { code: string; language: LanguageM
         main ? 'border-accent bg-accent-soft text-ink' : 'border-line bg-surface text-ink-muted'
       }`}
     >
-      <b className="font-semibold">{topic?.parent ?? code}</b>
+      <b className="font-semibold">{viewSectionOf(code) ?? code}</b>
       <span className="truncate">{topicName(code, language)}</span>
     </span>
   );

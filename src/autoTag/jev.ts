@@ -1,8 +1,9 @@
 import type { DecideAnswer, DecideQuestion, DecideRequest, DecideResult } from '@/ai/types';
 import { cleanPatternName } from '@/model/patterns';
-import { topicOf } from '@/model/topics';
 import { lookupCode } from '@/syllabus';
-import { buildPayload, knownCode, MAX_TOPICS, topicList } from './prompt';
+import { mcqTagKey, mcqTopic } from '@/model/topicSchemes';
+import { isSubTopicCode, topicOf } from '@/model/topics';
+import { buildPayload, knownCode, listCode, listCodesOf, MAX_TOPICS, topicList } from './prompt';
 import type { TagConfidence, TagPartSuggestion, TagQuestion, TagSuggestion } from './types';
 
 /**
@@ -20,7 +21,7 @@ import type { TagConfidence, TagPartSuggestion, TagQuestion, TagSuggestion } fro
  */
 
 /** Bump with any change to the questions sent (wording, options, names). */
-export const TAG_JEV_VERSION = 'k0567.1';
+export const TAG_JEV_VERSION = 'k0569.1';
 
 /** A second or third topic needs at least this much of Jev's probability. */
 export const ALSO_MIN = 0.15;
@@ -128,8 +129,17 @@ export function questionLanguage(q: TagQuestion): 'en' | 'zh' {
   return isCjk(q.entries.map((e) => e.text).join(' ')) ? 'zh' : 'en';
 }
 
-/** The reason line Jev can't write: the topic's syllabus points (else its name), in `lang`. */
+/**
+ * The reason line Jev can't write: the topic's syllabus points (else its name), in `lang`.
+ * An MCQ topic (k-0569) reads by the guide's points of its first EDB sub-topic that has any.
+ */
 export function syllabusLine(code: string, lang: 'en' | 'zh'): string {
+  const key = mcqTagKey(code);
+  const mcq = key ? mcqTopic(key) : undefined;
+  if (mcq) {
+    const fine = mcq.edb.find((edb) => isSubTopicCode(edb) && lookupCode(edb)?.keyPoint);
+    return fine ? syllabusLine(fine, lang) : mcq[lang] || mcq.en;
+  }
   const hit = lookupCode(code);
   const keyPoint = hit?.keyPoint;
   if (keyPoint) {
@@ -169,8 +179,8 @@ function patternOf(q: TagQuestion, main: string, answers: Record<string, DecideA
   let picked = options.length === 1 ? options[0] : undefined;
   const kind = answers[`${name}__kind`];
   if (options.length > 1 && kind?.type === 'choice' && (kind.probabilities[kind.choice] ?? 0) >= PATTERN_PICK_MIN) picked = options.find((o) => o.option === kind.choice);
-  // As in the prompt: only a name the teacher has, under the main topic.
-  return picked && picked.topic === main ? { topic: picked.topic, name: picked.name } : undefined;
+  // As in the prompt: only a name the teacher has, under the main topic (its EDB sub-topic falls under it, k-0569).
+  return picked && listCodesOf(picked.topic).includes(listCode(main)) ? { topic: picked.topic, name: picked.name } : undefined;
 }
 
 /** Each question's suggestion from Jev's answers; null for a question with nothing usable. */
