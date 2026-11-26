@@ -22,7 +22,7 @@ export const WATERMARK_PAGE_MESSAGES = defineMessages({
     en: 'Put the watermark in the middle of the page, keeping its size (every page that has it follows)',
     zh: '把浮水印放到頁面正中央，保持原來大小（所有有浮水印的頁面都會跟隨）',
   },
-  fit: { en: 'Fit to margins', zh: '配合邊界' },
+  fit: { en: 'Auto', zh: '自動' },
   fitTitle: {
     en: 'Make the watermark as large as fits inside the margins, in the middle of the page (every page that has it follows)',
     zh: '把浮水印在邊界內放到最大，並置於頁面中央（所有有浮水印的頁面都會跟隨）',

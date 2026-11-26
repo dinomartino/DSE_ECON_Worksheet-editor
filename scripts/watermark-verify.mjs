@@ -473,7 +473,9 @@ try {
     await page.waitForTimeout(300);
     const centerChip = page.locator('[data-page-index="0"] [data-watermark-center]');
     check(`[${tag}] Center shows beside Done while adjusting`, (await centerChip.count()) === 1);
-    check(`[${tag}] … and Fit to margins beside it, the size being the teacher's now`, (await page.locator('[data-page-index="0"] [data-watermark-fit]').count()) === 1);
+    check(`[${tag}] … and Auto beside it, the size being the teacher's now`, (await page.locator('[data-page-index="0"] [data-watermark-fit]').count()) === 1);
+    await page.locator('[data-page-index="0"] [data-watermark-fit]').hover();
+    await page.screenshot({ path: `${OUT}/${tag}-adjusting-auto.png` });
     await centerChip.click();
     await settle();
     const centred = await page.evaluate(() =>
@@ -504,7 +506,7 @@ try {
     const undone = (await boxes())[0];
     check(`[${tag}] Undo takes Center back in one step`, Math.abs(undone.left - beforeCenter.left) < 0.2 && Math.abs(undone.top - beforeCenter.top) < 0.2, JSON.stringify({ beforeCenter, undone }));
 
-    // L. Setup → Page → Fit to margins (k-0557).
+    // L. Setup → Page → Auto (k-0557, renamed k-0565).
     await page.getByRole('button', { name: w.setup }).first().click();
     const resetDialog = page.getByRole('dialog');
     await resetDialog.waitFor();
@@ -516,15 +518,15 @@ try {
     check(`[${tag}] Setup offers Center while it is off the middle`, (await setupCenter.count()) === 1);
     await setupCenter.click();
     await page.waitForTimeout(300);
-    check(`[${tag}] … and hides it once it is centred (Fit to margins stays: the size is the teacher's)`, (await resetDialog.getByTestId('watermark-center').count()) === 0 && (await resetDialog.getByTestId('watermark-fit').count()) === 1);
+    check(`[${tag}] … and hides it once it is centred (Auto stays: the size is the teacher's)`, (await resetDialog.getByTestId('watermark-center').count()) === 0 && (await resetDialog.getByTestId('watermark-fit').count()) === 1);
     await reset.click();
     await page.waitForTimeout(300);
-    check(`[${tag}] … Fit to margins is offered once it was resized, and hides once used`, (await resetDialog.getByTestId('watermark-fit').count()) === 0);
+    check(`[${tag}] … Auto is offered once it was resized, and hides once used`, (await resetDialog.getByTestId('watermark-fit').count()) === 0);
     await page.keyboard.press('Escape');
     await resetDialog.waitFor({ state: 'detached' });
     await settle();
     const back = (await boxes())[0];
-    check(`[${tag}] Fit to margins puts it back as large as fits, in the middle`, Math.abs(back.left - start.left) < 0.2 && Math.abs(back.top - start.top) < 0.2 && Math.abs(back.width - start.width) < 0.2, JSON.stringify({ start, back }));
+    check(`[${tag}] Auto puts it back as large as fits, in the middle`, Math.abs(back.left - start.left) < 0.2 && Math.abs(back.top - start.top) < 0.2 && Math.abs(back.width - start.width) < 0.2, JSON.stringify({ start, back }));
 
     // J. A new paper: one click, no importing again.
     await page.getByRole('link', { name: w.home }).or(page.getByRole('button', { name: w.home })).first().click();

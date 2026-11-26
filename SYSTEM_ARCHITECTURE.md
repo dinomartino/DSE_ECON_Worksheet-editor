@@ -2021,7 +2021,7 @@ handles one kind of thing.
   page that has it.
 - **Two placement rules, chosen by `fit`, so a saved paper never changes size on its own**
   (k-0557, user u-8m22). A picture placed since k-0557 (`withWatermarkPicture`, Setup's and
-  the page's Fit to margins: `withFittedPlacement`) stores `fit: 'margins'` and no size or
+  the page's Auto, fit to margins: `withFittedPlacement`) stores `fit: 'margins'` and no size or
   centre: unsized, it fills the margin box with its shape kept (`size` = the column, or less
   when the box is too short for it); uncentred, it sits at the margin box's centre; and it is
   never taller than the margin box, so a resize from the fitted size does not jump. Worked

@@ -209,9 +209,9 @@ a version heading is edited afterwards.
   pick another one, it now fills the space inside the margins (keeping its shape) and sits in
   the middle of that space, on screen, in print, PDF and Word. You can still make it smaller
   or larger and move it with Move or resize or the Size slider, and it stays the way you leave
-  it. **Fit to margins** (in Page setup → Page, and beside Done while moving it) puts it back.
+  it. **Auto** (in Page setup → Page, and beside Done while moving it) puts it back.
   Papers you have already made keep their watermark exactly as it was.
-  <!-- zh: **浮水印一開始便以頁面所容許的最大尺寸顯示。** 為試卷加上或改選浮水印時，浮水印會在邊界內放到最大（保持原來比例），並置於該範圍正中央；屏幕、列印、PDF 及 Word 都一樣。你仍可用「移動或調整大小」或「大小」滑桿放大、縮小及移動，設定會保留。按「配合邊界」（在「頁面設定 → 頁面」，或移動時在「完成」旁）即可回復。已製作的試卷，浮水印維持原樣。 -->
+  <!-- zh: **浮水印一開始便以頁面所容許的最大尺寸顯示。** 為試卷加上或改選浮水印時，浮水印會在邊界內放到最大（保持原來比例），並置於該範圍正中央；屏幕、列印、PDF 及 Word 都一樣。你仍可用「移動或調整大小」或「大小」滑桿放大、縮小及移動，設定會保留。按「自動」（在「頁面設定 → 頁面」，或移動時在「完成」旁）即可回復。已製作的試卷，浮水印維持原樣。 -->
 - **Show source prints above the question.** A question's source, for example (DSESP/P1/Q3), now
   sits on its own line just above the question, starting where the question number starts,
   instead of at the right of its first line. The same on screen, in print, PDF, Word and copied

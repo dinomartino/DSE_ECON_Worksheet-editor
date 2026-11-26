@@ -51,7 +51,7 @@ export function WatermarkLayer({ mark, setup }: { mark: Watermark; setup: PageSe
  *   nothing of its own to store a choice on and follows the page before (§ `sheetWatermarks`);
  * - Move or resize, on a page that shows it, which puts every watermarked page into the
  *   adjusting state (`WatermarkAdjuster`); there it reads Done, beside Center and (when it
- *   is not fitted already) Fit to margins.
+ *   is not fitted already) Auto (fit to margins).
  */
 export function SheetWatermarkToggle({
   on,

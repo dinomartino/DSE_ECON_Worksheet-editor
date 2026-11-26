@@ -108,14 +108,14 @@ describe('moving and resizing it on the page', () => {
     expect(again.width / again.height).toBeCloseTo(2, 2);
   });
 
-  it('Fit to margins drops size and place and fits it, keeping the rest', () => {
+  it('Auto (fit to margins) drops size and place and fits it, keeping the rest', () => {
     const moved = mark({ centerX: 0.2, centerY: 0.8, size: 1.1, opacity: 0.3, pages: { q: false } });
     expect(isFitted(moved)).toBe(false);
     const fitted = withFittedPlacement(moved);
     expect(fitted).toEqual(mark({ fit: 'margins', opacity: 0.3, pages: { q: false } }));
     expect(isFitted(fitted)).toBe(true);
     expect(isFitted(mark({ fit: 'margins', size: 0.5 }))).toBe(false);
-    // An old one, never moved, is not fitted: Fit to margins has something to do.
+    // An old one, never moved, is not fitted: Auto has something to do.
     expect(isFitted(mark())).toBe(false);
   });
 });

@@ -163,7 +163,7 @@ export function withWatermarkPlacement(
 
 /**
  * The watermark as large as the margin box allows, its shape kept, centred in the box (k-0557,
- * user u-8m22): how a picture is placed, and Setup's and the page's Fit to margins. Stored
+ * user u-8m22): how a picture is placed, and Setup's and the page's Auto (fit to margins). Stored
  * as `fit: 'margins'` with no size and no centre, so it is worked out from the page each
  * time it is drawn and follows a change of paper size, orientation or margins until the
  * teacher resizes or moves it.
@@ -176,7 +176,7 @@ export function withFittedPlacement(mark: Watermark): Watermark {
   return { ...rest, fit: 'margins' };
 }
 
-/** Whether it is fitted to the margins, as placed (so Fit to margins has nothing to do). */
+/** Whether it is fitted to the margins, as placed (so Auto has nothing to do). */
 export function isFitted(mark: Watermark): boolean {
   return fitsMargins(mark) && mark.size === undefined && mark.centerX === undefined && mark.centerY === undefined;
 }
