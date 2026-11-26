@@ -3,7 +3,7 @@ import type { CompletionRequest, JsonSchema, ProviderPreset } from '@/ai/types';
 import { cleanPatternName, samePatternName } from '@/model/patterns';
 import { TOPICS, topicOf } from '@/model/topics';
 import { lookupCode, SYLLABUS } from '@/syllabus';
-import type { TagConfidence, TagQuestion, TagSuggestion } from './types';
+import type { TagConfidence, TagPartSuggestion, TagQuestion, TagSuggestion } from './types';
 
 /**
  * The AI tagging request (k-0560). The topic list is the bank's own tree (`TOPICS`: parts
@@ -14,7 +14,7 @@ import type { TagConfidence, TagQuestion, TagSuggestion } from './types';
  */
 
 /** Bump with any change to the rendered request (words, payload shape, schema). */
-export const TAG_PROMPT_VERSION = 'k0560.2';
+export const TAG_PROMPT_VERSION = 'k0560.3';
 
 /** Opens the system prompt: tests and the mock provider find the request by it. */
 export const TAG_MARKER = 'HKDSE Economics question-bank tagger';
@@ -96,22 +96,26 @@ export function systemTag(whyLanguage: 'en' | 'zh'): string {
   const language = whyLanguage === 'zh' ? 'Traditional Chinese as used in Hong Kong' : 'plain English';
   return `You are an ${TAG_MARKER}. A teacher keeps a bank of their own Hong Kong secondary (HKDSE) Economics questions and wants each one filed under the syllabus topic it TESTS: what a student must know or do to answer it, not words that merely appear in the text.
 
-INPUT is a JSON object. "questions" lists questions, each with a "key", a "format", its printed "entries" in order (role: stem; leadIn = data printed before a part; statement; option; part) with their words in "text", and the "keyed": true option of a multiple-choice question. <b>…</b> is bold, <u>…</u> underlined; [Diagram …] and [Picture …] describe figures; "| a | b |" is a table row. A question may also carry "patterns": the teacher's own names for kinds of question, listed under a topic code.
+INPUT is a JSON object. "questions" lists questions, each with a "key", a "format", its printed "entries" in order (role: stem; leadIn = data printed before a part; statement; option; part, with its "label" such as "(b)(ii)") with their words in "text", and the "keyed": true option of a multiple-choice question. <b>…</b> is bold, <u>…</u> underlined; [Diagram …] and [Picture …] describe figures; "| a | b |" is a table row. A question may also carry "patterns": the teacher's own names for kinds of question, listed under a topic code. A question may carry "parts": the labels of its parts to file one by one.
 
 LIST holds the topics. "# C Market and Price" heads a part; each line under it is a topic code, its name and the points it covers.
 
-OUTPUT only a JSON object {"items":[…]} with exactly one item per question:
-- "key": the question's key, exactly as given.
+OUTPUT only a JSON object {"items":[…]} with exactly one item per question, or, for a question with "parts", exactly one item per listed part and none for the question itself:
+- "key": the question's key, exactly as given; for a part, the question's key followed by the part's label, e.g. "q3(b)(ii)".
 - "main": the ONE topic code from LIST the question mostly tests, e.g. "C.ped". Use a part's code alone (e.g. "G") only when the question fits that part but no topic line in it.
 - "also": at most two more codes from LIST the question also needs to be answered, comma-separated; "" when none (most questions need none).
 - "pattern": when the question carries "patterns" under its "main" code, the one name from that list that describes it, copied exactly; "" when none fits or there are none.
 - "conf": "high" when the question cannot be answered without the main topic; "medium" when it fits but another could; "low" for a guess.
 - "why": one short sentence in ${language} saying what the question asks the student to do.
+For a part, file what THAT part asks; the stem, the data and earlier parts are only its context, so two parts of one question often test different topics.
 Use only codes from LIST. Questions from an older syllabus go to the closest topic.
 
 LIST
 ${topicList()}`;
 }
+
+/** The items a question gets back: one per part, else one. */
+export const questionItems = (q: TagQuestion): number => Math.max(1, q.parts?.length ?? 0);
 
 /** The words a question sends, in characters: the chunking budget. */
 export const questionChars = (q: TagQuestion): number => q.entries.reduce((n, e) => n + e.text.length + (e.label?.length ?? 0), 0);
@@ -123,6 +127,7 @@ export function buildPayload(questions: readonly TagQuestion[]) {
       format: q.format,
       entries: q.entries.map((e) => ({ role: e.role, ...(e.label ? { label: e.label } : {}), text: e.text, ...(e.keyed ? { keyed: true as const } : {}) })),
       ...(q.patterns && Object.keys(q.patterns).length > 0 ? { patterns: q.patterns } : {}),
+      ...(q.parts && q.parts.length > 0 ? { parts: q.parts.map((part) => part.label) } : {}),
     })),
   };
 }
@@ -134,7 +139,7 @@ export function buildRequest(questions: readonly TagQuestion[], whyLanguage: 'en
     turns: [{ role: 'user', content: JSON.stringify(buildPayload(questions)) }],
     schema: TAG_SCHEMA,
     shapeHint: SHAPE_HINT,
-    maxOutputTokens: Math.min(preset.outputCap, 600 + 160 * questions.length + thinking),
+    maxOutputTokens: Math.min(preset.outputCap, 600 + 160 * questions.reduce((n, q) => n + questionItems(q), 0) + thinking),
     feature: 'tag',
     signal,
   };
@@ -195,12 +200,8 @@ export function knownCode(raw: string): string | undefined {
 /** At most this many topics in one suggestion. */
 export const MAX_TOPICS = 3;
 
-/**
- * The model's item as a suggestion the bank can save: main first, then the others, only known
- * codes, no repeats, no part beside one of its own topics. A 題型 only when it is one of the
- * teacher's names under the main topic. Undefined when no code is usable.
- */
-export function cleanSuggestion(raw: RawTag, question: TagQuestion): TagSuggestion | undefined {
+/** The codes and 題型 of one item, checked: undefined when no code is usable. */
+function cleanCodes(raw: RawTag, question: TagQuestion): Pick<TagSuggestion, 'topics' | 'pattern'> | undefined {
   const codes: string[] = [];
   for (const piece of [raw.main, ...raw.also.split(/[,;，、\s]+/)]) {
     const code = knownCode(piece);
@@ -212,12 +213,48 @@ export function cleanSuggestion(raw: RawTag, question: TagQuestion): TagSuggesti
   const main = topics[0];
   const name = cleanPatternName(raw.pattern);
   const stored = name ? question.patterns?.[main]?.find((p) => samePatternName(p, name)) : undefined;
+  return { topics, ...(stored ? { pattern: { topic: main, name: stored } } : {}) };
+}
+
+/**
+ * The model's item as a suggestion the bank can save: main first, then the others, only known
+ * codes, no repeats, no part beside one of its own topics. A 題型 only when it is one of the
+ * teacher's names under the main topic. Undefined when no code is usable.
+ */
+export function cleanSuggestion(raw: RawTag, question: TagQuestion): TagSuggestion | undefined {
+  const codes = cleanCodes(raw, question);
+  if (!codes) return undefined;
+  return { rootId: question.rootId, ...codes, conf: raw.conf, why: raw.why };
+}
+
+/** How sure the least sure part is. */
+const LEAST: Record<TagConfidence, number> = { high: 2, medium: 1, low: 0 };
+
+/** An item key as compared: case and spaces, and a ":" or "." between question and part, ignored. */
+export const itemKey = (key: string): string => key.toLowerCase().replace(/[\s:.]+/g, '');
+
+/**
+ * One question's suggestion from the reply's items (`find` by `itemKey`). A question with parts
+ * takes one item per part ("q3(b)(ii)"), checked like a whole question's; `complete` says
+ * every part has one. Undefined when nothing usable came back.
+ */
+export function suggestionOf(question: TagQuestion, find: (key: string) => RawTag | undefined): { suggestion?: TagSuggestion; complete: boolean } {
+  if (!question.parts || question.parts.length === 0) {
+    const raw = find(itemKey(question.key));
+    const suggestion = raw ? cleanSuggestion(raw, question) : undefined;
+    return { ...(suggestion ? { suggestion } : {}), complete: Boolean(suggestion) };
+  }
+  const parts: TagPartSuggestion[] = [];
+  for (const part of question.parts) {
+    const raw = find(itemKey(`${question.key}${part.label}`));
+    const codes = raw ? cleanCodes(raw, question) : undefined;
+    if (raw && codes) parts.push({ label: part.label, slot: part.slot, ...codes, conf: raw.conf, why: raw.why });
+  }
+  if (parts.length === 0) return { complete: false };
+  const conf = parts.reduce<TagConfidence>((least, part) => (LEAST[part.conf] < LEAST[least] ? part.conf : least), 'high');
   return {
-    rootId: question.rootId,
-    topics,
-    ...(stored ? { pattern: { topic: main, name: stored } } : {}),
-    conf: raw.conf,
-    why: raw.why,
+    suggestion: { rootId: question.rootId, topics: [...new Set(parts.flatMap((part) => part.topics))], conf, why: '', parts },
+    complete: parts.length === question.parts.length,
   };
 }
 

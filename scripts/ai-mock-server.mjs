@@ -251,7 +251,17 @@ export function coverageReply(payload) {
 const TAG_MARKER = 'HKDSE Economics question-bank tagger';
 
 export function tagReply(payload) {
-  const items = (payload?.questions ?? []).map((question) => {
+  // A question with "parts" (u-g13t): one item per part, keyed "q3(b)", from that part's own words.
+  const asked = (payload?.questions ?? []).flatMap((question) =>
+    Array.isArray(question.parts) && question.parts.length > 0
+      ? question.parts.map((label) => ({
+          ...question,
+          key: `${question.key}${label}`,
+          entries: (question.entries ?? []).filter((e) => e.role === 'part' && e.label === label),
+        }))
+      : [question],
+  );
+  const items = asked.map((question) => {
     const words = (question.entries ?? []).map((e) => e.text ?? '').join(' ');
     // "!none" in a question: the model answers with nothing the bank knows.
     if (words.includes('!none')) return { key: question.key, main: 'Elasticity', also: '', pattern: '', conf: 'low', why: 'Canned.' };

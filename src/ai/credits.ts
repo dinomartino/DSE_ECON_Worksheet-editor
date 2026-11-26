@@ -118,11 +118,12 @@ export function polishJob(questions: number, text: string): CreditJob {
  */
 export const TAG_CHUNK = 10;
 export const TAG_SYSTEM_TOKENS = 3000;
-export function tagJob(questions: number, text: string): CreditJob {
-  const requests = Math.max(1, Math.ceil(questions / TAG_CHUNK));
+export function tagJob(questions: number, text: string, items = questions): CreditJob {
+  // A question with parts gets one item per part back (u-g13t), and a request holds ten items.
+  const requests = Math.max(1, Math.ceil(Math.max(questions, items) / TAG_CHUNK));
   return {
     inputTokens: requests * TAG_SYSTEM_TOKENS + Math.ceil(textTokens(text) * 1.3),
-    outputTokens: requests * 600 + 70 * questions,
+    outputTokens: requests * 600 + 70 * Math.max(questions, items),
     feature: 'tag',
   };
 }

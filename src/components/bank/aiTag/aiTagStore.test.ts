@@ -5,11 +5,11 @@ import { rowsOf } from '@/library/indexer';
 import { choiceQuestion, docWith, partedQuestion } from '@/library/testKit';
 import type { BankRow } from '@/library/types';
 import { copyQuestion } from '@/model/lineage';
-import { derivedTags } from '@/model/tagSlots';
+import { derivedTags, slotRef, tagStateOf } from '@/model/tagSlots';
 import type { McqQuestion, Worksheet } from '@/model/types';
 import { scriptedClient } from '@/translate/testKit';
 import type { RunDepsResult } from '@/translate/types';
-import { acceptEdit, createAiTag, TAGGED_MEANWHILE, untaggedRows, type AiTagDeps } from './aiTagStore';
+import { acceptEdit, acceptPartEdit, createAiTag, TAGGED_MEANWHILE, undoPartEdit, untaggedRows, type AiTagDeps } from './aiTagStore';
 
 function memoryStore(docs: Worksheet[]) {
   const saved = new Map(docs.map((doc) => [doc.id, doc]));
@@ -26,11 +26,19 @@ function memoryStore(docs: Worksheet[]) {
   };
 }
 
-const keysOf = (req: CompletionRequest): string[] => (JSON.parse(req.turns[req.turns.length - 1].content) as { questions: Array<{ key: string }> }).questions.map((q) => q.key);
+const questionsOf = (req: CompletionRequest) => (JSON.parse(req.turns[req.turns.length - 1].content) as { questions: Array<{ key: string; parts?: string[] }> }).questions;
+const keysOf = (req: CompletionRequest): string[] => questionsOf(req).map((q) => q.key);
+/** Every item a request asks for: a question's key, or one per part ("q1(a)"). */
+const itemKeysOf = (req: CompletionRequest): string[] => questionsOf(req).flatMap((q) => (q.parts ? q.parts.map((label) => `${q.key}${label}`) : [q.key]));
 
-/** Every question gets `main`, with `pattern` when given. */
-const answering = (main: string, pattern = '') =>
-  scriptedClient([(req) => JSON.stringify({ items: keysOf(req).map((key) => ({ key, main, also: '', pattern, conf: 'high', why: 'Tests PED.' })) })]);
+/** Every question (or part) gets `main`, with `pattern` when given; `byPart` gives a part's own. */
+const answering = (main: string, pattern = '', byPart: Record<string, string> = {}) =>
+  scriptedClient([
+    (req) =>
+      JSON.stringify({
+        items: itemKeysOf(req).map((key) => ({ key, main: byPart[key.replace(/^q\d+/, '')] ?? main, also: '', pattern, conf: 'high', why: `Tests ${key}.` })),
+      }),
+  ]);
 
 function setup(docs: Worksheet[], client = answering('C.ped'), over: Partial<AiTagDeps> = {}) {
   const store = memoryStore(docs);
@@ -75,7 +83,7 @@ describe('AI tagging in the bank: nothing saved without the teacher', () => {
     const item = run.getState().items[0];
     expect(item).toMatchObject({ state: 'ready', topics: ['C.ped'] });
     expect(item.pattern).toBeUndefined();
-    expect(item.suggestion?.why).toBe('Tests PED.');
+    expect(item.suggestion?.why).toBe('Tests q1.');
     expect(store.saves()).toBe(0);
     await run.getState().accept(item.rootId);
     expect(run.getState().items[0].state).toBe('saved');
@@ -132,13 +140,12 @@ describe('AI tagging in the bank: nothing saved without the teacher', () => {
     expect(run.getState().items[0].state).toBe('ready');
   });
 
-  it('a question with parts gets the topics on every part', async () => {
-    const q = partedQuestion([{}, {}]);
+  it('a question with one part gets the topics on it, as a whole question', async () => {
+    const q = partedQuestion([{}]);
     const { store, run, rows } = setup([docWith([q], { id: 'd' })]);
     await run.getState().start(untaggedRows(rows()));
+    expect(run.getState().items[0].parts).toBeUndefined();
     await run.getState().accept(run.getState().items[0].rootId);
-    const saved = store.saved.get('d')!.questions[0];
-    expect(derivedTags(saved)).toContain('C.ped');
     expect(rowsOf(store.saved.get('d')!)[0].slots?.every((slot) => slot.tags.includes('C.ped'))).toBe(true);
   });
 
@@ -202,5 +209,122 @@ describe('the accept edit', () => {
       { rootId: 'r3', tags: ['C.new'] },
     ] as unknown as BankRow[];
     expect(untaggedRows(rows).map((r) => r.rootId)).toEqual(['r1']);
+  });
+});
+
+describe('part by part (u-g13t)', () => {
+  /** What each part of the saved question tests, by label. */
+  const byLabel = (store: ReturnType<typeof memoryStore>, docId: string) =>
+    Object.fromEntries((rowsOf(store.saved.get(docId)!)[0].slots ?? []).map((slot) => [slot.label, slot.tags]));
+  const partsAnswer = () => answering('C.ped', '', { '(a)': 'C.intervention', '(b)': 'E.efficiency', '(c)(i)': 'C.ped', '(c)(ii)': 'C.pes' });
+
+  it('suggests per part and writes nothing until a part is accepted; Accept writes that part only, in every copy', async () => {
+    const q = partedQuestion([{}, {}]);
+    const copy = copyQuestion(q);
+    const { store, run, rows } = setup([docWith([q], { id: 'a' }), docWith([copy], { id: 'b' })], partsAnswer());
+    await run.getState().start(untaggedRows(rows()));
+    const item = run.getState().items[0];
+    expect(item.state).toBe('ready');
+    expect(item.parts?.map((p) => [p.label, p.topics, p.state, p.suggestion?.why])).toEqual([
+      ['(a)', ['C.intervention'], 'ready', 'Tests q1(a).'],
+      ['(b)', ['E.efficiency'], 'ready', 'Tests q1(b).'],
+    ]);
+    expect(store.saves()).toBe(0);
+    await run.getState().accept(item.rootId, item.parts![1].slot);
+    expect(byLabel(store, 'a')).toEqual({ '(a)': [], '(b)': ['E.efficiency'] });
+    expect(byLabel(store, 'b')).toEqual({ '(a)': [], '(b)': ['E.efficiency'] });
+    expect(run.getState().items[0].parts?.map((p) => p.state)).toEqual(['ready', 'saved']);
+    expect(run.getState().items[0].state).toBe('ready');
+    // The other part is still accepted on its own, though the question has a topic now.
+    await run.getState().accept(item.rootId, item.parts![0].slot);
+    expect(byLabel(store, 'a')).toEqual({ '(a)': ['C.intervention'], '(b)': ['E.efficiency'] });
+    expect(run.getState().items[0].state).toBe('saved');
+  });
+
+  it('sub-parts get their own; Skip, Change and Accept all parts per part', async () => {
+    const q = partedQuestion([{}, {}, { subs: [undefined, undefined] }]);
+    const { store, run, rows } = setup([docWith([q], { id: 'd' })], partsAnswer());
+    await run.getState().start(untaggedRows(rows()));
+    const item = run.getState().items[0];
+    expect(item.parts?.map((p) => p.label)).toEqual(['(a)', '(b)', '(c)(i)', '(c)(ii)']);
+    const [a, b, ci] = item.parts!;
+    run.getState().skip(item.rootId, a.slot);
+    await run.getState().change(item.rootId, ['E.equity'], undefined, b.slot);
+    await run.getState().accept(item.rootId);
+    expect(run.getState().items[0].parts?.map((p) => p.state)).toEqual(['skipped', 'saved', 'saved', 'saved']);
+    expect(byLabel(store, 'd')).toEqual({ '(a)': [], '(b)': ['E.equity'], '(c)': [], '(c)(i)': ['C.ped'], '(c)(ii)': ['C.pes'] });
+    expect(run.getState().items[0].parts![1].changed).toBe(true);
+    expect(ci.state).toBe('ready');
+  });
+
+  it('Undo takes back one part, even after another was accepted, and leaves the other', async () => {
+    const q = partedQuestion([{}, {}], ['S5']);
+    const { store, run, rows } = setup([docWith([q], { id: 'd' })], partsAnswer());
+    await run.getState().start(untaggedRows(rows()));
+    const [a, b] = run.getState().items[0].parts!;
+    const root = run.getState().items[0].rootId;
+    await run.getState().accept(root, a.slot);
+    await run.getState().accept(root, b.slot);
+    await run.getState().undo(root, a.slot);
+    expect(byLabel(store, 'd')).toEqual({ '(a)': [], '(b)': ['E.efficiency'] });
+    expect(topicsOf(store, 'd', q.id)).toEqual(['E.efficiency', 'S5']);
+    expect(run.getState().items[0].parts?.map((p) => p.state)).toEqual(['ready', 'saved']);
+  });
+
+  it('a part tagged since the run is left alone and says so; the other parts still save', async () => {
+    const q = partedQuestion([{}, {}]);
+    const { store, run, rows } = setup([docWith([q], { id: 'd' })], partsAnswer());
+    await run.getState().start(untaggedRows(rows()));
+    const doc = store.saved.get('d')!;
+    const tagged = { ...doc.questions[0], parts: doc.questions[0].type === 'structured' ? doc.questions[0].parts.map((p, i) => (i === 0 ? { ...p, tags: ['J.trade'] } : p)) : [], tagsAt: '2026-11-25T09:00:00.000Z' };
+    store.saved.set('d', { ...doc, questions: [tagged as typeof doc.questions[0]] });
+    await run.getState().accept(run.getState().items[0].rootId);
+    expect(run.getState().items[0].parts?.map((p) => [p.state, p.reason])).toEqual([
+      ['notSaved', TAGGED_MEANWHILE],
+      ['saved', undefined],
+    ]);
+    expect(byLabel(store, 'd')).toEqual({ '(a)': ['J.trade'], '(b)': ['E.efficiency'] });
+  });
+
+  it('asked again about a tagged question, a part’s accept replaces that part’s topics only', async () => {
+    const q = partedQuestion([{ tags: ['J.trade'] }, { tags: ['H.money'] }]);
+    const { store, run, rows } = setup([docWith([q], { id: 'd' })], partsAnswer());
+    await run.getState().start([rows()[0]], { again: true });
+    const [a] = run.getState().items[0].parts!;
+    expect(a.before).toEqual(['J.trade']);
+    await run.getState().accept(run.getState().items[0].rootId, a.slot);
+    expect(byLabel(store, 'd')).toEqual({ '(a)': ['C.intervention'], '(b)': ['H.money'] });
+    await run.getState().undo(run.getState().items[0].rootId, a.slot);
+    expect(byLabel(store, 'd')).toEqual({ '(a)': ['J.trade'], '(b)': ['H.money'] });
+  });
+
+  it('a part the AI left out has no suggestion and can be tagged with Change…', async () => {
+    const q = partedQuestion([{}, {}]);
+    const { store, run, rows } = setup([docWith([q], { id: 'd' })], answering('C.ped', '', { '(b)': 'Not a code' }));
+    await run.getState().start(untaggedRows(rows()));
+    const [, b] = run.getState().items[0].parts!;
+    expect(b.state).toBe('noAnswer');
+    await run.getState().change(run.getState().items[0].rootId, ['E.efficiency'], undefined, b.slot);
+    expect(byLabel(store, 'd')['(b)']).toEqual(['E.efficiency']);
+  });
+
+  it('a part with no words is listed, not sent', async () => {
+    const q = partedQuestion([{}, {}, {}]);
+    q.parts[2].blocks = [];
+    const { run, rows, client } = setup([docWith([q], { id: 'd' })], partsAnswer());
+    await run.getState().start(untaggedRows(rows()));
+    expect(run.getState().items[0].parts?.map((p) => p.state)).toEqual(['ready', 'ready', 'noWords']);
+    expect(itemKeysOf(client.requests[0])).toEqual(['q1(a)', 'q1(b)']);
+  });
+
+  it('the part edits: add only to an empty part; undo only what is still there', () => {
+    const q = partedQuestion([{}, { tags: ['J.trade'] }]);
+    const state = tagStateOf(q);
+    const [a, b] = state.slots.map((slot) => slotRef(state.slots, slot.key)!);
+    expect(acceptPartEdit(a, ['C.ped'], undefined, false)(state).slots.map((s) => s.own)).toEqual([['C.ped'], ['J.trade']]);
+    expect(acceptPartEdit(b, ['C.ped'], undefined, false)(state)).toBe(state);
+    const after = acceptPartEdit(a, ['C.ped'], undefined, false)(state);
+    expect(undoPartEdit(a, ['C.ped'], [])(after).slots[0].own).toBeUndefined();
+    expect(undoPartEdit(a, ['C.pes'], [])(after)).toBe(after);
   });
 });

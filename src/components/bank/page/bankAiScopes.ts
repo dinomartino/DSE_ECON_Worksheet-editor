@@ -60,6 +60,13 @@ export interface BankVerbRow {
 /** Roughly the words a question sends: one language of its printed text (`searchText` holds both). */
 const sentText = (rows: readonly BankRow[]) => rows.map((row) => row.searchText.slice(0, Math.ceil(row.searchText.length / 2))).join('\n');
 
+/** The items a tagging run gets back for these rows: one per leaf part where there are two or more (u-g13t), else one. */
+export const tagItems = (rows: readonly BankRow[]): number =>
+  rows.reduce((n, row) => {
+    const leaves = (row.slots ?? []).filter((slot) => slot.leaf).length;
+    return n + (leaves >= 2 ? leaves : 1);
+  }, 0);
+
 /**
  * AI tagging (k-0560): the untagged among these questions; or, for one question that has
  * topics, "Suggest topics again" (the teacher asking: Accept then replaces them). Already
@@ -71,9 +78,9 @@ export function tagVerbRows(rows: readonly BankRow[], lang: UiLanguage = uiLangu
   const untagged = rows.filter((row) => !hasAnyTopic(row));
   if (untagged.length > 0) {
     const left = rows.length - untagged.length;
-    return [{ id: 'tag', label: t.verb, rows: untagged, needsKey: true, note: left > 0 ? `${t.verbHint} ${t.leftAlone(left)}` : t.verbHint, estimate: tagJob(untagged.length, sentText(untagged)) }];
+    return [{ id: 'tag', label: t.verb, rows: untagged, needsKey: true, note: left > 0 ? `${t.verbHint} ${t.leftAlone(left)}` : t.verbHint, estimate: tagJob(untagged.length, sentText(untagged), tagItems(untagged)) }];
   }
-  if (rows.length === 1) return [{ id: 'tag.again', label: t.verbAgain, rows: [...rows], needsKey: true, note: t.verbAgainHint, estimate: tagJob(1, sentText(rows)) }];
+  if (rows.length === 1) return [{ id: 'tag.again', label: t.verbAgain, rows: [...rows], needsKey: true, note: t.verbAgainHint, estimate: tagJob(1, sentText(rows), tagItems(rows)) }];
   return [];
 }
 

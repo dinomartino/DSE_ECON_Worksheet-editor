@@ -1,32 +1,35 @@
 import { AiError, isAiError, type AiErrorInfo } from '@/ai/types';
-import { buildRequest, cleanSuggestion, parseTagReply, questionChars, TAG_CHUNK, TAG_CHUNK_CHARS } from './prompt';
+import { buildRequest, itemKey, parseTagReply, questionChars, questionItems, suggestionOf, TAG_CHUNK, TAG_CHUNK_CHARS } from './prompt';
 import type { TagDeps, TagOutcome, TagQuestion, TagSuggestion } from './types';
 
 /**
- * The run (k-0560): questions in chunks of up to ten, each chunk one request, several at
- * once as the provider allows (`preset.concurrency`). A cut-off or unreadable reply is asked
- * once more, then split in two. Stop keeps every suggestion already back. Never rejects.
+ * The run (k-0560): questions in chunks of up to ten items (a question with parts counts one
+ * per part, u-g13t), each chunk one request, several at once as the provider allows
+ * (`preset.concurrency`). A cut-off or unreadable reply is asked once more, then split in two.
+ * Stop keeps every suggestion already back. Never rejects.
  */
 
 export function chunkQuestions(questions: readonly TagQuestion[], max = TAG_CHUNK, maxChars = TAG_CHUNK_CHARS): TagQuestion[][] {
   const chunks: TagQuestion[][] = [];
   let current: TagQuestion[] = [];
   let chars = 0;
+  let items = 0;
   for (const q of questions) {
     const size = questionChars(q);
-    if (current.length && (current.length >= max || chars + size > maxChars)) {
+    const count = questionItems(q);
+    if (current.length && (items + count > max || chars + size > maxChars)) {
       chunks.push(current);
       current = [];
       chars = 0;
+      items = 0;
     }
     current.push(q);
     chars += size;
+    items += count;
   }
   if (current.length) chunks.push(current);
   return chunks;
 }
-
-const normKey = (key: string) => key.toLowerCase().replace(/\s+/g, '');
 
 type Answer = TagSuggestion | null;
 
@@ -48,21 +51,23 @@ async function tagChunk(run: Run, chunk: TagQuestion[], retried = false): Promis
   if (result.finish === 'length' || result.finish === 'safety') return split();
   const items = parseTagReply(result.text);
   if (!items) return retried ? split() : tagChunk(run, chunk, true);
-  const byKey = new Map(items.map((item) => [normKey(item.key), item]));
+  const byKey = new Map(items.map((item) => [itemKey(item.key), item]));
   const answers = new Map<string, Answer>();
   const missing: TagQuestion[] = [];
   for (const q of chunk) {
-    const item = byKey.get(normKey(q.key));
-    const suggestion = item ? cleanSuggestion(item, q) : undefined;
+    const { suggestion, complete } = suggestionOf(q, (key) => byKey.get(key));
     if (suggestion) answers.set(q.rootId, suggestion);
-    else missing.push(q);
+    if (!complete) missing.push(q);
   }
-  // A question the reply left out (or gave no usable code) is asked again once, on its own.
-  if (missing.length > 0 && !retried && chunk.length > 1) {
-    for (const [id, answer] of await tagChunk(run, missing, true)) answers.set(id, answer);
-  } else {
-    for (const q of missing) answers.set(q.rootId, null);
+  // A question the reply left out, gave no usable code, or left a part out of is asked again
+  // once, on its own; the fuller answer of the two is kept.
+  if (missing.length > 0 && !retried && (chunk.length > 1 || missing[0].parts)) {
+    for (const [id, answer] of await tagChunk(run, missing, true)) {
+      const before = answers.get(id);
+      if (answer && (!before || (answer.parts?.length ?? 1) >= (before.parts?.length ?? 1))) answers.set(id, answer);
+    }
   }
+  for (const q of chunk) if (!answers.has(q.rootId)) answers.set(q.rootId, null);
   return answers;
 }
 

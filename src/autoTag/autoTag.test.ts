@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { tagJob } from '@/ai/credits';
 import { presetFor } from '@/ai/providers';
 import { AiError, type CompletionRequest } from '@/ai/types';
-import { choiceQuestion, docWith } from '@/library/testKit';
+import { choiceQuestion, docWith, partedQuestion } from '@/library/testKit';
 import { TOPICS } from '@/model/topics';
 import type { McqQuestion } from '@/model/types';
 import { scriptedClient } from '@/translate/testKit';
-import { cleanSuggestion, guideTopicsInTree, knownCode, parseTagReply, TAG_MARKER, TAG_SCHEMA, topicList, type RawTag } from './prompt';
+import { cleanSuggestion, guideTopicsInTree, itemKey, knownCode, parseTagReply, suggestionOf, TAG_MARKER, TAG_SCHEMA, topicList, type RawTag } from './prompt';
 import { tagQuestionOf } from './questions';
 import { chunkQuestions, runTagging } from './run';
 import type { TagQuestion } from './types';
@@ -196,5 +196,88 @@ describe('the estimate', () => {
   it('the system prompt is about the size the estimate counts', () => {
     const tokens = Math.ceil(topicList().length / 4) + 500;
     expect(tokens).toBeLessThanOrEqual(3000);
+  });
+});
+
+describe('part by part (u-g13t)', () => {
+  /** A question with parts (a), (b) and (c)(i)/(c)(ii), as a request carries it. */
+  const parted = (n: number): TagQuestion => ({
+    ...question(n),
+    format: 'structured',
+    entries: [
+      { role: 'stem', text: 'A city sets a rent ceiling.' },
+      { role: 'part', label: '(a)', text: 'Explain why a shortage appears.' },
+      { role: 'part', label: '(b)', text: 'Explain one effect on efficiency.' },
+    ],
+    parts: [
+      { label: '(a)', slot: `a-${n}` },
+      { label: '(b)', slot: `b-${n}` },
+    ],
+  });
+  /** Answers every part key of a request ("q1(a)") with `main` by label. */
+  const answerParts = (byLabel: Record<string, string>) => (req: CompletionRequest) => {
+    const questions = (JSON.parse(req.turns[req.turns.length - 1].content) as { questions: Array<{ key: string; parts?: string[] }> }).questions;
+    const items = questions.flatMap((q) => (q.parts ?? []).filter((label) => byLabel[label]).map((label) => ({ key: `${q.key}${label}`, main: byLabel[label], also: '', pattern: '', conf: label === '(b)' ? 'medium' : 'high', why: `Part ${label}.` })));
+    return JSON.stringify({ items });
+  };
+
+  it('a structured question with two or more parts sends them; one part, MC or no parts do not', () => {
+    const two = partedQuestion([{}, { subs: [undefined, undefined] }]);
+    const sent = tagQuestionOf(docWith([two]), two.id, 'r', 'q1');
+    expect(sent?.parts?.map((p) => p.label)).toEqual(['(a)', '(b)(i)', '(b)(ii)']);
+    expect(sent?.parts?.map((p) => p.slot)).toEqual([two.parts[0].id, two.parts[1].subParts![0].id, two.parts[1].subParts![1].id]);
+    const one = partedQuestion([{}]);
+    expect(tagQuestionOf(docWith([one]), one.id, 'r', 'q1')?.parts).toBeUndefined();
+    const mc = choiceQuestion('Which raises demand?');
+    expect(tagQuestionOf(docWith([mc]), mc.id, 'r', 'q1')?.parts).toBeUndefined();
+  });
+
+  it('leaves out a part with no words, and never sends a part’s own tags', () => {
+    const q = partedQuestion([{ tags: ['C.ped'] }, {}, {}]);
+    q.parts[2].blocks = [];
+    const sent = tagQuestionOf(docWith([q]), q.id, 'r', 'q1');
+    expect(sent?.parts?.map((p) => p.label)).toEqual(['(a)', '(b)']);
+    expect(JSON.stringify(sent)).not.toContain('C.ped');
+  });
+
+  it('the request lists the parts and asks for one item per part', () => {
+    const client = scriptedClient([answerParts({ '(a)': 'C.intervention', '(b)': 'E.efficiency' })]);
+    return runTagging([parted(1)], { client, preset }, { whyLanguage: 'en', signal: new AbortController().signal }).then((outcome) => {
+      const payload = JSON.parse(client.requests[0].turns[0].content) as { questions: Array<{ parts?: string[] }> };
+      expect(payload.questions[0].parts).toEqual(['(a)', '(b)']);
+      expect(client.requests[0].system).toContain('"q3(b)(ii)"');
+      const s = outcome.suggestions[0];
+      expect(s.parts?.map((p) => [p.label, p.slot, p.topics, p.conf, p.why])).toEqual([
+        ['(a)', 'a-1', ['C.intervention'], 'high', 'Part (a).'],
+        ['(b)', 'b-1', ['E.efficiency'], 'medium', 'Part (b).'],
+      ]);
+      expect(s.topics).toEqual(['C.intervention', 'E.efficiency']);
+      expect(s.conf).toBe('medium');
+    });
+  });
+
+  it('reads a part key however the model spaces it', () => {
+    const q = parted(1);
+    const items = new Map([['q1 (a)', raw({ key: 'q1 (a)', main: 'C.ped' })], ['Q1:(b)', raw({ key: 'Q1:(b)', main: 'C.pes' })]].map(([k, v]) => [itemKey(k as string), v as RawTag]));
+    expect(suggestionOf(q, (key) => items.get(key)).suggestion?.parts?.map((p) => p.topics[0])).toEqual(['C.ped', 'C.pes']);
+  });
+
+  it('asks once more for a question a part was left out of, keeps the fuller answer, and keeps a partial one', async () => {
+    const client = scriptedClient([answerParts({ '(a)': 'C.intervention' }), answerParts({ '(a)': 'C.intervention', '(b)': 'E.efficiency' })]);
+    const outcome = await runTagging([parted(1)], { client, preset }, { whyLanguage: 'en', signal: new AbortController().signal });
+    expect(client.requests).toHaveLength(2);
+    expect(outcome.suggestions[0].parts).toHaveLength(2);
+
+    const stubborn = scriptedClient([answerParts({ '(a)': 'C.intervention' }), '{"items":[]}']);
+    const partial = await runTagging([parted(1)], { client: stubborn, preset }, { whyLanguage: 'en', signal: new AbortController().signal });
+    expect(partial.suggestions[0].parts?.map((p) => p.label)).toEqual(['(a)']);
+    expect(partial.failed).toEqual([]);
+  });
+
+  it('counts a question’s parts toward the ten items a request holds, and in the estimate', () => {
+    const chunks = chunkQuestions([parted(1), parted(2), parted(3), parted(4), parted(5), parted(6)]);
+    expect(chunks.map((c) => c.length)).toEqual([5, 1]);
+    expect(tagJob(2, 'x', 12).outputTokens).toBeGreaterThan(tagJob(2, 'x').outputTokens);
+    expect(tagJob(2, 'x', 12).inputTokens - tagJob(2, 'x').inputTokens).toBe(3000);
   });
 });

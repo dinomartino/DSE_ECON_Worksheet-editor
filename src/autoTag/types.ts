@@ -31,6 +31,20 @@ export interface TagQuestion {
    * only names a suggestion's 題型 may take. Absent = the teacher has none.
    */
   patterns?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * A question with two or more parts to tag (u-g13t): each leaf part or sub-part with words
+   * (`model/tagSlots.ts`, a leaf), in print order. The AI answers one item per part instead of
+   * one for the question. Absent = tagged as a whole (MC, no parts, one part).
+   */
+  parts?: TagPart[];
+}
+
+/** One part sent to be tagged on its own. */
+export interface TagPart {
+  /** As printed and as the entries carry it: "(a)", "(b)(ii)". The item key is the question's key plus it: "q3(b)(ii)". */
+  label: string;
+  /** Its slot key (`TagSlotInfo.key`): where an accept writes. */
+  slot: string;
 }
 
 export type TagConfidence = 'high' | 'medium' | 'low';
@@ -44,6 +58,22 @@ export interface TagSuggestion {
   pattern?: { topic: string; name: string };
   conf: TagConfidence;
   /** One short sentence: what the question asks the student to do. */
+  why: string;
+  /**
+   * Per part (a question sent with `parts`): one entry per part the AI answered, in print
+   * order. Then `topics` is every part's topics together (each part's main first), `conf`
+   * the least sure part's, `pattern` absent and `why` empty: the parts carry them.
+   */
+  parts?: TagPartSuggestion[];
+}
+
+/** What the AI suggests for one part, checked like a whole question's. */
+export interface TagPartSuggestion {
+  label: string;
+  slot: string;
+  topics: string[];
+  pattern?: { topic: string; name: string };
+  conf: TagConfidence;
   why: string;
 }
 

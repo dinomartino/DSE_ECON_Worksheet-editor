@@ -81,4 +81,17 @@ export const AI_TAG_MESSAGES = defineMessages({
     zh: '剔選這條題目所考的課題。儲存即接受。',
   },
   saveTopics: { en: 'Accept these topics', zh: '接受這些課題' },
+
+  // Part by part (u-g13t)
+  byPart: { en: 'Suggested part by part', zh: '按分題建議' },
+  acceptParts: { en: (n: number) => `Accept all parts (${n})`, zh: (n: number) => `接受所有分題（${n}）` },
+  acceptPartsTitle: { en: 'Save the suggestion for every part still waiting', zh: '儲存所有仍待查看的分題建議' },
+  changePartTitle: { en: (label: string) => `Topics for part ${label}`, zh: (label: string) => `分題 ${label} 的課題` },
+  changePartDescription: {
+    en: 'Tick the topics this part tests. Saving accepts them for this part only.',
+    zh: '剔選這個分題所考的課題。儲存即只為這個分題接受。',
+  },
+  partNoWords: { en: 'No words to read', zh: '沒有可讀的文字' },
+  partNoAnswer: { en: 'No suggestion', zh: '沒有建議' },
+  partTitle: { en: (label: string) => `Part ${label}`, zh: (label: string) => `分題 ${label}` },
 });
