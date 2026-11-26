@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { UiLanguageOverride } from '@/i18n/language';
-import { TOPICS } from '@/model/topics';
+import { VIEW_SECTIONS } from '@/model/mcqView';
 import type { LanguageMode } from '@/model/types';
 import type { UiLanguage } from '@/settings/language';
 import { PastPaperTopicPicker } from '@/components/pastpapers/PastPaperTopicPicker';
@@ -62,9 +62,11 @@ describe('topics by syllabus part', () => {
       entry('elasticity', ['C.ped', 'C.pes'], 57),
     ])!;
     expect(groups.map((g) => g.code)).toEqual(['A', 'C', 'F', OTHER_PART]);
-    expect(groups[0].topics.map((t) => t.id)).toEqual(['circular-flow', 'scarcity']);
-    expect(groups.map((g) => g.questions)).toEqual([27, 57, 50, 3]);
-    expect(groups[0].part).toBe(TOPICS[0]);
+    // An MCQ topic sits in its DSEcon Mentor section (k-0569): Circular Flow in F, not the guide's A.
+    expect(groups[0].topics.map((t) => t.id)).toEqual(['scarcity']);
+    expect(groups[2].topics.map((t) => t.id)).toEqual(['circular-flow', 'gdp']);
+    expect(groups.map((g) => g.questions)).toEqual([20, 57, 57, 3]);
+    expect(groups[0].part).toBe(VIEW_SECTIONS[0]);
     expect(groups[3].part).toBeUndefined();
   });
 
@@ -161,7 +163,8 @@ describe('the picker', () => {
   });
 
   it('a list without parts lists every topic flat', () => {
-    const flat = topics.map((t) => ({ ...t, syllabus: undefined }));
+    // Ids that are not MCQ topics (those always know their section, k-0569) and no codes.
+    const flat = topics.map((t) => ({ ...t, id: `x-${t.id}`, syllabus: undefined }));
     const html = render('en', 'en', flat[0], flat);
     for (const t of flat) expect(html).toContain(`data-pastpaper-topic="${t.id}"`);
     expect(html).not.toContain('data-pastpaper-part');
