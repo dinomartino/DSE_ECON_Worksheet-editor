@@ -127,9 +127,12 @@
      Geist variable that was never defined: an undefined var makes `font-family` invalid,
      so the element inherited instead, and chrome drawn on the page (the AI draft's header
      and buttons, the AI-made chip) took the paper's Times New Roman / PMingLiU. Chrome
-     inside `.paper` must say `font-sans`; the paper's own text keeps its inline fonts. */
+     inside `.paper` must say `font-sans`; the paper's own text keeps its inline fonts.
+     `font-mono` had the same fault (`--font-geist-mono`, never defined, so codes and key
+     fields inherited the UI font); it is now the system monospace stack, nothing to load
+     (k-0570). */
   --font-sans: var(--ui-font);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
   /* The chrome's single display voice: a light editorial serif (Newsreader, mounted
      in layout.tsx), used for at most one screen-level heading. Never on the paper. */
   --font-display: var(--display-font);
