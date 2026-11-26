@@ -75,8 +75,11 @@ if (label !== 'before') {
 
   // Each part's count is its topics' sum; every topic sits in exactly one part.
   const byPart = new Map();
+  // The section an MCQ topic sits in on DSEcon Mentor (k-0569): its first code's part, except
+  // Circular Flow, which Mentor files under F (the guide: A).
+  const sectionOf = (t) => (t.id === 'circular-flow' ? 'F' : (t.syllabus?.[0] ?? '').split('.')[0]);
   for (const t of manifest.topics) {
-    const code = (t.syllabus?.[0] ?? '').split('.')[0];
+    const code = sectionOf(t);
     byPart.set(code, [...(byPart.get(code) ?? []), t]);
   }
   const counts = await parts.evaluateAll((els) =>
@@ -106,7 +109,7 @@ if (label !== 'before') {
 
   // Only the open topic's part is open.
   const expandedParts = await parts.evaluateAll((els) => els.filter((el) => el.querySelector('[aria-expanded="true"]')).map((el) => el.dataset.pastpaperPart));
-  const firstPart = (manifest.topics[0].syllabus?.[0] ?? '').split('.')[0];
+  const firstPart = sectionOf(manifest.topics[0]);
   check(expandedParts.join() === firstPart, `only the open topic's part is open (${firstPart})`, expandedParts.join());
 
   // Open part C, pick Elasticity: its questions show, C stays open, A stays as the teacher left it.

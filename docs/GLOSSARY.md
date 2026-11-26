@@ -167,6 +167,12 @@ Words this repository uses in its own way. One line each, with where the thing l
   stored on the question as the tag `C.ped::<name>`, never printed. The English UI keeps
   the word 題型, glossed "question pattern". Not "question type" (題目類型), which is the
   registry's MCQ vs structured: the 中文 UI never says 題型 for that. `src/model/patterns.ts:parsePatternTag` · `src/storage/patterns.ts:PatternRegistry`
+- **MCQ topic** — one of the teacher's 72 topics from DSEcon Mentor's MCQ section (k-0569), what
+  the bank groups by; stored as the EDB codes it stands for, plus a system tag `@mcq:<key>` only
+  where those codes do not say it. `src/model/mcqTopics.ts` · `src/model/mcqView.ts`
+- **View code** — a topic as the bank reads it: a section letter, `@mcq:<key>`, or an EDB code
+  still to be sorted (`pick`: several MCQ topics share it, "Pick the MCQ topic") or that no MCQ
+  topic names (`edb`). `src/model/mcqView.ts:viewCodesOf`
 - **Settings** vs **Setup** — *Settings* is the app's: this browser or computer, every
   worksheet, never saved in one (`src/settings/sections.ts`). *Setup* is the document's own
   dialog (`src/components/editor/DocumentSettings.tsx`, titled "Document setup"), opened by
