@@ -279,6 +279,10 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **A deleted Question studio chat stays deleted.** Deleting your last saved chat brought it
+  back the next time you opened the app; now it stays gone, and deleting one chat keeps all the
+  others. Chats saved by a newer version of the app on the same computer are never removed.
+  <!-- zh: **已刪除的擬題工作室對話不會再出現。** 以前刪除最後一個已儲存的對話後，下次開啟程式時它會重新出現；現在會保持刪除，而刪除一個對話亦不會影響其他對話。同一部電腦上由較新版本程式儲存的對話一律不會被移除。 -->
 - **Saved Question studio chats no longer fill this computer's storage.** A chat kept its
   reference questions' diagrams inside the browser's small storage, which your worksheets
   also use, so after a few chats with diagrams new chats quietly stopped being saved. The
