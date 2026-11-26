@@ -170,8 +170,8 @@ describe('totals and labels', () => {
   });
 
   it('names the first topic in words', () => {
-    expect(cartTopicLabel(['C.ped'])).toBe('C · Price elasticity of demand');
-    expect(cartTopicLabel(['C.ped', 'E', 'homework'])).toBe('C · Price elasticity of demand +1');
+    expect(cartTopicLabel(['C.ped'])).toBe('C · Elasticity');
+    expect(cartTopicLabel(['C.ped', 'E', 'homework'])).toBe('C · Elasticity +1');
     expect(cartTopicLabel(['homework'])).toBeUndefined();
   });
 });

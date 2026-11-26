@@ -29,6 +29,8 @@ import { bankRowsNow, useBank } from '@/library/useBank';
 import { escapeClears } from '@/components/bank/escapeClears';
 import { rowExcerpt } from '@/components/bank/bankText';
 import { topicOf } from '@/model/topics';
+import { derivedTags } from '@/model/tagSlots';
+import { viewTopicOf } from '@/model/mcqView';
 import { useMessages, useUiLanguage } from '@/i18n/language';
 import type { Messages } from '@/i18n/catalogue';
 import { distinctDocLabels } from '@/library/docLabels';
@@ -85,6 +87,10 @@ import {
   readLevel,
   readRailHidden,
   suggestTopics,
+  mcqTextTopics,
+  pickCandidates,
+  pickCodes,
+  SUGGESTION_COUNT,
   termsByTopic,
   TOPICS_LEVEL,
   writeLevel,
@@ -108,6 +114,7 @@ import {
   hasTopic,
   partLines,
   patternAt,
+  patternCodeOf,
   patternEditAt,
   savedByPart,
   targetName,
@@ -124,8 +131,8 @@ import {
   bulkTopicEdit,
   copyWrites,
   everywhere,
-  removeTopics,
   replaceTopics,
+  withoutTags,
   thenState,
   wholeQuestion,
   writeTags,
@@ -352,12 +359,16 @@ export function QuestionBankScreen({
   const focused = candidate && candidateAt >= 0 ? candidate : order[0]?.group.rows[0];
   const index = candidate && candidateAt >= 0 ? candidateAt : 0;
 
+  // Picking (k-0569): the questions whose EDB topic several MCQ topics share, none chosen yet.
+  const pickMode = level.kind === 'untagged' && level.pick === true;
   const untagged = useMemo(
     () =>
-      level.kind === 'untagged'
-        ? firstThese(groupRows(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'untagged' })).filter((group) => !tagged.has(group.rootId)), tagFirst)
-        : [],
-    [rows, tagged, level.kind, tagFirst],
+      level.kind !== 'untagged'
+        ? []
+        : pickMode
+          ? firstThese(groupRows(rows).filter((group) => pickCodes(group.rows[0]).length > 0 && !tagged.has(group.rootId)), tagFirst)
+          : firstThese(groupRows(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'untagged' })).filter((group) => !tagged.has(group.rootId)), tagFirst),
+    [rows, tagged, level.kind, pickMode, tagFirst],
   );
   const tagPosition = Math.min(tagIndex, Math.max(0, untagged.length - 1));
   const restoredAt = restoring ? untagged.findIndex((group) => group.rootId === restoring.group.rootId) : -1;
@@ -366,9 +377,12 @@ export function QuestionBankScreen({
   const tagRow = tagGroup?.rows[0];
   // The question's own words, through the EDB glossary (loaded once tagging starts).
   const glossary = useGlossary(level.kind === 'untagged');
-  const textHits = useMemo(() => (tagRow && glossary ? textTopics(rowText(tagRow, glossary), glossary) : []), [tagRow, glossary]);
-  const suggestions = useMemo(() => (tagRow ? suggestTopics(tagRow, rows, undefined, textHits) : []), [tagRow, rows, textHits]);
-  const fromText = useMemo(() => termsByTopic(textHits, suggestions, glossary), [textHits, suggestions, glossary]);
+  const textHits = useMemo(() => (tagRow && glossary ? mcqTextTopics(textTopics(rowText(tagRow, glossary), glossary)) : []), [tagRow, glossary]);
+  const suggestions = useMemo(
+    () => (!tagRow ? [] : pickMode ? pickCandidates(tagRow).slice(0, SUGGESTION_COUNT) : suggestTopics(tagRow, rows, undefined, textHits)),
+    [tagRow, rows, textHits, pickMode],
+  );
+  const fromText = useMemo(() => (pickMode ? new Map<string, string[]>() : termsByTopic(textHits, suggestions, glossary)), [textHits, suggestions, glossary, pickMode]);
   const tagRoot = tagGroup?.rootId;
   // Picks belong to one question: the next one starts with nothing ticked, on the whole question.
   const picksHere = chosenFor.root === tagRoot ? chosenFor : NO_PICKS;
@@ -582,7 +596,9 @@ export function QuestionBankScreen({
       setRestoring(undefined);
     }
     setTagged((current) => new Set(current).add(root));
-    setTagHistory((current) => [...current, { group: tagGroup, codes: everyCode(saved), parts: savedByPart(saved) }]);
+    // Exactly what this save added: a question being picked keeps the EDB codes it came with.
+    const before = new Set(everyCode(tagBase));
+    setTagHistory((current) => [...current, { group: tagGroup, codes: everyCode(saved).filter((code) => !before.has(code)), parts: savedByPart(saved) }]);
     void writeTopics(copyWrites(rows, [root]), thenState(...edits));
   };
 
@@ -604,7 +620,7 @@ export function QuestionBankScreen({
     });
     setChosenFor({ root, edits: [], at: undefined });
     setRestoring({ group: last.group, settled: false });
-    void writeTopics(copyWrites(rows, [root]), everywhere(removeTopics(last.codes))).then(() =>
+    void writeTopics(copyWrites(rows, [root]), everywhere(withoutTags(last.codes))).then(() =>
       setRestoring((current) => (current?.group.rootId === root ? { ...current, settled: true } : current)),
     );
   };
@@ -843,7 +859,7 @@ export function QuestionBankScreen({
     if (level.kind === 'untagged') {
       return (
         <h1 className="text-[13.5px] text-ink-muted">
-          <b className="font-semibold text-ink">{m.untagged}</b> · {m.leftBefore}<span className="tabular-nums">{untagged.length}</span>
+          <b className="font-semibold text-ink">{pickMode ? m.pickTitle : m.untagged}</b> · {m.leftBefore}<span className="tabular-nums">{untagged.length}</span>
           {m.leftAfter}
         </h1>
       );
@@ -852,7 +868,7 @@ export function QuestionBankScreen({
     if (level.kind === 'sort') {
       return <h1 className="text-[13.5px] font-semibold text-ink">{m.sortTitle(level.topic, chromeTopicName(level.topic, lang))}</h1>;
     }
-    const found = level.topic === 'all' ? undefined : topicOf(level.topic);
+    const found = level.topic === 'all' ? undefined : viewTopicOf(level.topic);
     return (
       <h1 className="min-w-0 truncate text-[13.5px] text-ink-muted">
         {found ? (
@@ -981,6 +997,10 @@ export function QuestionBankScreen({
                 setTagIndex(0);
                 setLevel({ kind: 'untagged' });
               }}
+              onPick={() => {
+                setTagIndex(0);
+                setLevel({ kind: 'untagged', pick: true });
+              }}
               onAll={() => setLevel({ kind: 'review', topic: 'all' })}
               onClassGap={(choice) => {
                 setFilters({ ...DEFAULT_FILTERS, notUsedWith: choice });
@@ -1049,6 +1069,7 @@ export function QuestionBankScreen({
           }
           language={language}
           busy={false}
+          mode={pickMode ? 'pick' : 'untagged'}
           onToggle={toggleChosen}
           onAllTopics={() => tagGroup && setPicker({ mode: 'tag', rows: tagGroup.rows })}
           onSave={() => saveTags()}
@@ -1206,9 +1227,11 @@ export function QuestionBankScreen({
               ? {
                   ...pickerPatterns(tagRow.typeId),
                   initial: Object.fromEntries(
-                    [...chosen].filter(holdsPatterns).flatMap((code) => {
-                      const name = patternAt(tagDraft, tagAt, code).name;
-                      return name ? [[code, name] as const] : [];
+                    [...chosen].flatMap((topic) => {
+                      // A 題型 hangs on the topic's EDB sub-topic (k-0569).
+                      const code = patternCodeOf(topic, derivedTags(tagDraft));
+                      const name = code ? patternAt(tagDraft, tagAt, code).name : undefined;
+                      return code && name ? [[code, name] as const] : [];
                     }),
                   ),
                 }

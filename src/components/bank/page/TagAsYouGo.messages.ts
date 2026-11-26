@@ -9,6 +9,15 @@ export const TAG_AS_YOU_GO_MESSAGES = defineMessages({
     zh: '你新寫的題目會顯示在這裏，直至標記課題為止。',
   },
   backToTopics: { en: 'Back to topics', zh: '返回課題' },
+  allPicked: { en: 'Every question has its MCQ topic.', zh: '所有題目都已有 MCQ 課題。' },
+  allPickedHint: {
+    en: 'A question tagged with an EDB topic that covers several MCQ topics appears here until one is picked.',
+    zh: '標記了涵蓋多個 MCQ 課題的 EDB 課題的題目會顯示在這裏，直至選定其中一個。',
+  },
+  hintPick: {
+    en: (n: number) => `Its EDB topic covers several MCQ topics: pick the one it tests. Press 1 to ${n} or click; Enter saves and moves on.`,
+    zh: (n: number) => `它的 EDB 課題涵蓋多個 MCQ 課題：請選出它考核的一個。按 1 至 ${n} 或點擊選擇；按 Enter 儲存並前往下一條。`,
+  },
   previous: { en: 'Previous question (skip back)', zh: '上一條題目（返回）' },
   next: { en: 'Next question (skip)', zh: '下一條題目（略過）' },
   livesIn: { en: 'Lives in ', zh: '所在位置：' },

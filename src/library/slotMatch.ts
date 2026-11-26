@@ -1,5 +1,5 @@
 import { parsePatternTag, samePatternName } from '@/model/patterns';
-import { matchesTopic } from '@/model/topics';
+import { matchesBankTopic } from '@/model/mcqView';
 import type { PatternId } from './patterns';
 import type { BankRow, BankSlot } from './types';
 
@@ -16,7 +16,7 @@ export function slotsMatching(row: Pick<BankRow, 'typeId' | 'slots'>, query: Slo
   const leaves = (row.slots ?? []).filter((slot) => slot.leaf);
   const hits = leaves.filter((slot) =>
     'topic' in query
-      ? matchesTopic(slot.tags, query.topic)
+      ? matchesBankTopic(slot.tags, query.topic)
       : row.typeId === query.pattern.typeId &&
         slot.tags.some((tag) => {
           const ref = parsePatternTag(tag);

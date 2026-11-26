@@ -46,6 +46,7 @@ export function TagAsYouGo({
   onOpen,
   lastSaved,
   onUndo,
+  mode = 'untagged',
 }: {
   /** The question on screen; absent when none are left. */
   row: BankRow | undefined;
@@ -76,6 +77,11 @@ export function TagAsYouGo({
   lastSaved?: string;
   /** Take the last save back (also ⌫ or ⌘Z). */
   onUndo?: () => void;
+  /**
+   * `pick` (k-0569): questions under an EDB topic several MCQ topics share; the keys are
+   * those MCQ topics, and choosing one says which. Else the untagged questions.
+   */
+  mode?: 'untagged' | 'pick';
 }) {
   const m = useMessages(TAG_AS_YOU_GO_MESSAGES);
   const undoLine = lastSaved && onUndo && <UndoLine text={lastSaved} onUndo={onUndo} />;
@@ -90,8 +96,8 @@ export function TagAsYouGo({
     return (
       <div className="flex min-h-0 flex-1 items-start justify-center bg-surface px-8 py-20">
         <div className="max-w-md text-center">
-          <p className="font-display text-[26px] font-normal leading-tight text-ink">{m.allTagged}</p>
-          <p className="mt-2 text-[13px] text-ink-muted">{m.allTaggedHint}</p>
+          <p className="font-display text-[26px] font-normal leading-tight text-ink">{mode === 'pick' ? m.allPicked : m.allTagged}</p>
+          <p className="mt-2 text-[13px] text-ink-muted">{mode === 'pick' ? m.allPickedHint : m.allTaggedHint}</p>
           {undoLine && <div className="mt-4 flex justify-center">{undoLine}</div>}
           <Button className="mt-5" onClick={onDone}>
             {m.backToTopics}
@@ -191,7 +197,13 @@ export function TagAsYouGo({
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <p className="min-w-0 flex-1 text-[12.5px] text-ink-muted">
-            {suggestions.length > 0 ? (fromText?.size ? m.hintText(suggestions.length + 1) : m.hint(suggestions.length + 1)) : m.hintNone}
+            {mode === 'pick'
+              ? m.hintPick(suggestions.length + 1)
+              : suggestions.length > 0
+                ? fromText?.size
+                  ? m.hintText(suggestions.length + 1)
+                  : m.hint(suggestions.length + 1)
+                : m.hintNone}
             {parts && m.hintParts}
           </p>
           <Button variant="primary" size="sm" disabled={busy || !canSave} onClick={onSave} data-tag-save>

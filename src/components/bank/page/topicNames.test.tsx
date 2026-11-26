@@ -60,7 +60,7 @@ describe('topic names follow the view language', () => {
     const out = cards('zh-HK', 'bilingual');
     expect(out).toContain('Market and Price');
     expect(out).toContain('市場與價格');
-    expect(cartTopicLabel(['C.ped'], 'bilingual')).toBe('C · Price elasticity of demand');
+    expect(cartTopicLabel(['C.ped'], 'bilingual')).toBe('C · Elasticity');
     expect(railSections(groupRows(rows), 'all', 'zh-HK', 'bilingual')[0].label).toBe('C · Market and Price');
   });
 

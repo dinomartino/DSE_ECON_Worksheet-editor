@@ -1,7 +1,8 @@
 'use client';
 
 import { isPatternTag, parsePatternTag, tagText } from '@/model/patterns';
-import { topicDisplay, topicHeading, topicNamesFor } from '@/model/topics';
+import { topicNamesFor } from '@/model/topics';
+import { bankTopicDisplay as topicDisplay, bankTopicHeading as topicHeading, viewTagList } from '@/model/mcqView';
 import type { KeyboardEvent, ReactNode } from 'react';
 import type { BankRow as BankRowData, BankUse } from '@/library/types';
 import { plain } from '@/model/text';
@@ -87,7 +88,8 @@ export function BankRow({
   const excerpt = rowExcerpt(row, language);
   const missing = missingLanguageLabel(row, language, ui);
   // Topics on the tag line; each 題型 apart, named as one ("題型 PED and total revenue").
-  const tags = row.tags.filter((tag) => !isPatternTag(tag)).map((tag) => tagText(tag, topicNamesFor(language))).join(' · ');
+  // MCQ topics as the bank groups them (k-0569), then free tags.
+  const tags = viewTagList(row.tags).map((tag) => topicDisplay(tag, topicNamesFor(language))).join(' · ');
   const patterns = row.tags.flatMap((tag) => parsePatternTag(tag) ?? []);
   const excerptText = (
     <span className="line-clamp-2 text-xs leading-snug text-ink" title={excerpt}>
@@ -256,7 +258,9 @@ export function SourceText({
 
 /** A row's topics in full, for the tooltip behind a cut-off tag line: "C · Law of demand", both names in a bilingual view. */
 export function tagTitle(tags: readonly string[], view: LanguageMode = paperLanguage()): string {
-  return tags.map((tag) => (isPatternTag(tag) ? `題型 ${tagText(tag)}` : topicHeading(tag, topicNamesFor(view, 'wide')))).join('\n');
+  return [...viewTagList(tags), ...tags.filter(isPatternTag)]
+    .map((tag) => (isPatternTag(tag) ? `題型 ${tagText(tag)}` : topicHeading(tag, topicNamesFor(view, 'wide'))))
+    .join('\n');
 }
 
 /** "中文 only" / "English only" when the paper prints a language the question lacks. */

@@ -23,7 +23,7 @@ describe('BankRow', () => {
     expect(out).toContain('Along a straight-line demand curve…');
     expect(out).toContain('MCQ');
     expect(out).toContain('1 mark<');
-    expect(out).toContain('Price elasticity of demand · Demand, supply and price');
+    expect(out).toContain('Elasticity · Demand, supply and price');
     expect(out).not.toContain('C.ped');
     expect(out).toContain('Mock 2025');
     expect(out).toContain(' · Q14');
@@ -60,9 +60,9 @@ describe('BankRow', () => {
     expect(html({ row: base, language: 'zh' })).toContain('沿直線需求曲線…');
   });
 
-  it('names topics in the paper’s language, and a code this build does not list as stored', () => {
-    expect(html({ row: base, language: 'zh' })).toContain('需求價格彈性 · 需求、供應和價格的相互作用');
-    expect(html({ row: { ...base, tags: ['C.new', 'K', 'mock 2025'] } })).toContain('C.new · K · mock 2025');
+  it('names MCQ topics in the paper’s language, and a later sub-topic as its section with the free tags as stored', () => {
+    expect(html({ row: base, language: 'zh' })).toContain('彈性 · 需求、供應和價格的相互作用');
+    expect(html({ row: { ...base, tags: ['C.new', 'mock 2025'] } })).toContain('Market and Price · mock 2025');
   });
 
   it('keeps the question number when a long title is cut, and tells same-titled papers apart', () => {
