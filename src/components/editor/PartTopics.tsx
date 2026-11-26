@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, GroupHeader, IconButton, Segmented } from '@/components/ui';
 import { CloseIcon } from '@/components/ui/icons';
 import { addTopics, atSlot, freeTags, inheritAtSlot, matchEdit, wholeQuestion, type StateEdit } from '@/library/tagWrites';
-import { freeTagIssue, tagText } from '@/model/patterns';
+import { freeTagIssue } from '@/model/patterns';
 import { effectiveSlotTags, isTopicalTag, questionTagSlots, slotRef, type SlotState, type TagState } from '@/model/tagSlots';
-import { topicDisplay, topicHeading, topicNamesFor, topicOf } from '@/model/topics';
+import { topicNamesFor, topicOf } from '@/model/topics';
+import { bankTopicDisplay as topicDisplay, bankTopicHeading as topicHeading, viewTopicOf } from '@/model/mcqView';
 import { useViewLanguage } from '@/settings/paperLanguage';
 import type { Question } from '@/model/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -258,7 +259,7 @@ function TopicLines({ tags }: { tags: string[] }) {
   return (
     <ul className="space-y-0.5">
       {topicsWithPatterns(tags).map(({ topic, pattern }) => {
-        const known = topicOf(topic);
+        const known = viewTopicOf(topic);
         return (
           <li key={topic} className="truncate text-xs text-ink-muted" title={topicHeading(topic, names)}>
             {known ? (
@@ -330,11 +331,11 @@ function WholeQuestionTopics({
             >
               <span className="w-8 shrink-0 font-semibold tabular-nums text-ink-muted">{line.label}</span>
               {line.tags.length > 0 ? (
-                <span className="min-w-0 flex-1 truncate text-ink-muted" title={line.tags.map((tag) => topicHeading(tag, topicNamesFor(view, 'wide'))).join('\n')}>
+                <span className="min-w-0 flex-1 truncate text-ink-muted" title={topicsWithPatterns(line.tags).map(({ topic }) => topicHeading(topic, topicNamesFor(view, 'wide'))).join('\n')}>
                   {topicsWithPatterns(line.tags).map(({ topic, pattern }, index) => (
                     <span key={topic}>
                       {index > 0 && ' · '}
-                      {tagText(topic, names)}
+                      {topicDisplay(topic, names)}
                       {pattern && <span className="text-ink-subtle"> · 題型 {pattern}</span>}
                     </span>
                   ))}

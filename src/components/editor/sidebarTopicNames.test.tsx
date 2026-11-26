@@ -35,14 +35,15 @@ function sidebar(ui: UiLanguage, language: LanguageMode): string {
 describe('the sidebar’s topic names', () => {
   it('an English document under a 中文 interface: English names, 中文 chrome', () => {
     const out = sidebar('zh-HK', 'en');
-    expect(out).toContain('Price elasticity of demand');
-    expect(out).not.toContain('需求價格彈性');
+    // C.ped reads as the teacher's MCQ topic Elasticity (k-0569).
+    expect(out).toContain('Elasticity');
+    expect(out).not.toContain('彈性');
     expect(out).toContain('內容');
   });
 
   it('a 中文 document under an English interface: 中文 names', () => {
     const out = sidebar('en', 'zh');
-    expect(out).toContain('需求價格彈性');
-    expect(out).not.toContain('Price elasticity of demand');
+    expect(out).toContain('彈性');
+    expect(out).not.toContain('Elasticity');
   });
 });

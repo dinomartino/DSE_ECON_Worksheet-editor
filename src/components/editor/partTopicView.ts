@@ -1,4 +1,6 @@
 import { isPatternTag, patternsIn, tagText } from '@/model/patterns';
+import { bankTopicDisplay, viewTagList } from '@/model/mcqView';
+import { patternCodeOf } from '@/components/bank/page/partTopics';
 import type { TopicNames } from '@/model/topics';
 import { derivedTags, effectiveSlotTags, isTopicalTag, slotAtTarget, type SlotState, type TagState } from '@/model/tagSlots';
 import type { TagSlotInfo } from '@/registry/types';
@@ -92,9 +94,12 @@ export function partsDiffer(state: TagState): boolean {
   return leaves.some((tags) => !sameSet(tags, leaves[0]));
 }
 
-/** "Law of demand · Price elasticity of demand · Price ceiling": names, a 題型 by its name. */
+/**
+ * "Elasticity · Price Ceiling · mock": the MCQ topics the tags fall under (k-0569), free
+ * tags as stored, a 題型 by its name. EDB codes and `@mcq:` tags never show raw.
+ */
 export function topicNames(tags: readonly string[], names: TopicNames = 'en'): string {
-  return tags.map((tag) => tagText(tag, names)).join(' · ');
+  return [...viewTagList(tags), ...tags.filter(isPatternTag)].map((tag) => (isPatternTag(tag) ? tagText(tag, names) : bankTopicDisplay(tag, names))).join(' · ');
 }
 
 /** The free and system tags the question itself holds (never a part's). */
@@ -126,12 +131,14 @@ export function outlineTagLine(
   return { text, title, byPart };
 }
 
-/** A line's topics without their 題型, each with its 題型 name (the row shows them together). */
+/**
+ * A line's topics as the MCQ view reads them (k-0569), each with the 題型 on its EDB
+ * sub-topic (the row shows them together); free tags as stored.
+ */
 export function topicsWithPatterns(tags: readonly string[]): { topic: string; pattern?: string }[] {
-  return tags
-    .filter((tag) => !isPatternTag(tag))
-    .map((topic) => {
-      const pattern = patternsIn(tags, topic)[0];
-      return pattern ? { topic, pattern } : { topic };
-    });
+  return viewTagList(tags).map((topic) => {
+    const code = patternCodeOf(topic, tags);
+    const pattern = code ? patternsIn(tags, code)[0] : undefined;
+    return pattern ? { topic, pattern } : { topic };
+  });
 }

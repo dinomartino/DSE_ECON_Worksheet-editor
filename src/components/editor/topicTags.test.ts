@@ -1,11 +1,11 @@
 import JSZip from 'jszip';
+import { VIEW_SECTIONS } from '@/model/mcqView';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { exportDocxBuffer } from '@/export/docx';
 import { questionClipboardHtml, worksheetClipboardHtml } from '@/export/clipboard';
 import { renderWorksheet } from '@/render/worksheet';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { buildAcceptanceWorksheet } from '@/test/fixtures';
-import { TOPICS } from '@/model/topics';
 import type { OutputMode, StructuredQuestion } from '@/model/types';
 import { freeTagIssue } from '@/model/patterns';
 import { filterTopics, freeTagMessage } from './TopicRow';
@@ -98,22 +98,23 @@ describe('editing tags', () => {
 });
 
 describe('topic picker filter', () => {
-  it('lists every coarse topic when empty', () => {
-    expect(filterTopics('')).toHaveLength(TOPICS.length);
+  it('lists every section when empty', () => {
+    expect(filterTopics('')).toHaveLength(VIEW_SECTIONS.length);
   });
 
-  it('matches code and English, keeping the parent of a matching child', () => {
+  it('matches an MCQ topic by its EDB code and its name, keeping the section of a matching topic', () => {
     const byCode = filterTopics('c.ped');
     expect(byCode[0].topic.code).toBe('C');
-    expect(byCode[0].children.map((child) => child.code)).toEqual(['C.ped']);
-    const byName = filterTopics('elasticity of demand');
-    expect(byName.some(({ children }) => children.some((child) => child.code === 'C.ped'))).toBe(true);
+    expect(byCode[0].children.map((child) => child.code)).toEqual(['@mcq:elasticity']);
+    const byName = filterTopics('per-unit');
+    expect(byName.flatMap(({ children }) => children.map((child) => child.code))).toEqual(['@mcq:per-unit-tax', '@mcq:per-unit-subsidy']);
     expect(filterTopics('zzzz')).toEqual([]);
   });
 
   it('matches 中文', () => {
-    const zh = TOPICS[0].zh.slice(0, 2);
-    expect(filterTopics(zh).some(({ topic }) => topic.code === TOPICS[0].code)).toBe(true);
+    const zh = VIEW_SECTIONS[0].zh.slice(0, 2);
+    expect(filterTopics(zh).some(({ topic }) => topic.code === VIEW_SECTIONS[0].code)).toBe(true);
+    expect(filterTopics('從量稅').flatMap(({ children }) => children.map((child) => child.code))).toEqual(['@mcq:per-unit-tax']);
   });
 });
 
