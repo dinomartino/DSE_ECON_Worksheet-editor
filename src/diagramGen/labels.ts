@@ -65,8 +65,25 @@ export function diagramLabels(diagram: Diagram): Set<string> {
     add(p.yTickLabel);
   }
   for (const l of diagram.labels) add(l.text);
-  for (const a of diagram.areas ?? []) add(a.label);
+  // An area labelled "E + F" is ONE area: it does not print E and F (k-0577: a merged DWL passed as two).
+  for (const a of diagram.areas ?? []) {
+    const text = plainOf(a.label).trim();
+    if (text) out.add(tickKey(text));
+  }
   for (const s of diagram.spans ?? []) add(s.label);
+  return out;
+}
+
+/** An option that is only area or point letters: "A", "B + C", "Area a", "areas E and F". */
+const LETTER_OPTION = /^\s*(?:(?:the\s+)?(?:areas?|regions?|points?)\s+|面積\s*|區域\s*|點\s*)?[A-Ha-h](?:\s*(?:\+|＋|and|及|和|與|、)\s*[A-Ha-h])*\s*$/i;
+
+/** The labels a question names: each piece read on its own, and letters-only options read as letters when every option is one. */
+export function questionLabels(question: QuestionWords): string[] {
+  const out: string[] = [];
+  for (const piece of [question.stem, ...question.statements, ...question.options]) for (const key of labelsIn(piece)) if (!out.includes(key)) out.push(key);
+  if (question.options.length && question.options.every((o) => LETTER_OPTION.test(o))) {
+    for (const o of question.options) for (const l of o.replace(/areas?|regions?|points?|the|and|面積|區域|點/gi, ' ').match(/[A-Ha-h]/g) ?? []) if (!out.includes(tickKey(l))) out.push(tickKey(l));
+  }
   return out;
 }
 
@@ -81,10 +98,10 @@ export interface QuestionWords {
  * of one letter, as an MCQ's Q₁–Q₄) run left to right along the x-axis and bottom to top
  * along the y-axis, the way every HKDSE figure numbers them.
  */
-export function checkLabels(question: QuestionWords, diagram: Diagram): DiagramIssue[] {
+export function checkLabels(question: QuestionWords, diagram: Diagram, opts: { order?: boolean } = {}): DiagramIssue[] {
   const issues: DiagramIssue[] = [];
   const printed = diagramLabels(diagram);
-  const named = labelsIn([question.stem, ...question.statements, ...question.options].join('\n'));
+  const named = questionLabels(question);
   const missing = named.filter((key) => !printed.has(key));
   if (missing.length) {
     issues.push({
@@ -93,7 +110,8 @@ export function checkLabels(question: QuestionWords, diagram: Diagram): DiagramI
       text: `The question names ${missing.join(', ')}, but the diagram does not label ${missing.length === 1 ? 'it' : 'them'}. Every label the stem or an option names must be drawn: add the points (with their ticks) or rename them.`,
     });
   }
-  issues.push(...tickOrder(diagram, 'x'), ...tickOrder(diagram, 'y'));
+  // A scene's labels are tied to its parts (k-0577): P₁ above P₀ under a tax is the usual HKDSE naming, not a slip.
+  if (opts.order !== false) issues.push(...tickOrder(diagram, 'x'), ...tickOrder(diagram, 'y'));
   return issues;
 }
 

@@ -11,6 +11,11 @@ import {
   SIZES,
   SLOPES,
   SPEC_KINDS,
+  SCENE_TYPES,
+  SCENE_MARKETS,
+  EXTERNALITIES,
+  SCENE_ASKS,
+  type SpecScene,
   type DiagramIssue,
   type DiagramSpec,
   type SpecText,
@@ -88,6 +93,18 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
     yTitle: TEXT,
     xTitle: TEXT,
   }),
+  scene: obj({
+    type: { type: 'string', enum: [...SCENE_TYPES] },
+    market: { type: 'string', enum: [...SCENE_MARKETS] },
+    externality: { type: 'string', enum: [...EXTERNALITIES] },
+    demand: { type: 'string', enum: [...SLOPES] },
+    supply: { type: 'string', enum: [...SLOPES] },
+    size: { type: 'string', enum: [...SIZES] },
+    labels: list(obj({ part: str, label: str })),
+    areas: list(obj({ region: str, label: TEXT })),
+    ask: { type: 'string', enum: [...SCENE_ASKS] },
+    gap: { type: 'boolean' },
+  }),
 });
 
 /** An edit's reply (k-0534): the whole edited spec, and what the question's words must change ('' = nothing). */
@@ -99,11 +116,15 @@ export const DIAGRAM_EDIT_SCHEMA: JsonSchema = {
 
 /** For the rungs that do not enforce the schema (json_object, prompt). */
 export const DIAGRAM_SHAPE_HINT =
-  'Reply with one JSON object only, with exactly these keys: kind, reason, placement, template, title, xAxis, yAxis, curves, shifts, levels, points, gaps, shades, marks, changeArrows, asks, chart (see the shape described above). Every key is always present; use "" or [] for unused ones.';
+  'Reply with one JSON object only, with exactly these keys: kind, reason, placement, template, title, xAxis, yAxis, curves, shifts, levels, points, gaps, shades, marks, changeArrows, asks, chart, scene (see the shape described above). Every key is always present; use "" or [] for unused ones.';
 
-export const EDIT_SHAPE_HINT = DIAGRAM_SHAPE_HINT.replace('changeArrows, asks, chart', 'changeArrows, asks, chart, questionChange');
+export const EDIT_SHAPE_HINT = DIAGRAM_SHAPE_HINT.replace('changeArrows, asks, chart, scene', 'changeArrows, asks, chart, scene, questionChange');
 
 const EMPTY_TEXT: SpecText = { en: '', zh: '' };
+
+export function emptyScene(): SpecScene {
+  return { type: 'none', market: 'goods', externality: 'none', demand: 'normal', supply: 'normal', size: 'normal', labels: [], areas: [], ask: 'none', gap: false };
+}
 
 export function emptySpec(kind: DiagramSpec['kind'] = 'none'): DiagramSpec {
   return {
@@ -124,6 +145,7 @@ export function emptySpec(kind: DiagramSpec['kind'] = 'none'): DiagramSpec {
     changeArrows: false,
     asks: { what: 'none', state: 'after' },
     chart: { type: 'bar', categories: [], series: [], yTitle: { ...EMPTY_TEXT }, xTitle: { ...EMPTY_TEXT } },
+    scene: emptyScene(),
   };
 }
 
@@ -242,6 +264,21 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
       })),
       yTitle: text(c.yTitle),
       xTitle: text(c.xTitle),
+    };
+  }
+  if (isRecord(raw.scene)) {
+    const c = raw.scene;
+    spec.scene = {
+      type: pick(c.type, SCENE_TYPES, 'none', 'scene type'),
+      market: pick(c.market, SCENE_MARKETS, 'goods', 'scene market'),
+      externality: pick(c.externality, EXTERNALITIES, 'none', 'scene externality'),
+      demand: pick(c.demand, SLOPES, 'normal', 'scene demand'),
+      supply: pick(c.supply, SLOPES, 'normal', 'scene supply'),
+      size: pick(c.size, SIZES, 'normal', 'scene size'),
+      labels: arr(c.labels).filter(isRecord).map((l) => ({ part: s(l.part).trim(), label: s(l.label) })),
+      areas: arr(c.areas).filter(isRecord).map((a) => ({ region: s(a.region).trim(), label: text(a.label) })),
+      ask: pick(c.ask, SCENE_ASKS, 'none', 'scene ask'),
+      gap: c.gap === true,
     };
   }
   return { spec, issues };

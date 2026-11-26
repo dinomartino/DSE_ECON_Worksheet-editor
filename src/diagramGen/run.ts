@@ -14,6 +14,8 @@ import { checkLabels } from './labels';
 import { solveKey } from './solve';
 import type { DiagramGenDeps, DiagramGenInput, DiagramGenOutcome, DiagramIssue, DiagramSpec, SolvedKey } from './types';
 import { checkDiagram, checkStem } from './validate';
+import type { SceneBuilt } from './scene';
+import { checkSceneKey, checkSceneWords } from './sceneCheck';
 
 /**
  * Question + key (+ a reference figure) → an editable diagram. Pure over injected deps,
@@ -35,7 +37,7 @@ export interface Evaluated {
 const errors = (issues: readonly DiagramIssue[]) => issues.filter((i) => i.level === 'error').length;
 
 /** A reply checked end to end; null when it is not a spec at all. Exported for the harness and tests. */
-export function evaluateReply(reply: string, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq' | 'edit'>): Evaluated | null {
+export function evaluateReply(reply: string, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq' | 'edit'> & { question?: string }): Evaluated | null {
   const parsed = parseSpec(reply);
   if (!parsed) return null;
   const evaluated = { ...evaluateSpec(parsed.spec, input, parsed.issues), questionChange: questionChangeOf(reply) };
@@ -60,8 +62,9 @@ function editOutcome(evaluated: Evaluated, input: Pick<DiagramGenInput, 'mcq'>):
 }
 
 /** A spec checked end to end: compiled, its drawing checked, the question's labels and words against it, the key worked out again. */
-export function evaluateSpec(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq'>, parseIssues: DiagramIssue[] = []): Evaluated {
+export function evaluateSpec(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq'> & { question?: string }, parseIssues: DiagramIssue[] = []): Evaluated {
   const compiled = compileSpec(spec);
+  if (spec.kind === 'scene') return evaluateScene(spec, compiled as SceneBuilt, input, parseIssues);
   const issues = [...parseIssues, ...compiled.issues, ...checkDiagram(spec, compiled, input.sides, input.key)];
   let solved: SolvedKey | null = null;
   if (compiled.diagram && input.mcq && spec.placement === 'question') {
@@ -73,6 +76,26 @@ export function evaluateSpec(spec: DiagramSpec, input: Pick<DiagramGenInput, 'si
   if (spec.kind !== 'none' && !compiled.diagram && !errors(issues)) {
     issues.push({ level: 'error', code: 'diagram.empty', text: 'Nothing could be drawn from that diagram.' });
   }
+  return { spec, compiled, issues, solved, questionChange: '' };
+}
+
+/**
+ * A scene (k-0577): drawn by code, so no axis or shift checks; the question's labels must be on
+ * it, its words must fit the scene, and the answer worked out from its letters or ticks must be
+ * the keyed option.
+ */
+function evaluateScene(spec: DiagramSpec, compiled: SceneBuilt, input: Pick<DiagramGenInput, 'key' | 'mcq'> & { question?: string }, parseIssues: DiagramIssue[]): Evaluated {
+  const issues = [...parseIssues, ...compiled.issues];
+  const stem = input.mcq ? [input.mcq.stem, ...input.mcq.statements].join('\n') : (input.question ?? '');
+  issues.push(...checkSceneWords(spec, stem, input.key));
+  let solved: SolvedKey | null = null;
+  if (compiled.diagram && input.mcq && spec.placement === 'question') {
+    issues.push(...checkLabels(input.mcq, compiled.diagram, { order: false }));
+    const key = checkSceneKey(spec, compiled, input.mcq);
+    solved = key.solved;
+    issues.push(...key.issues);
+  }
+  if (!compiled.diagram && !errors(issues)) issues.push({ level: 'error', code: 'diagram.empty', text: 'Nothing could be drawn from that diagram.' });
   return { spec, compiled, issues, solved, questionChange: '' };
 }
 
