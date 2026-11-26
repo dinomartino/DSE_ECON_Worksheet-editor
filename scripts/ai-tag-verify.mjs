@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 import { MOCK_MODEL, startMockServer } from './ai-mock-server.mjs';
+import { uiFontProblems } from './ui-font-kit.mjs';
 
 /**
  * k-0560 (u-4cgi): AI tagging in the teacher's own bank, in a browser. Seeds saved papers whose
@@ -178,6 +179,8 @@ if (!TOKEN) {
     const now = await allStored(page);
     expect(JSON.stringify(now) === JSON.stringify(before), 'something was written before Accept');
     await page.screenshot({ path: join(OUT, '02-review.png') });
+    const fonts = await uiFontProblems(page, '[data-ai-tag-panel]'); // k-0568: review cards in the interface font
+    expect(fonts.length === 0, `not the interface font: ${fonts.slice(0, 3).join(' | ')}`);
     return `${ready} suggestions`;
   });
 
@@ -269,6 +272,8 @@ if (!TOKEN) {
       await p.locator('[data-ai-tag-panel="done"]').waitFor({ timeout: 30_000 });
       await p.waitForTimeout(400);
       await p.screenshot({ path: join(OUT, '06-review-zh-1024.png') });
+      const fonts = await uiFontProblems(p, '[data-ai-tag-panel]'); // k-0568, in 中文 too
+      expect(fonts.length === 0, `not the interface font: ${fonts.slice(0, 3).join(' | ')}`);
       const title = await p.getByRole('dialog', { name: 'AI 建議的課題' }).count();
       expect(title === 1, 'no 中文 title');
       return verbs.join(',');

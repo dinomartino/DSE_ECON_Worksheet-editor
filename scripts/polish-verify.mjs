@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 import { startMockServer } from './ai-mock-server.mjs';
 import { check, configure, expect, newPage, results } from './studio-verify-kit.mjs';
+import { uiFontProblems } from './ui-font-kit.mjs';
 
 /**
  * Improve wording (k-0549) in a browser: ✦ AI → Improve wording (HKDSE style) on a paper of
@@ -117,6 +118,9 @@ try {
         await card.waitFor();
         await page.waitForTimeout(400);
         await shot(page, `${tag}-3-card`);
+        // k-0568: the bar and the card are interface text, in the interface font (the diff's question words too).
+        const fonts = [...(await uiFontProblems(page, '[role="status"][aria-label="AI"]')), ...(await uiFontProblems(page, '[role="dialog"]:has([data-diff])'))];
+        expect(fonts.length === 0, `not the interface font: ${fonts.slice(0, 3).join(' | ')}`);
         const body = (await card.textContent()) ?? '';
         expect(body.includes(w.kicker), `kicker in "${body.slice(0, 80)}"`);
         expect((await card.locator('[data-diff-op="del"]').count()) > 0 && (await card.locator('[data-diff-op="ins"]').count()) > 0, 'diff marks');

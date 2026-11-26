@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { chromium } from 'playwright-core';
+import { uiFontProblems } from './ui-font-kit.mjs';
 
 /**
  * k-0501: the import review's AI check, in a real browser. Serves a built `out/`, opens a
@@ -148,6 +149,9 @@ try {
     await dialog.locator('[data-ai-check="done"], [data-ai-check="failed"]').waitFor({ timeout: 180_000 });
     await page.waitForTimeout(500);
     await shot('3-done');
+    // k-0568: the AI row, the check panel and the bar button use the interface font.
+    const fonts = [...(await uiFontProblems(page, '[data-ai-check]')), ...(await uiFontProblems(page, '[data-import-check]')), ...(await uiFontProblems(page, '[data-ai-bar]'))];
+    check(fonts.length === 0, `the AI check is in the interface font${fonts.length ? `: ${fonts.slice(0, 3).join(' | ')}` : ''}`);
     const text = (await row.innerText()).replace(/\n/g, ' | ');
     console.log(`row: ${text}`);
     console.log(`bar: ${await bar.innerText()}`);

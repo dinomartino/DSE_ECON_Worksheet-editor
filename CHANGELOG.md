@@ -283,6 +283,11 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **AI labels and buttons on the page use the app's own font.** An AI draft waiting on your
+  paper (✦ AI draft · would be Q3, No problems found, Ask, Reject, Accept) and the AI-made tag
+  on a question were drawn in the paper's serif font, so in 中文 they looked like 明體; they now
+  match the rest of the app. Your questions still print in the paper's fonts.
+  <!-- zh: **頁面上的 AI 標籤和按鈕改用程式本身的字體。** 試卷上等待處理的 AI 草稿（✦ AI 草稿 · 將成為第 3 題、未發現問題、提問、不要、接受）和題目上的「AI 擬題」標籤，以前用了試卷的襯線字體，中文看起來像明體；現在與程式其他地方的字體一致。題目本身仍以試卷的字體列印。 -->
 - **A deleted Question studio chat stays deleted.** Deleting your last saved chat brought it
   back the next time you opened the app; now it stays gone, and deleting one chat keeps all the
   others. Chats saved by a newer version of the app on the same computer are never removed.

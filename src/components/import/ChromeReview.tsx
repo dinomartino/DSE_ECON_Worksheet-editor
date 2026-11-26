@@ -179,7 +179,7 @@ export function ChromeReview({
             style={{ ...layout.paper, width: layout.width, padding: `${PAD_Y}px ${PAD_X}px`, zoom: layout.zoom }}
           >
             {strip.blank ? (
-              <p className="text-[11px] italic text-[#6b7280]" style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif' }}>
+              <p className="font-sans text-[11px] italic text-[#6b7280]">
                 {m.chromePage1Blank}
               </p>
             ) : (

@@ -261,7 +261,7 @@ const Card = memo(
             // Screen chrome on the paper: literal hex, the chrome's own face.
             return (
               <div key={`t${from}`} data-teacher-only className="my-1 rounded-[3px] border-l-2 border-[#6b8fb8] bg-[#f3f6fa] py-1 pl-2.5 pr-1">
-                <p data-print-hide className="mb-0.5 text-[10.5px] font-medium uppercase tracking-wide text-[#4a6a90]" style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif' }}>
+                <p data-print-hide className="mb-0.5 font-sans text-[10.5px] font-medium uppercase tracking-wide text-[#4a6a90]">
                   {m.teacherOnly}
                 </p>
                 {nodes}
@@ -373,9 +373,9 @@ function PaperNode({
       <div
         data-slot={line}
         data-print-hide
-        // The chrome's own face, not the paper's.
-        style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, sans-serif', ...(underLetter ? { marginTop: '1.5em' } : {}) }}
-        className={`my-1 flex cursor-pointer flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-md border-2 px-3 py-2.5 text-[13px] leading-snug transition-colors duration-150 ease-out-soft ${
+        style={underLetter ? { marginTop: '1.5em' } : undefined}
+        // The chrome's own face (`font-sans`), not the paper's.
+        className={`my-1 flex font-sans cursor-pointer flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-md border-2 px-3 py-2.5 text-[13px] leading-snug transition-colors duration-150 ease-out-soft ${
           lit ? 'border-solid border-[#2f6fd6] bg-[#eef4fd] text-[#1d4f9e]' : 'border-dashed border-[#a9b4c2] bg-[#f6f8fa] text-[#4b5563] hover:border-[#7d8a9b]'
         }`}
       >

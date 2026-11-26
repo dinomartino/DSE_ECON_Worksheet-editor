@@ -123,7 +123,12 @@
   --color-ruler-tick-soft: var(--ruler-tick-soft);
   --color-ruler-mark: var(--ruler-mark);
 
-  --font-sans: var(--font-geist-sans);
+  /* `font-sans` is the interface font, the theme's `--ui-font` (k-0568). It pointed at a
+     Geist variable that was never defined: an undefined var makes `font-family` invalid,
+     so the element inherited instead, and chrome drawn on the page (the AI draft's header
+     and buttons, the AI-made chip) took the paper's Times New Roman / PMingLiU. Chrome
+     inside `.paper` must say `font-sans`; the paper's own text keeps its inline fonts. */
+  --font-sans: var(--ui-font);
   --font-mono: var(--font-geist-mono);
   /* The chrome's single display voice: a light editorial serif (Newsreader, mounted
      in layout.tsx), used for at most one screen-level heading. Never on the paper. */
