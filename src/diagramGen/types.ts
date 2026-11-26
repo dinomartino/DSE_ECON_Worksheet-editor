@@ -194,7 +194,108 @@ export interface SpecChart {
   xTitle: SpecText;
 }
 
-export const SPEC_KINDS = ['none', 'curves', 'chart', 'template'] as const;
+export const SPEC_KINDS = ['none', 'curves', 'chart', 'template', 'scene'] as const;
+
+/**
+ * A typed market scene (k-0577): the topic-E diagrams (surplus areas, tax and subsidy
+ * incidence, price controls, quotas, externalities, a cost rise, a tariff) are built by code
+ * from the scene's type and a few choices, never composed from raw parts. The model names the
+ * type, the slopes, which label the question uses for each part, which regions carry which
+ * letter, and what the question asks; `diagramGen/scene.ts` draws it with the template kit and
+ * works the answer out from the drawing. The catalogue (parts, regions, measures) is
+ * `diagramGen/sceneCatalogue.ts`.
+ */
+export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'unitSubsidy', 'priceCeiling', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff'] as const;
+export type SceneType = (typeof SCENE_TYPES)[number];
+
+/** goods: Price / Quantity; labour: Wage rate / Quantity of labour, ticks W instead of P. */
+export const SCENE_MARKETS = ['goods', 'labour'] as const;
+export type SceneMarket = (typeof SCENE_MARKETS)[number];
+
+export const EXTERNALITIES = ['none', 'negativeProduction', 'positiveProduction', 'negativeConsumption', 'positiveConsumption'] as const;
+export type Externality = (typeof EXTERNALITIES)[number];
+
+/**
+ * What a scene's question asks, for the key check: an area (the regions it is made of, as
+ * letters) or a tick (one label, or two for a gap). One list for every scene; the catalogue
+ * says which a scene has.
+ */
+export const SCENE_ASKS = [
+  'none',
+  // areas
+  'cs',
+  'ps',
+  'tss',
+  'cost',
+  'revenue',
+  'taxRevenue',
+  'dwl',
+  'buyersBurden',
+  'sellersBurden',
+  'csBefore',
+  'csAfter',
+  'csLoss',
+  'psBefore',
+  'psAfter',
+  'psLoss',
+  'consumerBenefit',
+  'producerBenefit',
+  'subsidyCost',
+  'transfer',
+  'tssBefore',
+  'tssAfter',
+  'tssLoss',
+  'externalCost',
+  'psGain',
+  // ticks
+  'priceBefore',
+  'priceAfter',
+  'buyersPay',
+  'sellersGet',
+  'quantityBefore',
+  'quantityAfter',
+  'quantityDemanded',
+  'quantitySupplied',
+  'shortage',
+  'surplus',
+  'marketQuantity',
+  'efficientQuantity',
+  'misallocation',
+  'importsBefore',
+  'importsAfter',
+  'domesticOutput',
+] as const;
+export type SceneAsk = (typeof SCENE_ASKS)[number];
+
+/** The label a part is printed with: a curve's name or a tick ("P_1"). '' = no tick printed. */
+export interface SceneLabel {
+  part: string;
+  label: string;
+}
+
+/** A lettered (or worded) region: a catalogue region, or a whole measure drawn as one area. */
+export interface SceneArea {
+  region: string;
+  /** "A" / "a" (the same in both languages), or words; '' = the catalogue's words for it. */
+  label: SpecText;
+}
+
+export interface SpecScene {
+  type: SceneType;
+  market: SceneMarket;
+  /** Type 'externality' only: which one. */
+  externality: Externality;
+  /** Elasticity as slope: steep = inelastic, flat = elastic. */
+  demand: Slope;
+  supply: Slope;
+  /** The size of the tax, subsidy, cost rise, external effect, or the price control's distance from equilibrium. */
+  size: ShiftSize;
+  labels: SceneLabel[];
+  areas: SceneArea[];
+  ask: SceneAsk;
+  /** Draw the shortage / surplus bracket at a price control (a model answer; never when the question asks for it). */
+  gap: boolean;
+}
 export type SpecKind = (typeof SPEC_KINDS)[number];
 
 /**
@@ -228,6 +329,8 @@ export interface DiagramSpec {
   /** What a question asks, for the key check against the drawing. */
   asks: SpecAsks;
   chart: SpecChart;
+  /** kind 'scene' (k-0577); absent in a spec saved before = type 'none'. */
+  scene?: SpecScene;
 }
 
 /**

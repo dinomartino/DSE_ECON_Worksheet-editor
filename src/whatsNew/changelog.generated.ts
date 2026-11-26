@@ -21,6 +21,14 @@ a version heading is edited afterwards.
   section alone show as General, untagged ones as No topic. Find a topic by name, pick All topics to
   see everything, and search and Last used or made still narrow the list.
   <!-- zh: **擬題工作室參考題選擇器的「我的題目」按 MCQ 課題列出你的題目。** 與歷屆試題庫一樣，A 至 J 部分可展開至各 MCQ 課題（彈性、價格上限……），並顯示每個課題有多少條你的多項選擇題；只標示部分的題目列為「一般」，未有課題的列為「未有課題」。可按名稱搜尋課題，選「所有課題」查看全部，搜尋及「最近使用或製作」仍可收窄清單。 -->
+- **The Question studio draws topic E diagrams right.** Questions on consumer and producer
+  surplus, a per-unit tax or subsidy, a price ceiling, a price floor or minimum wage, a quota, an
+  external cost or benefit, a rise in cost, or a tariff now get the HKDSE diagram the question
+  needs: supply moves the right way, the price line sits on the right side, the areas are lettered
+  A, B, C … the way the options name them, and nothing on the figure gives the answer away. The
+  studio works the answer out from the letters on the diagram and fixes the drawing when it does
+  not match the key. Every diagram is an ordinary editable diagram, in English and 中文.
+  <!-- zh: **擬題工作室能正確繪畫 E 部分（效率）的圖表。** 關於消費者及生產者盈餘、從量稅或從量津貼、價格上限、價格下限或最低工資、配額、界外成本或界外利益、成本上升或關稅的題目，現在會得到題目所需的 HKDSE 圖表：供應曲線向正確方向移動，價格線在正確的一方，面積按選項所用的 A、B、C……標示，圖上不會透露答案。擬題工作室會從圖上的字母推算答案，與答案不符時會修正圖表。每幅圖都是可編輯的一般圖表，有英文及中文版本。 -->
 - **The Question bank sorts your questions by your MCQ topics.** By topic now follows the 72
   topics of DSEcon Mentor's MCQ section (Price Ceiling, Per-unit Tax, Monetary Base…) in the site's
   sections A–J, instead of the EDB syllabus points: the topic cards, the list, the filter, the tag

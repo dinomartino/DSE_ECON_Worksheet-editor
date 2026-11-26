@@ -286,6 +286,16 @@ kept on this computer; the Trial kit in Settings → AI. **No topic picker anywh
   column it grew past the footer and the topics below could not be reached.
 - Not built yet: editing the AI's diagram inside the studio (once added, it is an ordinary editor
   diagram).
+- **Scenes for topic E (k-0577, u-k090).** Diagrams for surplus, deadweight loss, tax and subsidy
+  incidence, price controls, a quota, externalities, a cost rise and a tariff are not composed from
+  curves: the model picks a typed scene (`diagramGen/sceneCatalogue.ts`), its slopes, the label of
+  each part as the question uses it, which regions carry which letter, and what the question asks.
+  Code draws it (`scene.ts`) and works the answer out from the letters or ticks
+  (`sceneCheck.ts:checkSceneKey`): a keyed option that is not the asked area is an error, repaired
+  once, then a red "diagram could not be drawn to match" on the draft (`shape.figureFailed`), never a
+  silent wrong figure. Before/after on 18 live cases: `Outbox/k-0577/README.md`. Not drawn by any
+  scene or template (listed, not faked): firm cost curves (ATC/AVC/MC, shut-down), the Phillips
+  curve (A-level only), and a perfectly elastic or inelastic curve inside a scene (curves draws those).
 - **Diagrams (k-0534).** The writer's reply has `figure`: one English line for the diagram maker,
   never printed ('' = no diagram, and then no diagram request). The stem only refers to the figure
   ("Refer to the following diagram"): a stem that narrates it (`validate.ts:narrationFindings`,

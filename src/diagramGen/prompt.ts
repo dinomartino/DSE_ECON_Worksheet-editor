@@ -3,6 +3,7 @@ import { SHADE_PRESETS } from '@/model/diagramPresets';
 import { DIAGRAM_TEMPLATES } from '@/model/diagramTemplates';
 import { plain } from '@/model/text';
 import { describeDiagram } from './describe';
+import { SCENES } from './sceneCatalogue';
 import { DIAGRAM_EDIT_SCHEMA, DIAGRAM_SHAPE_HINT, DIAGRAM_SPEC_SCHEMA, EDIT_SHAPE_HINT } from './schema';
 import type { DiagramGenInput, DiagramIssue, DiagramSpec } from './types';
 
@@ -12,12 +13,53 @@ import type { DiagramGenInput, DiagramIssue, DiagramSpec } from './types';
  * is the editor's own, so whatever comes back is editable in the diagram editor.
  */
 
-/** Every template but the blank and the panel-only figures, as "id: name". Derived, so it never drifts. */
+/**
+ * Templates a scene draws better (k-0577): fixed labels, no letters the question can choose. They
+ * stay in the editor's Insert menu for teachers; the model is offered the scene instead.
+ */
+export const SCENE_TEMPLATES: ReadonlySet<string> = new Set([
+  'surplus',
+  'mc-rise-tss',
+  'price-ceiling',
+  'price-control-dwl',
+  'ceiling-cs-change',
+  'minimum-wage',
+  'price-floor-dwl',
+  'domestic-quota',
+  'per-unit-tax',
+  'per-unit-subsidy',
+  'subsidy-efficiency',
+  'tax-efficiency',
+  'tax-net-revenue',
+  'externality-overproduction',
+  'tariff',
+  'tariff-welfare',
+]);
+
+/** Every template but the blank, the panel-only figures and those a scene replaces, as "id: name". Derived, so it never drifts. */
 export function templateMenu(): string {
   // Data figures (pie, flow, forum, stakeholders, charts) hold the paper's own content: not a template to reuse.
-  return DIAGRAM_TEMPLATES.filter((t) => t.id !== 'blank' && t.group !== 'data')
+  return DIAGRAM_TEMPLATES.filter((t) => t.id !== 'blank' && t.group !== 'data' && !SCENE_TEMPLATES.has(t.id))
     .map((t) => `- ${t.id}: ${plain(t.name.en)}. ${plain(t.hint.en)}`)
     .join('\n');
+}
+
+/**
+ * The scene catalogue as the model reads it (k-0577): each type, when to use it, its parts with
+ * their default labels, its regions, the areas made of them and the ticks it can be asked for.
+ * Derived from `sceneCatalogue.ts`, so it never drifts.
+ */
+export function sceneMenu(): string {
+  return SCENES.map((def) => {
+    const parts = def.parts.map((p) => `${p.id}${p.label ? ` ${p.label}` : ''}${p.labour ? `/${p.labour}` : ''}: ${p.what}`).join('; ');
+    const regions = def.regions.map((r) => `${r.id} (${r.what})`).join('; ');
+    const areas = Object.entries(def.measures)
+      .filter(([id, rs]) => rs && !(rs.length === 1 && rs[0] === id))
+      .map(([id, rs]) => `${id} = ${rs!.join(' + ')}`)
+      .join('; ');
+    const ticks = Object.entries(def.ticks).map(([id, ps]) => `${id} = ${ps!.join('..')}`).join('; ');
+    return [`- ${def.type}: ${def.when}.`, `  parts: ${parts}.`, `  regions: ${regions}.`, areas ? `  areas: ${areas}.` : '', `  ticks: ${ticks}.`].filter(Boolean).join('\n');
+  }).join('\n');
 }
 
 export function shadeMenu(): string {
@@ -32,9 +74,23 @@ DECIDE
 - kind "none": the question needs no figure (a pure definition, a calculation with no graph). Say why in "reason".
 - placement "question": the figure is printed with the question and the students read it (an MCQ's diagram, a data stimulus). Draw only what the question gives. Never draw what the student is asked to work out.
 - placement "answer": the question asks the student to draw ("with the aid of a diagram", "illustrate"). Draw the model answer the marking scheme rewards: every point it says to indicate, labelled as it names them.
-- kind "curves": axes and straight lines you compose (below). Use it for demand and supply, shifts, price controls, AD-AS, the PPC.
+- kind "scene": a typed market diagram the editor draws exactly (below): consumer and producer surplus, a per-unit tax, a per-unit subsidy, a price ceiling, a price floor or minimum wage, a quota, an externality, a cost rise and total social surplus, a tariff. ALWAYS use a scene for these, and for every question about areas (surplus, deadweight loss, tax revenue, burdens, benefits); never compose them from curves.
+- kind "curves": axes and straight lines you compose (below). Use it for demand and supply shifts, elasticity and revenue, fixed supply, AD-AS, the PPC and plain graphs: anything no scene draws.
 - kind "chart": a bar or line chart of figures from the question (a table as a graph).
-- kind "template": one of the editor's ready-made diagrams, by id, when the question is one of these and kind "curves" cannot draw it (tariffs, import quotas, monopoly, externalities, money market, Lorenz curve). Its labels are fixed; set title/xAxis/yAxis only to rename them, else leave them "".
+- kind "template": one of the editor's ready-made diagrams, by id, when neither a scene nor kind "curves" can draw it (an import quota, monopoly, money market, Lorenz curve, PPF with trade). Its labels are fixed: use it only when the question names no label the template lacks. Set title/xAxis/yAxis only to rename them, else leave them "".
+
+KIND "scene"
+- scene: {type, market, externality, demand, supply, size, labels, areas, ask, gap}. The editor draws the curves, the shift, the price line or quota, the ticks and the regions from the type: you only choose.
+- market: goods | labour (wage rate and labour: a minimum wage). externality (type externality only): negativeProduction (MSC above MPC) | positiveProduction (MSC below MPC) | negativeConsumption (MSB below MPB) | positiveConsumption (MSB above MPB); else "none".
+- demand, supply: normal | steep (inelastic) | flat (elastic), as the question says. size: small | normal | large (the tax, subsidy, external effect or control).
+- labels: [{part, label}]: the label the question and its key use for each part, exactly ({"part":"Pb","label":"P_1"}). A part not listed keeps its default below; "" prints no tick. Every label the stem, the options or the key name must be on a part.
+- areas: [{region, label}]: the regions that carry a letter, label {"en":"A","zh":"A"} (or "a"). An MCQ about areas letters EVERY region its options name, one letter per region, never two letters on one area and never words that say what an area is (no "DWL" on the figure the student reads). A model answer may give an area from "areas" (it covers its regions) with label {"en":"","zh":""}: the editor prints its standard words.
+- ask: what the question asks, one of the scene's areas, regions or ticks (below), or "none". The editor works the answer out from your letters and labels: it must be the keyed option.
+- gap: true draws the shortage or surplus bracket at a price control (a model answer only).
+- A question about areas is answered by the letters: work out which regions make up what it asks (e.g. a tax's deadweight loss = dwlBuyers + dwlSellers), letter them as the keyed option says, and letter the other regions the options name.
+
+SCENES
+${'${SCENES}'}
 
 KIND "curves"
 - curves: {id, role, slope, place, label, shape, rise}. role: demand | supply | ad | sras | lras | vertical (fixed supply) | horizontal (perfectly elastic) | frontier (PPC) | graph (a plain line against two named axes, below). slope: normal | steep (inelastic) | flat (elastic). place (vertical, horizontal, frontier only): low | mid | high. shape and rise: "none" and "rising" except on a graph.
@@ -45,11 +101,12 @@ KIND "curves"
   style "guide": dashed from the axis to the last point marked on it, its label a tick on the axis: the usual HKDSE multiple-choice look ("P1 - - -" to the crossings). style "line": a solid line across the plot (a price ceiling drawn as a line, a world price).
 - points: {a, b, name, xTick, yTick, dot}: a marked point where lines a and b meet. a and b are any drawn ids: two curves (an equilibrium), or a curve and a level (the quantity supplied on S2 at the price P1: a "S2", b "P1"). b may also be an earlier point's tick: {a "S1", b "Q_1"} is the point on S1 above Q1 (the price sellers receive under a tax). xTick/yTick: the tick labels where its dashed lines meet the axes; "" leaves that line off. name "" unless the question names the point (E_0). dot: false for HKDSE multiple-choice figures (they mark ticks, not dots).
 - gaps: {level, label}: the shortage or surplus bracket at a price line, between demand and supply.
-- shades: {preset, label}: a shaded area. preset is one of: ${'${SHADES}'}. label {en:"",zh:""} keeps the preset's own.
+- shades: {preset, label}: a shaded area (curves only; a question about areas is a scene). preset is one of: ${'${SHADES}'}. label {en:"",zh:""} keeps the preset's own.
 - marks: {of, where, label}: a lettered point inside / on / outside a curve (a PPC's A, B, C).
 - changeArrows: true draws arrows along both axes from the first equilibrium's P and Q to the second's.
 - asks: {what, state}: what the question asks the student to find, so the editor can work the answer out again from your drawing. what: quantityTransacted | quantityDemanded | quantitySupplied | shortage | surplus | marketPrice | buyersPay | sellersGet | none (anything else: a PPC point, a reason, a shaded area). state: before | after the change (after = every curve replaced by its last shift). The editor reads the tick at that answer: it must be the label of the keyed option.
 - ids are short and unique ("D", "S", "D1", "Pc"); every entry refers to ids defined before it.
+- For kind "scene", "curves", "shifts", "levels", "points", "gaps", "shades", "marks" are []: the scene draws them. For any other kind, scene.type is "none".
 
 A QUESTION'S FIGURE (placement "question")
 - Draw exactly what the question and its options name: every label in the stem or an option (Q1, Q2, Q3, Q4, P1, S1, S2, D1, area A, point B) is on the figure, and nothing the student is asked to find is said in words on it.
@@ -89,7 +146,7 @@ ${'${TEMPLATES}'}
 Every key of the JSON is always present; use "" or [] for what is unused.`;
 
 export function systemPrompt(): string {
-  return DIAGRAM_SYSTEM_PROMPT.replace('${SHADES}', shadeMenu()).replace('${TEMPLATES}', templateMenu());
+  return DIAGRAM_SYSTEM_PROMPT.replace('${SCENES}', sceneMenu()).replace('${SHADES}', shadeMenu()).replace('${TEMPLATES}', templateMenu());
 }
 
 export interface DiagramPayload {

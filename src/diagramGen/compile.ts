@@ -24,6 +24,7 @@ import {
   type Pair,
 } from '@/model/diagramTemplateKit';
 import { buildFromTemplate, getDiagramTemplate } from '@/model/diagramTemplates';
+import { compileScene } from './scene';
 import { phrase, plainOf, symbol, symbolRuns } from './text';
 import {
   REVENUE_SHADES,
@@ -226,7 +227,7 @@ function clearOf(from: Pair, to: Pair, room: Clearance | undefined): boolean {
 }
 
 /** Where a shift arrow fits: a short arrow beside the source, pointing the way of the shift, clear of everything else. */
-function shiftArrowPlace(source: DiagramCurve, by: { x: number; y: number }, room?: Clearance): [Pair, Pair] | null {
+export function shiftArrowPlace(source: DiagramCurve, by: { x: number; y: number }, room?: Clearance): [Pair, Pair] | null {
   const ys = source.points.map((p) => p.y);
   const xs = source.points.map((p) => p.x);
   const [ylo, yhi] = [Math.min(...ys), Math.max(...ys)];
@@ -323,6 +324,7 @@ export function compileSpec(given: DiagramSpec): Compiled {
   const look = (code: string, text: string) => issues.push({ level: 'look', code, text });
 
   if (spec.kind === 'none') return { diagram: null, issues, curveIds, roles, levels: levelAt };
+  if (spec.kind === 'scene') return compileScene(spec);
 
   if (spec.kind === 'template') {
     const template = getDiagramTemplate(spec.template);
