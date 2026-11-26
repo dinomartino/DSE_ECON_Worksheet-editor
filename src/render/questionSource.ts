@@ -139,12 +139,23 @@ export function sourceTrail(source: BiText, format: QuestionSourceFormat = 'full
 }
 
 /**
+ * The format a bilingual paper prints its sources in: the short tag, so the line never
+ * carries both full forms (user u-gnmu, k-0563). Full becomes short; a short format the
+ * teacher picked (P1 or Roman) stays as picked. Single-language papers keep their format.
+ */
+export const bilingualSourceFormat = (format: QuestionSourceFormat): Exclude<QuestionSourceFormat, 'full'> =>
+  format === 'full' ? 'short' : format;
+
+/**
  * The question's nodes with its source on a line of its own above them, at the left edge of
  * the question number (the number hangs from the margin, so the line starts there), in the
  * numbered line's style, size and fonts. It keeps with the question (`keepNext`): the
  * preview's paginator never breaks after it, and the `.docx` breaks where the preview does.
- * A bilingual paper prints the label once, both sides on one line when they differ
- * (`trailLabel`). Untouched when the question has no source.
+ * A bilingual paper prints the label once, and as the short tag alone, "(DSE2024/P1/Q38)",
+ * even when the paper's format is full (user u-gnmu, k-0563): never both full forms on one
+ * line (`bilingualSourceFormat`). A source the short form cannot read (a teacher's own
+ * wording) stays in full, both sides on one line when they differ (`trailLabel`).
+ * Untouched when the question has no source.
  */
 export function withSourceLine(
   nodes: RenderNode[],
@@ -154,7 +165,7 @@ export function withSourceLine(
   const source = sourceOf(question);
   if (!source || nodes.length === 0) return nodes;
   const numbered = nodes.find((node): node is TextNode => node.kind === 'text' && node.listRef?.definition === 'question' && node.listRef.level === 0);
-  const label = trailLabel(sourceTrail(source, format), language);
+  const label = trailLabel(sourceTrail(source, language === 'bilingual' ? bilingualSourceFormat(format) : format), language);
   if (!label) return nodes;
   const run = [{ text: label }];
   const { fontSize, fonts } = numbered?.format ?? {};
