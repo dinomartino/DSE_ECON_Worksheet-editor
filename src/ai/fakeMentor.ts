@@ -49,7 +49,7 @@ export const FAKE_RATES = { inputPerMillionTokens: 1170, outputPerMillionTokens:
 /** CONTRACT §2 v1.6 `models`, as Mentor's development sends it (k-0539): the easy jobs on Flash-Lite. */
 export const FAKE_MODELS = {
   default: 'gemini-4-hydrogen',
-  byFeature: { translate: 'gemini-3.5-flash-lite', test: 'gemini-3.5-flash-lite' } as Record<string, string>,
+  byFeature: { translate: 'gemini-3.5-flash-lite', test: 'gemini-3.5-flash-lite', tag: 'gemini-3.5-flash-lite' } as Record<string, string>,
   rates: {
     'gemini-4-hydrogen': { ...FAKE_RATES, cachedInputPerMillionTokens: 58.5 },
     'gemini-3.5-flash-lite': { inputPerMillionTokens: 234, cachedInputPerMillionTokens: 23.4, outputPerMillionTokens: 1950 },

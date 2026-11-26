@@ -10,8 +10,9 @@ const MENTOR_FROM_WORKTREE = join(__dirname, '../../../../../../DSE_Mentor/src/l
 const mentorFile = [MENTOR_MODELS, MENTOR_FROM_WORKTREE].find((p) => existsSync(p));
 
 describe('Flash-Lite for simple jobs on an own Gemini key (u-zso2)', () => {
-  it('moves translate and test only; the key-point pick and the import check never move', () => {
-    expect([...LIGHT_FEATURES].sort()).toEqual(['test', 'translate']);
+  it('moves translate, test and tag only; the key-point pick and the import check never move', () => {
+    expect([...LIGHT_FEATURES].sort()).toEqual(['tag', 'test', 'translate']);
+    expect(modelForJob('gemini-4-hydrogen', GEMINI_LIGHT_MODEL, 'tag')).toBe(GEMINI_LIGHT_MODEL);
     expect(modelForJob('gemini-4-hydrogen', GEMINI_LIGHT_MODEL, 'translate')).toBe(GEMINI_LIGHT_MODEL);
     expect(modelForJob('gemini-4-hydrogen', GEMINI_LIGHT_MODEL, 'test')).toBe(GEMINI_LIGHT_MODEL);
     for (const feature of ['studio.pick', 'importCheck', 'studio.write', 'answers', 'polish', 'coverage', 'other'] as const) {

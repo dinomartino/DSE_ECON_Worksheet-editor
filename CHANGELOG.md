@@ -22,7 +22,9 @@ a version heading is edited afterwards.
   replaces its topics only when you accept. Topics always come from the bank's own syllabus
   list. It uses your AI as the other AI tools do (DSEcon Mentor credits, with an estimate first,
   or your own key), sends several questions per request, shows progress and can be stopped.
-  <!-- zh: **AI 可為未標記的題目建議課題。** 在題庫按 ✦ AI →「標記課題」，AI 會為每條未標記的題目（這條題目、已剔選的題目、所有顯示的題目或「所有未標記」）建議課程綱要的部分及課題，如有合適的會一併建議你自己的題型，並附簡短原因及把握程度。接受前不會儲存任何內容：可逐條接受、用課題選擇器更改、略過，或全部接受；「復原」可取消已接受的建議。已有課題的題目不會更改；如對已有課題的題目使用「重新建議課題」，只有在你接受後才會取代原有課題。課題一律來自題庫所用的課程綱要。與其他 AI 工具一樣使用你的 AI（DSEcon Mentor 點數，事先顯示估算；或你自己的金鑰），每次傳送多條題目，顯示進度，可隨時停止。 -->
+  With DSEcon Mentor credits it runs on the cheaper Gemini Flash-Lite, so tagging 100
+  questions uses about 22 credits; with your own Gemini key, the Flash-Lite switch covers it too.
+  <!-- zh: **AI 可為未標記的題目建議課題。** 在題庫按 ✦ AI →「標記課題」，AI 會為每條未標記的題目（這條題目、已剔選的題目、所有顯示的題目或「所有未標記」）建議課程綱要的部分及課題，如有合適的會一併建議你自己的題型，並附簡短原因及把握程度。接受前不會儲存任何內容：可逐條接受、用課題選擇器更改、略過，或全部接受；「復原」可取消已接受的建議。已有課題的題目不會更改；如對已有課題的題目使用「重新建議課題」，只有在你接受後才會取代原有課題。課題一律來自題庫所用的課程綱要。與其他 AI 工具一樣使用你的 AI（DSEcon Mentor 點數，事先顯示估算；或你自己的金鑰），每次傳送多條題目，顯示進度，可隨時停止。使用 DSEcon Mentor 點數時會用較便宜的 Gemini Flash-Lite，標記 100 條題目約用 22 點；使用自己的 Gemini key 時，Flash-Lite 開關亦包括此工作。 -->
 - **Past paper questions stay out of your question bank until you change them.** A question you
   add from the past paper bank to a worksheet is the exam's question, so your question bank no
   longer lists it as one of yours. Edit what it says (the question, an option, the answer, a
@@ -51,12 +53,12 @@ a version heading is edited afterwards.
   <!-- zh: **按你自己的方式編排歷屆試題庫，並一次過做成工作紙。** 歷屆試題庫在「按課題」和「按年份」旁新增第三種檢視：**編排**。它在同一頁列出題庫的所有題目，按課程範疇和課題分組，每題都以簡短格式註明出處（例如 DSE2024/P1/Q38）。拖動題目可按你的次序排列，拖到另一課題即移到該課題（或勾選後用「移到…」；鍵盤可用 Alt + ↑ ↓）。在範疇或課題勾選一次，即勾選其下所有題目，亦可逐題取消。範疇或課題上的「開新工作紙」，或為已勾選題目按「加入」，會把題目按你的次序放進工作紙；來自多個課題的工作紙（整個範疇或勾選的題目）會為每個課題加上標題（英文及中文）。在「編排」勾選「顯示出處」（預設不勾選），每題的簡短出處便會印在頁面、PDF 和 Word 中；之後可在「頁面設定 → 頁面」更改。「全部顯示」一按即把每題按列印樣式顯示（「全部隱藏」可全部隱藏），每題亦可逐一顯示或隱藏。編輯器的「題庫 → 歷屆試題」亦有「編排」，次序及勾選與題庫畫面相同：「加入」把題目放進正在編輯的試卷，「開新工作紙」則開一份新的。你的排列只保存在這部電腦上，不會改動題庫；「還原」可把一個課題或全部還原為題庫原本的次序。 -->
 - **Your own Gemini key can use the cheaper Flash-Lite for simple jobs.** In Settings → AI,
   with your own Google Gemini key, a new switch "Use the cheaper Gemini Flash-Lite for simple
-  jobs" runs translation (also the question bank's "fill missing 中文") and Test connection on
-  Gemini 3.5 Flash-Lite, the same split DSEcon Mentor uses. Every other AI job keeps the model
+  jobs" runs translation (also the question bank's "fill missing 中文"), AI topic tagging and Test
+  connection on Gemini 3.5 Flash-Lite, the same split DSEcon Mentor uses. Every other AI job keeps the model
   you chose. It is off unless you turn it on, it uses your own Google quota, and answers may
   differ slightly. If your key can't use Flash-Lite, the job runs on your chosen model and a
   small notice says so once.
-  <!-- zh: **使用自己的 Gemini API key 時，簡單工作可改用較便宜的 Flash-Lite。** 在「設定 → AI」使用自己的 Google Gemini key 時，新增開關「簡單工作（翻譯、測試連線）改用較便宜的 Gemini Flash-Lite」，翻譯（包括題庫的「補上缺少的中文」）和測試連線會改用 Gemini 3.5 Flash-Lite，與 DSEcon Mentor 的分工相同。其他 AI 工作仍用你所選的模型。此開關預設關閉；會用你自己的 Google 配額，答案可能略有不同。如果你的 key 未能使用 Flash-Lite，該工作會改用你所選的模型，並顯示一次簡短提示。 -->
+  <!-- zh: **使用自己的 Gemini API key 時，簡單工作可改用較便宜的 Flash-Lite。** 在「設定 → AI」使用自己的 Google Gemini key 時，新增開關「簡單工作（翻譯、標記課題、測試連線）改用較便宜的 Gemini Flash-Lite」，翻譯（包括題庫的「補上缺少的中文」）、AI 標記課題和測試連線會改用 Gemini 3.5 Flash-Lite，與 DSEcon Mentor 的分工相同。其他 AI 工作仍用你所選的模型。此開關預設關閉；會用你自己的 Google 配額，答案可能略有不同。如果你的 key 未能使用 Flash-Lite，該工作會改用你所選的模型，並顯示一次簡短提示。 -->
 - **The Question studio writes questions with several diagrams.** Like HKDSE 2023 Paper 1 Q36,
   it can now write "Which of the following diagrams …" with four small graphs (1)–(4) in the
   question (tax payment or tax rate against income, and other plain graphs), or a diagram under

@@ -15,8 +15,8 @@ export const AI_SECTION_MESSAGES = defineMessages({
     zh: '翻譯時包括答案和評卷參考',
   },
   geminiLight: {
-    en: 'Use the cheaper Gemini Flash-Lite for simple jobs (translation, test)',
-    zh: '簡單工作（翻譯、測試連線）改用較便宜的 Gemini Flash-Lite',
+    en: 'Use the cheaper Gemini Flash-Lite for simple jobs (translation, topic tagging, test)',
+    zh: '簡單工作（翻譯、標記課題、測試連線）改用較便宜的 Gemini Flash-Lite',
   },
   geminiLightNote: {
     en: 'Uses your own Google quota. Answers may differ slightly from your chosen model.',

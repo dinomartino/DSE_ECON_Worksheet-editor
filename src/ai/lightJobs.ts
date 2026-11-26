@@ -7,8 +7,9 @@ import type { AiFeature } from './types';
  * a light job there (`client.ts`) and every other job to the teacher's chosen model.
  *
  * The job list is DSEcon Mentor's own (`DSE_Mentor/src/lib/ai-credits/models.ts`
- * `DEFAULT_LIGHT_FEATURES`, k-0539): the two jobs that passed its side-by-side quality check.
- * `translate` covers the bank's "fill missing 中文" too (the same engine). The key-point pick
+ * `DEFAULT_LIGHT_FEATURES`, k-0539): the jobs that passed its side-by-side quality check.
+ * `translate` covers the bank's "fill missing 中文" too (the same engine). `tag`, the bank's AI
+ * tagging (k-0560, `Outbox/k-0560/`), joined on develop and Mentor's development only (u-sqrx). The key-point pick
  * (`studio.pick`) and the import check failed that check and never move. `lightJobs.test.ts`
  * compares this list with Mentor's when the Mentor repo sits beside this one.
  */
@@ -16,7 +17,7 @@ import type { AiFeature } from './types';
 /** Gemini 3.5 Flash-Lite; its preset runs it at `thinkingLevel: 'minimal'` (`providers.ts`). */
 export const GEMINI_LIGHT_MODEL = 'gemini-3.5-flash-lite';
 
-export const LIGHT_FEATURES: readonly AiFeature[] = ['translate', 'test'];
+export const LIGHT_FEATURES: readonly AiFeature[] = ['translate', 'test', 'tag'];
 
 /** The model a job runs on: the light one for a light job when it is set, else the chosen one. */
 export function modelForJob(model: string, lightModel: string | undefined, feature: AiFeature | undefined): string {

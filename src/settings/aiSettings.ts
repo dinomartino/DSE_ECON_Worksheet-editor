@@ -33,7 +33,7 @@ export interface AiSettings {
    */
   ownProvider?: ProviderId;
   /**
-   * Own Gemini key: run the easy jobs (translation, test) on Gemini Flash-Lite (u-zso2,
+   * Own Gemini key: run the easy jobs (translation, topic tagging, test) on Gemini Flash-Lite (u-zso2,
    * `ai/lightJobs.ts`). Absent → off: every job on the chosen model.
    */
   geminiLight?: boolean;

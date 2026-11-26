@@ -187,7 +187,7 @@ describe('sign-in, credits and sign-out (CONTRACT §1–2)', () => {
       rates: { inputPerM: 1170, outputPerM: 5850 },
       models: {
         default: 'gemini-4-hydrogen',
-        byFeature: { translate: 'gemini-3.5-flash-lite', test: 'gemini-3.5-flash-lite' },
+        byFeature: { translate: 'gemini-3.5-flash-lite', test: 'gemini-3.5-flash-lite', tag: 'gemini-3.5-flash-lite' },
         rates: { 'gemini-4-hydrogen': { inputPerM: 1170, outputPerM: 5850 }, 'gemini-3.5-flash-lite': { inputPerM: 234, outputPerM: 1950 } },
       },
       trialCredits: 500,

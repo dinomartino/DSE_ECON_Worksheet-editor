@@ -20,6 +20,7 @@ import type { Worksheet } from '@/model/types';
  *
  *   EVAL_MENTOR_API=http://localhost:3124/api/app/v1 EVAL_MENTOR_TOKEN=… PASTPAPER_BANK=<clone>
  *   EVAL_COUNT=100 EVAL_FEATURE=tag EVAL_OUT=Outbox/k-0560/eval-light
+ *   (or EVAL_PAPERS=DSE2024/P1,DSE2023/P1 for whole papers instead of EVAL_COUNT's spread)
  *   npx vitest run --config vitest.eval.config.ts evals/autoTag.eval.ts
  *
  * Real calls cost credits (about 3 per 10 questions on Flash-Lite, 15 on the main model).
@@ -29,6 +30,8 @@ const BANK = process.env.PASTPAPER_BANK;
 const COUNT = Number(process.env.EVAL_COUNT ?? 100);
 const SEED = Number(process.env.EVAL_SEED ?? 560);
 const FEATURE = (process.env.EVAL_FEATURE ?? 'tag') as AiFeature;
+/** Whole papers instead of a spread (u-sqrx's blind test): `DSE2024/P1,DSE2023/P1`, every question of each, in paper order. */
+const PAPERS = (process.env.EVAL_PAPERS ?? '').split(',').map((p) => p.trim()).filter(Boolean);
 
 interface Gold {
   q: TagQuestion;
@@ -55,8 +58,12 @@ function shuffled<T>(items: T[], seed: number): T[] {
   return out;
 }
 
-/** Every topic file's questions, round-robin over the files after a shuffle each: a spread over the syllabus. */
 function sample(): Gold[] {
+  return PAPERS.length > 0 ? wholePapers() : spread();
+}
+
+/** Every topic file's questions with their tags (a question filed under two topics appears in both). */
+function bankQuestions(): Gold[][] {
   const manifest = JSON.parse(readFileSync(path.join(BANK!, 'manifest.json'), 'utf8')) as { topics: Array<{ file: string }> };
   const perFile: Gold[][] = [];
   for (const topic of manifest.topics) {
@@ -73,8 +80,35 @@ function sample(): Gold[] {
       const q = tagQuestionOf(worksheet, question.id, question.id, 'q', undefined);
       if (q) golds.push({ q, source, gold, file });
     }
-    perFile.push(shuffled(golds, SEED + perFile.length));
+    perFile.push(golds);
   }
+  return perFile;
+}
+
+/** The named papers whole: one row a question, its real tags the union over every topic file it sits in. */
+function wholePapers(): Gold[] {
+  const bySource = new Map<string, Gold>();
+  for (const g of bankQuestions().flat()) {
+    if (!PAPERS.some((p) => g.source.startsWith(`${p}/Q`))) continue;
+    const seen = bySource.get(g.source);
+    if (seen) seen.gold = [...new Set([...seen.gold, ...g.gold])];
+    else bySource.set(g.source, { ...g, gold: [...g.gold] });
+  }
+  const order = (source: string) => {
+    const [, paper, n] = /^(.*)\/Q(\d+)$/.exec(source) ?? [];
+    return [PAPERS.indexOf(paper ?? ''), Number(n)];
+  };
+  const out = [...bySource.values()].sort((a, b) => {
+    const [pa, na] = order(a.source);
+    const [pb, nb] = order(b.source);
+    return pa - pb || na - nb;
+  });
+  return out.map((g, i) => ({ ...g, q: { ...g.q, key: `q${i + 1}` } }));
+}
+
+/** Round-robin over the topic files after a shuffle each: a spread over the syllabus. */
+function spread(): Gold[] {
+  const perFile = bankQuestions().map((golds, i) => shuffled(golds, SEED + i));
   const out: Gold[] = [];
   for (let round = 0; out.length < COUNT && perFile.some((f) => f.length > round); round++) {
     for (const file of shuffled(perFile, SEED + round)) {

@@ -73,7 +73,7 @@ async function openAi(page) {
 const settingsAi = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('econgen.settings.ai') ?? '{}'));
 
 for (const lang of ['en', 'zh-HK']) {
-  const label = lang === 'en' ? 'Use the cheaper Gemini Flash-Lite for simple jobs (translation, test)' : '簡單工作（翻譯、測試連線）改用較便宜的 Gemini Flash-Lite';
+  const label = lang === 'en' ? 'Use the cheaper Gemini Flash-Lite for simple jobs (translation, topic tagging, test)' : '簡單工作（翻譯、標記課題、測試連線）改用較便宜的 Gemini Flash-Lite';
   const { context, page, models } = await session(lang);
   const dialog = await openAi(page);
   const box = dialog.getByLabel(label);

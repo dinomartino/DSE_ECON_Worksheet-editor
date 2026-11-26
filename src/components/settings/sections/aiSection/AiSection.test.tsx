@@ -270,7 +270,7 @@ describe('the AI section states', () => {
   it('offers Flash-Lite for simple jobs only on a saved own Gemini key, off by default (u-zso2)', () => {
     const saved = { key: { kind: 'saved' as const, store: 'browser' as const, last4: 'abcd' } };
     const off = view(saved, {}, web, 'web', [GEMINI_SAVED]);
-    expect(off).toContain('Use the cheaper Gemini Flash-Lite for simple jobs (translation, test)');
+    expect(off).toContain('Use the cheaper Gemini Flash-Lite for simple jobs (translation, topic tagging, test)');
     expect(off).toContain('Uses your own Google quota. Answers may differ slightly from your chosen model.');
     expect(off).not.toMatch(/checked=""[^>]*\/>Use the cheaper Gemini/);
     expect(view(saved, { geminiLight: true }, web, 'web', [GEMINI_SAVED])).toMatch(/checked=""[^>]*\/>Use the cheaper Gemini/);
