@@ -227,6 +227,10 @@ a version heading is edited afterwards.
   <!-- zh: **匯出的檔案會靜靜註明來自 Econ Studio。** 你匯出的每個 Word 和 Excel 檔案，以及桌面版儲存的每個 PDF，現在都會在檔案本身的內容資訊中附上幾項隱藏資料：程式名稱和版本、匯出時間，以及一個代表該工作紙的隨機編號（同一份工作紙匯出的每個檔案編號都相同）。頁面上不會加入任何內容，所以列印、複製文字或使用屏幕閱讀器時都不會看到，亦不包含任何關於你或你電腦的資料。經列印對話框製作的 PDF（網頁版，或直接儲存 PDF 失敗時）無法附上這些資料。 -->
 
 ### Changed
+- **The Past paper bank lists its topics like your Question bank.** Its topics sit in the same
+  sections A–J as your MCQ topics on DSEcon Mentor (Circular Flow under F) with the same names, and a
+  question you copy out is filed under its exact MCQ topic.
+  <!-- zh: **歷屆試題庫的課題排列與你的題庫一致。** 課題按 DSEcon Mentor 上你的 MCQ 課題，放在相同的 A 至 J 部分（經濟活動的循環流程屬 F），名稱亦相同；複製出來的題目會歸入其確切的 MCQ 課題。 -->
 - **On a bilingual paper, a question's source prints once, short.** With Show source on, an
   English + 中文 paper now prints each source as the short tag alone, such as DSE2024/P1/Q38,
   even when the source format is Full, instead of the English and Chinese full names side by

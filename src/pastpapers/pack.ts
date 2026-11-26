@@ -2,7 +2,10 @@ import { rowsOf } from '@/library/indexer';
 import { stimuliServing } from '@/library/stimuli';
 import { migrate } from '@/model/migrations';
 import { plain } from '@/model/text';
-import { isTopicCode } from '@/model/topics';
+import { isTopicCode, stringTags } from '@/model/topics';
+import { addViewCode } from '@/model/mcqView';
+import { questionTagSlots } from '@/model/tagSlots';
+import { mcqTag, mcqTopic } from '@/model/topicSchemes';
 import type { BiText, ContentBlock, LanguageMode, LayoutElement, McqQuestion, Question, TableBlock, Worksheet } from '@/model/types';
 import { getQuestionType } from '@/registry';
 import { fitTableToContent, tableFitPlace, type TableFitPlace } from '@/model/tableFit';
@@ -100,13 +103,16 @@ export function parseManifest(raw: unknown): Manifest | { error: 'format' } {
     if (!id || !file || seen.has(id)) return;
     seen.add(id);
     const title = isObject(entry.title) ? entry.title : {};
-    const en = str(title.en) ?? str(entry.title) ?? id;
+    // One of the teacher's MCQ topics is named as the editor names it everywhere (k-0569,
+    // Mentor's current wording), whatever an older export wrote.
+    const mcq = mcqTopic(id);
+    const en = mcq?.en ?? str(title.en) ?? str(entry.title) ?? id;
     const sha = str(entry.sha256)?.toLowerCase();
     const codes = (Array.isArray(entry.syllabus) ? entry.syllabus : [entry.syllabus]).filter((code): code is string => isTopicCode(code));
     topics.push({
       id,
       file,
-      title: { en, zh: str(title.zh) ?? en },
+      title: { en, zh: mcq?.zh ?? str(title.zh) ?? en },
       order: num(entry.syllabusOrder) ?? index + 1,
       ...(num(entry.questions) !== undefined ? { questions: num(entry.questions) } : {}),
       ...(num(entry.bytes) !== undefined ? { bytes: num(entry.bytes) } : {}),
@@ -299,6 +305,19 @@ const sideText = (text: BiText | undefined) => ({ en: text ? plain(text.en).trim
  * read exactly as the editor would open it. The document is marked `bankHidden: false` and
  * `kind: 'bank'` in memory only.
  */
+/**
+ * A question of a bank topic that is one of the teacher's MCQ topics says so (k-0569): it
+ * gains `@mcq:<topic id>` where its EDB codes alone do not name that topic
+ * (`model/mcqView.ts:addViewCode`), so every copy taken out is filed exactly. In memory
+ * only; `contentKey` ignores tags, so a copy still reads as the past paper's own.
+ */
+export function withMcqTopicTag<Q extends Question>(question: Q, topicId: string): Q {
+  if (!mcqTopic(topicId) || questionTagSlots(question).length > 0) return question;
+  const tags = stringTags(question.tags);
+  const next = addViewCode(tags, mcqTag(topicId));
+  return next.length === tags.length ? question : { ...question, tags: [...next, ...(Array.isArray(question.tags) ? question.tags.filter((tag) => typeof tag !== 'string') : [])] };
+}
+
 export function parseTopic(raw: unknown, entry: TopicEntry): TopicData | undefined {
   let doc: Worksheet;
   try {
@@ -314,7 +333,7 @@ export function parseTopic(raw: unknown, entry: TopicEntry): TopicData | undefin
   // column: a table that fits there fits in any paper a teacher copies it into.
   const page = pageMetricsOf(doc);
   const metrics = { ...page, textWidth: Math.min(page.textWidth, DEFAULT_PAGE_METRICS.textWidth) };
-  const fitted = known.map((question) => withFittedTables(question, metrics));
+  const fitted = known.map((question) => withMcqTopicTag(withFittedTables(question, metrics), entry.id));
   const skipped = doc.questions.length - known.length;
   doc = {
     ...doc,

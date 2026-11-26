@@ -1,12 +1,14 @@
-import { parentCode, topicDisplay, topicOf, TOPICS, type Topic, type TopicNames } from '@/model/topics';
+import { bankTopicDisplay, VIEW_SECTIONS, viewSectionOf, type ViewTopic } from '@/model/mcqView';
+import { mcqTag, mcqTopic } from '@/model/topicSchemes';
+import { parentCode, type TopicNames } from '@/model/topics';
 import type { TopicEntry } from './pack';
 
 /**
- * The Past paper bank's topics under their syllabus part, A to J and the electives (k-0446).
- * The parts and their names are the editor's own syllabus (`model/topics.ts`), never a list
- * of the bank's: a topic says which of the editor's topic codes it covers (`syllabus` in the
- * manifest, the codes its questions are tagged with), and its part is the first code's
- * coarse topic. Inside a part the topics keep the list's order.
+ * The Past paper bank's topics under their section, A to J (k-0446; since k-0569 the
+ * sections of the teacher's MCQ topics, `model/mcqView.ts`, the same the 題庫 groups by).
+ * A topic whose id is one of the MCQ topics sits in that topic's section (Circular Flow in
+ * F, as on DSEcon Mentor); any other is placed by the first of its `syllabus` codes this
+ * build reads. Inside a section the topics keep the list's order.
  */
 
 /** The group of topics no known part claims (no codes, or only a later build's). */
@@ -15,19 +17,19 @@ export const OTHER_PART = '';
 export interface TopicGroup {
   /** The coarse code (`C`), or `OTHER_PART`. */
   code: string;
-  /** The syllabus part; absent for `OTHER_PART`. */
-  part?: Topic;
+  /** The section; absent for `OTHER_PART`. */
+  part?: ViewTopic;
   topics: TopicEntry[];
   /** The topics' question counts added up; absent when none of them says. */
   questions?: number;
 }
 
-/** The coarse code of the first of the topic's codes this build knows: `["C.ped"]` → `C`. */
+/** The section a topic sits in: its MCQ topic's (`circular-flow` → F), else its first readable code's (`["C.ped"]` → C). */
 export function partOf(entry: TopicEntry): string | undefined {
+  if (mcqTopic(entry.id)) return viewSectionOf(mcqTag(entry.id));
   for (const code of entry.syllabus ?? []) {
-    const coarse = parentCode(code) ?? code;
-    const topic = topicOf(coarse);
-    if (topic && !topic.parent) return coarse;
+    const section = viewSectionOf(parentCode(code) ?? code);
+    if (section) return section;
   }
   return undefined;
 }
@@ -46,7 +48,7 @@ export function groupTopics(topics: readonly TopicEntry[]): TopicGroup[] | undef
     byPart.set(code, [...(byPart.get(code) ?? []), entry]);
   }
   if (!named) return undefined;
-  const order: Array<{ code: string; part?: Topic }> = [...TOPICS.map((part) => ({ code: part.code, part })), { code: OTHER_PART }];
+  const order: Array<{ code: string; part?: ViewTopic }> = [...VIEW_SECTIONS.map((part) => ({ code: part.code, part })), { code: OTHER_PART }];
   return order.flatMap(({ code, part }) => {
     const members = byPart.get(code);
     if (!members) return [];
@@ -67,7 +69,7 @@ export function groupOf(groups: readonly TopicGroup[] | undefined, topicId: stri
 
 /** A part's name in the question language (`names`); `other` for `OTHER_PART`. */
 export function partName(group: TopicGroup, names: TopicNames, other: string): string {
-  return group.part ? topicDisplay(group.code, names) : other;
+  return group.part ? bankTopicDisplay(group.code, names) : other;
 }
 
 /**
