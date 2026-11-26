@@ -282,7 +282,7 @@ const mentor: ProviderPreset = {
   hk: { status: 'available', note: 'Works in Hong Kong without a VPN.' },
   blurb: 'No key needed: sign in and pay for what you use.',
   privacy:
-    "Sent to DSEcon Mentor's server, which passes them to Google Gemini (paid service: not used to improve Google's products). Questions you ask it to tag by topic also go to TypeSafe (in the US), which doesn't train on them. Mentor keeps a usage record (when, which feature, cost), never the text.",
+    "Sent to DSEcon Mentor's server, which passes them to Google Gemini (paid service: not used to improve Google's products). Questions you ask it to tag by topic, and your studio messages with short summaries of the drafts on screen, also go to TypeSafe (in the US), which doesn't train on them. Mentor keeps a usage record (when, which feature, cost), never the text.",
   family: 'gemini',
   baseUrl: `${MENTOR_API}/ai`,
   baseUrlEditable: false,

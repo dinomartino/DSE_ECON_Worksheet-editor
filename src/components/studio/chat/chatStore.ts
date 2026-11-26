@@ -435,6 +435,19 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       setStep(chatId, turnId, { kind: 'understand', state: 'run' });
       const ready = await resolve(chatId, turnId, signal);
       if (!ready) return;
+      // The pre-router (k-0567, u-5sy9): on Mentor credits Jev reads it first; an edit, one more
+      // like a draft or an unclear one is done now, without the main model's read. Not when the
+      // words already read as new questions: those need the main read anyway, and Jev's round
+      // trip would only delay it (k-0567's run: +5 s on Mentor dev, nothing saved).
+      if (!onlyRead && deps.engine.read && reading.local.kind !== 'new') {
+        const route = await deps.engine.read({ text, drafts: briefsOf(chat), recent: recentOf(chat), localParts: reading.local.parts }, ready.deps, signal);
+        if (signal.aborted) return;
+        if (route?.route === 'act') {
+          const intent: TurnIntent = { kind: route.kind, drafts: route.drafts, how: route.how ?? reading.local.how, parts: route.parts ?? reading.local.parts };
+          setStep(chatId, turnId, { kind: 'understand', state: 'done', intent: intent.kind, drafts: intent.drafts, by: 'ai' });
+          return act(chatId, turnId, intent, text, route.wanted, signal);
+        }
+      }
       const tagged = Object.fromEntries(mine.filter((r) => r.keyPoint).map((r) => [r.source.id, r.keyPoint as string]));
       const current = chat.picks.map((p) => p.code);
       const picked = await deps.engine.pick(

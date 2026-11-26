@@ -1,0 +1,1687 @@
+{
+ "note": "k-0567 (u-5sy9): the 80 invented teacher messages of k-0567's turn-read test (60 + 20 held out; no real teacher content). want.kind per understand.ts; for edits want.how and want.parts (must touch), partsOk = parts also acceptable (null = any: a difficulty-only change).",
+ "pages": {
+  "en": [
+   {
+    "no": 1,
+    "stem": "The price of good X rises from $10 to $12 and the quantity demanded falls from 100 to 90 units. The demand for X is",
+    "statements": [],
+    "options": [
+     "elastic.",
+     "inelastic.",
+     "unitarily elastic.",
+     "perfectly inelastic."
+    ],
+    "answer": "B",
+    "table": false,
+    "diagram": false,
+    "state": "open",
+    "explanation": "Percentage change in quantity demanded (10%) is smaller than the percentage change in price (20%), so demand is inelastic."
+   },
+   {
+    "no": 2,
+    "stem": "The table shows the supply schedule of good Y.\n| Price ($) | 4 | 6 | 8 |\n| Quantity supplied | 20 | 30 | 40 |\nThe price elasticity of supply between $4 and $6 is",
+    "statements": [],
+    "options": [
+     "0.5.",
+     "1.",
+     "1.5.",
+     "2."
+    ],
+    "answer": "B",
+    "table": true,
+    "diagram": false,
+    "state": "open",
+    "explanation": "Quantity supplied rises by 50% when price rises by 50%, so PES = 1."
+   },
+   {
+    "no": 3,
+    "stem": "Refer to the diagram. The government imposes a unit tax on good Z. Which of the following are correct?",
+    "statements": [
+     "The supply curve shifts upwards.",
+     "Consumers bear the whole tax.",
+     "The quantity transacted falls."
+    ],
+    "options": [
+     "(1) and (2) only",
+     "(1) and (3) only",
+     "(2) and (3) only",
+     "(1), (2) and (3)"
+    ],
+    "answer": "B",
+    "table": false,
+    "diagram": true,
+    "state": "open",
+    "explanation": "A unit tax shifts supply upwards by the tax; with a downward-sloping demand curve consumers bear only part of the tax, and the quantity falls."
+   }
+  ],
+  "zh": [
+   {
+    "no": 1,
+    "stem": "政府為大米設定低於均衡價格的最高限價。以下哪項是最可能出現的結果？",
+    "statements": [],
+    "options": [
+     "大米出現過剩。",
+     "大米出現短缺。",
+     "大米的交易量上升。",
+     "大米的需求下降。"
+    ],
+    "answer": "B",
+    "table": false,
+    "diagram": false,
+    "state": "open",
+    "explanation": "最高限價低於均衡價格時，需求量大於供應量，出現短缺。"
+   },
+   {
+    "no": 2,
+    "stem": "下表顯示某商品的價格和需求量。\n| 價格 ($) | 10 | 12 |\n| 需求量 | 100 | 70 |\n當價格由 $10 上升至 $12，總收入會",
+    "statements": [],
+    "options": [
+     "上升。",
+     "下降。",
+     "不變。",
+     "無法確定。"
+    ],
+    "answer": "B",
+    "table": true,
+    "diagram": false,
+    "state": "open",
+    "explanation": "總收入由 $1000 下降至 $840，需求富彈性。"
+   },
+   {
+    "no": 3,
+    "stem": "參看下圖。生產成本上升後，以下哪些是正確的？",
+    "statements": [
+     "供應曲線向左移。",
+     "均衡價格上升。",
+     "均衡數量上升。"
+    ],
+    "options": [
+     "只有 (1) 和 (2)",
+     "只有 (1) 和 (3)",
+     "只有 (2) 和 (3)",
+     "(1)、(2) 和 (3)"
+    ],
+    "answer": "A",
+    "table": false,
+    "diagram": true,
+    "state": "open",
+    "explanation": "成本上升令供應減少，供應曲線向左移，均衡價格上升，均衡數量下降。"
+   }
+  ]
+ },
+ "rows": [
+  {
+   "id": "n01",
+   "lang": "en",
+   "page": "en",
+   "text": "Give me two questions on the law of diminishing marginal returns",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "B.costs"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n02",
+   "lang": "en",
+   "page": "en",
+   "text": "Write 2 MCQs on comparative advantage",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "J.trade",
+    "EL2.trade-theory"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n03",
+   "lang": "en",
+   "page": "en",
+   "text": "Now one on the money multiplier, please",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "H.money-supply"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n04",
+   "lang": "en",
+   "page": "en",
+   "text": "next, something on consumer surplus with a diagram",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "C.surplus"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n05",
+   "lang": "en",
+   "page": "en",
+   "text": "I need a question testing the difference between M1 and M2",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "H.money-supply"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n06",
+   "lang": "en",
+   "page": "en",
+   "text": "give me a hard one on price discrimination",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "EL1.pricing"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n07",
+   "lang": "en",
+   "page": "en",
+   "text": "Write a question about positive vs normative statements",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "A.positive-normative"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n08",
+   "lang": "en",
+   "page": "en",
+   "text": "Let's move on: one question on expansionary fiscal policy in a recession",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "I.fiscal"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n09",
+   "lang": "en",
+   "page": "en",
+   "text": "Write a question on the functions of money",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "H.money"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n10",
+   "lang": "zh",
+   "page": "zh",
+   "text": "出兩題關於比較優勢嘅題目",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "J.trade",
+    "EL2.trade-theory"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n11",
+   "lang": "zh",
+   "page": "zh",
+   "text": "幫我出一題有關貨幣乘數",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "H.money-supply"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n12",
+   "lang": "zh",
+   "page": "zh",
+   "text": "再嚟一題，考公共物品嘅特徵",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "B.goods"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n13",
+   "lang": "zh",
+   "page": "zh",
+   "text": "我想要一條關於堅尼系數嘅選擇題",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "E.equity"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n14",
+   "lang": "zh",
+   "page": "zh",
+   "text": "出三題關於有限責任",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "B.ownership"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n15",
+   "lang": "zh",
+   "page": "zh",
+   "text": "轉個課題：通脹對債務人同債權人嘅影響",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "I.inflation"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n16",
+   "lang": "mixed",
+   "page": "zh",
+   "text": "出一題 about price floor 同 surplus",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "C.intervention"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n17",
+   "lang": "mixed",
+   "page": "en",
+   "text": "write 2 題 on 聯繫匯率",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "J.exchange-rate",
+    "I.monetary"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n18",
+   "lang": "mixed",
+   "page": "en",
+   "text": "next 題 please, topic 係 GDP deflator",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "F.price-level"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "n19",
+   "lang": "mixed",
+   "page": "zh",
+   "text": "可唔可以出一題 division of labour 嘅 disadvantages",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "B.division-of-labour"
+   ],
+   "set": "main"
+  },
+  {
+   "id": "e01",
+   "lang": "en",
+   "page": "en",
+   "text": "draft 1: change the numbers so the answer is elastic",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     1
+    ],
+    "how": "change",
+    "parts": [
+     "numbers"
+    ]
+   },
+   "set": "main",
+   "partsOk": [
+    "options",
+    "answer",
+    "stem"
+   ]
+  },
+  {
+   "id": "e02",
+   "lang": "en",
+   "page": "en",
+   "text": "The table in the second draft has too many columns, cut it to two prices",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     2
+    ],
+    "how": "change",
+    "parts": [
+     "table"
+    ]
+   },
+   "set": "main",
+   "partsOk": [
+    "numbers",
+    "stem"
+   ]
+  },
+  {
+   "id": "e03",
+   "lang": "en",
+   "page": "en",
+   "text": "option D in Q3 is too obviously wrong, replace it",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     3
+    ],
+    "how": "change",
+    "parts": [
+     "options"
+    ]
+   },
+   "set": "main",
+   "partsOk": []
+  },
+  {
+   "id": "e04",
+   "lang": "en",
+   "page": "en",
+   "text": "can you make all three a bit more challenging",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     1,
+     2,
+     3
+    ],
+    "how": "harder",
+    "parts": []
+   },
+   "set": "main",
+   "partsOk": null
+  },
+  {
+   "id": "e05",
+   "lang": "en",
+   "page": "en",
+   "text": "the diagram one: label the axes properly",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     3
+    ],
+    "how": "change",
+    "parts": [
+     "diagram"
+    ]
+   },
+   "set": "main",
+   "partsOk": []
+  },
+  {
+   "id": "e06",
+   "lang": "en",
+   "page": "en",
+   "text": "swap the stem of draft 2 to talk about apples instead",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     2
+    ],
+    "how": "change",
+    "parts": [
+     "stem"
+    ]
+   },
+   "set": "main",
+   "partsOk": [
+    "options",
+    "numbers"
+   ]
+  },
+  {
+   "id": "e07",
+   "lang": "en",
+   "page": "en",
+   "text": "the options are too long",
+   "recent": [
+    1
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     1
+    ],
+    "how": "change",
+    "parts": [
+     "options"
+    ]
+   },
+   "set": "main",
+   "partsOk": []
+  },
+  {
+   "id": "e08",
+   "lang": "en",
+   "page": "en",
+   "text": "the first and third ones need shorter stems",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     1,
+     3
+    ],
+    "how": "change",
+    "parts": [
+     "stem"
+    ]
+   },
+   "set": "main",
+   "partsOk": []
+  },
+  {
+   "id": "e09",
+   "lang": "en",
+   "page": "en",
+   "text": "everything should say HK$ instead of $",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     1,
+     2,
+     3
+    ],
+    "how": "change",
+    "parts": []
+   },
+   "set": "main",
+   "partsOk": [
+    "stem",
+    "options",
+    "numbers",
+    "table",
+    "statements"
+   ]
+  },
+  {
+   "id": "e10",
+   "lang": "zh",
+   "page": "zh",
+   "text": "第二題太易，改深啲",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     2
+    ],
+    "how": "harder",
+    "parts": []
+   },
+   "set": "main",
+   "partsOk": null
+  },
+  {
+   "id": "e11",
+   "lang": "zh",
+   "page": "zh",
+   "text": "草稿3嘅選項唔夠清楚，重寫",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     3
+    ],
+    "how": "change",
+    "parts": [
+     "options"
+    ]
+   },
+   "set": "main",
+   "partsOk": []
+  },
+  {
+   "id": "e12",
+   "lang": "zh",
+   "page": "zh",
+   "text": "有個表嗰題啲數字改細啲",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     2
+    ],
+    "how": "change",
+    "parts": [
+     "numbers"
+    ]
+   },
+   "set": "main",
+   "partsOk": [
+    "table"
+   ]
+  },
+  {
+   "id": "e13",
+   "lang": "zh",
+   "page": "zh",
+   "text": "全部都改用 DSE 卷嘅用語",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     1,
+     2,
+     3
+    ],
+    "how": "change",
+    "parts": []
+   },
+   "set": "main",
+   "partsOk": [
+    "stem",
+    "options",
+    "statements",
+    "language"
+   ]
+  },
+  {
+   "id": "e14",
+   "lang": "zh",
+   "page": "zh",
+   "text": "題幹太長，縮短啲",
+   "recent": [
+    1
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     1
+    ],
+    "how": "change",
+    "parts": [
+     "stem"
+    ]
+   },
+   "set": "main",
+   "partsOk": []
+  },
+  {
+   "id": "e15",
+   "lang": "zh",
+   "page": "zh",
+   "text": "第一同第三題嘅答案要改做 C",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     1,
+     3
+    ],
+    "how": "change",
+    "parts": [
+     "answer"
+    ]
+   },
+   "set": "main",
+   "partsOk": [
+    "options"
+   ]
+  },
+  {
+   "id": "e16",
+   "lang": "zh",
+   "page": "zh",
+   "text": "有圖嗰條唔啱，均衡數量應該下降先啱",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     3
+    ],
+    "how": "change",
+    "parts": []
+   },
+   "set": "main",
+   "partsOk": [
+    "diagram",
+    "statements",
+    "answer",
+    "options",
+    "explanation"
+   ]
+  },
+  {
+   "id": "e17",
+   "lang": "mixed",
+   "page": "en",
+   "text": "Q2 個 table 加多一行",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     2
+    ],
+    "how": "change",
+    "parts": [
+     "table"
+    ]
+   },
+   "set": "main",
+   "partsOk": [
+    "numbers"
+   ]
+  },
+  {
+   "id": "e18",
+   "lang": "mixed",
+   "page": "en",
+   "text": "draft 1 啲 options 太相似，change 下",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     1
+    ],
+    "how": "change",
+    "parts": [
+     "options"
+    ]
+   },
+   "set": "main",
+   "partsOk": []
+  },
+  {
+   "id": "e19",
+   "lang": "mixed",
+   "page": "zh",
+   "text": "make 第三題 harder",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     3
+    ],
+    "how": "harder",
+    "parts": []
+   },
+   "set": "main",
+   "partsOk": null
+  },
+  {
+   "id": "e20",
+   "lang": "zh",
+   "page": "zh",
+   "text": "太多字",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "chip": 2,
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     2
+    ],
+    "how": "change",
+    "parts": []
+   },
+   "set": "main",
+   "partsOk": [
+    "stem",
+    "options",
+    "statements"
+   ]
+  },
+  {
+   "id": "a01",
+   "lang": "en",
+   "page": "en",
+   "text": "one more like the first one",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "another",
+    "drafts": [
+     1
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "a02",
+   "lang": "zh",
+   "page": "zh",
+   "text": "再出一題同第三題差唔多嘅",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "another",
+    "drafts": [
+     3
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "a03",
+   "lang": "mixed",
+   "page": "en",
+   "text": "另一條 similar to Q2 please",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "another",
+    "drafts": [
+     2
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "a04",
+   "lang": "en",
+   "page": "en",
+   "text": "same style as draft 3 but a new one, keep draft 3 as it is",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "another",
+    "drafts": [
+     3
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "q01",
+   "lang": "en",
+   "page": "en",
+   "text": "why is the answer B in draft 1?",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "ask",
+    "drafts": [
+     1
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "q02",
+   "lang": "en",
+   "page": "en",
+   "text": "Is draft 3 too hard for Form 5?",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "ask",
+    "drafts": [
+     3
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "q03",
+   "lang": "zh",
+   "page": "zh",
+   "text": "點解第二題答案係 B？",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "ask",
+    "drafts": [
+     2
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "q04",
+   "lang": "mixed",
+   "page": "zh",
+   "text": "第一題嘅 explanation 啱唔啱？",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "ask",
+    "drafts": [
+     1
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "q05",
+   "lang": "en",
+   "page": "en",
+   "text": "how did you get 1 as the PES in Q2?",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "ask",
+    "drafts": [
+     2
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "q06",
+   "lang": "zh",
+   "page": "zh",
+   "text": "草稿3嘅第 (3) 句點解錯？",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "ask",
+    "drafts": [
+     3
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "q07",
+   "lang": "zh",
+   "page": "zh",
+   "text": "呢條係咪 DSE 程度？",
+   "recent": [
+    2
+   ],
+   "want": {
+    "kind": "ask",
+    "drafts": [
+     2
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "q08",
+   "lang": "en",
+   "page": "en",
+   "text": "what does option C in Q1 mean exactly",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "ask",
+    "drafts": [
+     1
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "q09",
+   "lang": "en",
+   "page": "en",
+   "text": "Why not D?",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "chip": 3,
+   "want": {
+    "kind": "ask",
+    "drafts": [
+     3
+    ]
+   },
+   "set": "main"
+  },
+  {
+   "id": "u01",
+   "lang": "en",
+   "page": "en",
+   "text": "this one needs a better distractor",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "unsure"
+   },
+   "set": "main"
+  },
+  {
+   "id": "u02",
+   "lang": "zh",
+   "page": "zh",
+   "text": "改深少少",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "unsure"
+   },
+   "set": "main"
+  },
+  {
+   "id": "u03",
+   "lang": "en",
+   "page": "en",
+   "text": "draft 4: the numbers are off",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "unsure"
+   },
+   "set": "main"
+  },
+  {
+   "id": "u04",
+   "lang": "zh",
+   "page": "zh",
+   "text": "第五題太長",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "unsure"
+   },
+   "set": "main"
+  },
+  {
+   "id": "u05",
+   "lang": "en",
+   "page": "en",
+   "text": "the options here are confusing",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "unsure"
+   },
+   "set": "main"
+  },
+  {
+   "id": "u06",
+   "lang": "zh",
+   "page": "zh",
+   "text": "呢題啲數唔啱",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "unsure"
+   },
+   "set": "main"
+  },
+  {
+   "id": "u07",
+   "lang": "mixed",
+   "page": "en",
+   "text": "fix it pls，啲數錯咗",
+   "recent": [
+    1,
+    2
+   ],
+   "want": {
+    "kind": "unsure"
+   },
+   "set": "main"
+  },
+  {
+   "id": "u08",
+   "lang": "zh",
+   "page": "zh",
+   "text": "呢個要改",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "unsure"
+   },
+   "set": "main"
+  },
+  {
+   "id": "h01",
+   "lang": "en",
+   "page": "en",
+   "text": "the stem is a bit long",
+   "recent": [
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     3
+    ],
+    "how": "change",
+    "parts": [
+     "stem"
+    ]
+   },
+   "set": "holdout",
+   "partsOk": []
+  },
+  {
+   "id": "h02",
+   "lang": "en",
+   "page": "en",
+   "text": "the answer key looks wrong",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "unsure"
+   },
+   "set": "holdout"
+  },
+  {
+   "id": "h03",
+   "lang": "zh",
+   "page": "zh",
+   "text": "啲選項太長",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "unsure"
+   },
+   "set": "holdout"
+  },
+  {
+   "id": "h04",
+   "lang": "zh",
+   "page": "zh",
+   "text": "全部改易啲",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     1,
+     2,
+     3
+    ],
+    "how": "easier",
+    "parts": []
+   },
+   "set": "holdout",
+   "partsOk": null
+  },
+  {
+   "id": "h05",
+   "lang": "en",
+   "page": "en",
+   "text": "both the table question and the diagram question need new numbers",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     2,
+     3
+    ],
+    "how": "change",
+    "parts": [
+     "numbers"
+    ]
+   },
+   "set": "holdout",
+   "partsOk": [
+    "table",
+    "diagram"
+   ]
+  },
+  {
+   "id": "h06",
+   "lang": "mixed",
+   "page": "en",
+   "text": "Q1 改做 four statements 嘅 format",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     1
+    ],
+    "how": "change",
+    "parts": [
+     "statements"
+    ]
+   },
+   "set": "holdout",
+   "partsOk": [
+    "stem",
+    "options"
+   ]
+  },
+  {
+   "id": "h07",
+   "lang": "en",
+   "page": "en",
+   "text": "write one about the circular flow of income",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "A.circular-flow"
+   ],
+   "set": "holdout"
+  },
+  {
+   "id": "h08",
+   "lang": "zh",
+   "page": "zh",
+   "text": "出一題關於生產者剩餘",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "C.surplus"
+   ],
+   "set": "holdout"
+  },
+  {
+   "id": "h09",
+   "lang": "en",
+   "page": "en",
+   "text": "I'd like a question on the determinants of price elasticity of supply",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "C.pes"
+   ],
+   "set": "holdout"
+  },
+  {
+   "id": "h10",
+   "lang": "mixed",
+   "page": "zh",
+   "text": "出兩題 on 失業率計算",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "F.unemployment",
+    "I.unemployment"
+   ],
+   "set": "holdout"
+  },
+  {
+   "id": "h11",
+   "lang": "zh",
+   "page": "zh",
+   "text": "可唔可以出一題講商業銀行同中央銀行嘅分別",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "H.banks"
+   ],
+   "set": "holdout"
+  },
+  {
+   "id": "h12",
+   "lang": "en",
+   "page": "en",
+   "text": "Give me a question on the effects of a tariff",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "J.trade"
+   ],
+   "set": "holdout"
+  },
+  {
+   "id": "h13",
+   "lang": "en",
+   "page": "en",
+   "text": "why is statement (2) wrong in the diagram one?",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "ask",
+    "drafts": [
+     3
+    ]
+   },
+   "set": "holdout"
+  },
+  {
+   "id": "h14",
+   "lang": "zh",
+   "page": "zh",
+   "text": "第二題點樣計出嚟？",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "ask",
+    "drafts": [
+     2
+    ]
+   },
+   "set": "holdout"
+  },
+  {
+   "id": "h15",
+   "lang": "en",
+   "page": "en",
+   "text": "another one in the same style as the table question",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "another",
+    "drafts": [
+     2
+    ]
+   },
+   "set": "holdout"
+  },
+  {
+   "id": "h16",
+   "lang": "zh",
+   "page": "zh",
+   "text": "第六題改易啲",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "unsure"
+   },
+   "set": "holdout"
+  },
+  {
+   "id": "h17",
+   "lang": "en",
+   "page": "en",
+   "text": "fix the wording",
+   "recent": [
+    2
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     2
+    ],
+    "how": "change",
+    "parts": []
+   },
+   "set": "holdout",
+   "partsOk": [
+    "stem",
+    "options",
+    "statements",
+    "language"
+   ]
+  },
+  {
+   "id": "h18",
+   "lang": "zh",
+   "page": "zh",
+   "text": "呢題答案好似唔啱喎",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "unsure"
+   },
+   "set": "holdout"
+  },
+  {
+   "id": "h19",
+   "lang": "mixed",
+   "page": "en",
+   "text": "make 全部 options shorter",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "edit",
+    "drafts": [
+     1,
+     2,
+     3
+    ],
+    "how": "change",
+    "parts": [
+     "options"
+    ]
+   },
+   "set": "holdout",
+   "partsOk": []
+  },
+  {
+   "id": "h20",
+   "lang": "en",
+   "page": "en",
+   "text": "a question on monopoly vs perfect competition features",
+   "recent": [
+    1,
+    2,
+    3
+   ],
+   "want": {
+    "kind": "new"
+   },
+   "keyPoints": [
+    "D.structure"
+   ],
+   "set": "holdout"
+  }
+ ]
+}

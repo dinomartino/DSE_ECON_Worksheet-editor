@@ -3,6 +3,9 @@ import { parseTurn } from '@/questionStudio/understand';
 import { decide, readLocally } from './intent';
 import { PAGE, PHRASINGS } from './intentPhrasings';
 import recorded from './intentPhrasings.recorded.json';
+import jevRecorded from './intentPhrasings.jev.json';
+import { routeStudioRead } from '@/questionStudio/jevRead';
+import type { DecideAnswer } from '@/ai/types';
 
 /**
  * k-0535 (u-yu7s): a teacher's message once drafts exist, in any wording (EN, 中文, mixed),
@@ -21,6 +24,27 @@ function finalRead(p: (typeof PHRASINGS)[number]) {
   return { read: decide(local, reply === undefined ? undefined : parseTurn(reply, nos)), fast, reply };
 }
 
+const jev = (jevRecorded as unknown as { answers: Record<string, { model: string; fallback: boolean; answers: Record<string, DecideAnswer> }> }).answers;
+
+/**
+ * On Mentor credits (k-0567, u-5sy9): the computer's sure rows as before; then Jev's recorded
+ * read (`intentPhrasings.jev.json`) where it acts; else the main model's recorded read.
+ */
+function finalReadWithJev(p: (typeof PHRASINGS)[number]) {
+  const local = readLocally(p.text, PAGE, { ...(p.chip ? { chip: p.chip } : {}), recent: p.recent });
+  if (local.sure && (local.kind === 'edit' || local.kind === 'another')) return { read: local, by: 'computer' as const };
+  const chip = p.chip ?? (local.sure && local.kind === 'ask' && local.drafts.length === 1 ? local.drafts[0] : undefined);
+  if (chip === undefined && local.kind !== 'new') {
+    const answer = jev[p.id];
+    if (answer) {
+      const route = routeStudioRead(answer, { text: p.text, drafts: PAGE, recent: p.recent, localParts: local.parts });
+      if (route.route === 'act') return { read: { kind: route.kind, drafts: route.drafts, how: route.how ?? local.how, parts: route.parts ?? local.parts }, by: 'jev' as const };
+    }
+  }
+  const reply = replies[p.id];
+  return { read: decide(local, reply === undefined ? undefined : parseTurn(reply, nos)), by: 'main' as const, reply };
+}
+
 describe('reading a message with the drafts (k-0535): ~40 real phrasings', () => {
   it('has about forty, in English, Chinese and mixed', () => {
     expect(PHRASINGS.length).toBeGreaterThanOrEqual(40);
@@ -35,6 +59,26 @@ describe('reading a message with the drafts (k-0535): ~40 real phrasings', () =>
     expect(read.kind).toBe(p.want.kind);
     if (p.want.drafts) expect(read.drafts).toEqual(p.want.drafts);
     if (read.kind === 'ask') expect(read.reply?.length ?? 0).toBeGreaterThan(10);
+  });
+
+  it.each(PHRASINGS.map((p) => [p.id, p.text, p] as const))('with the Jev pre-router (k-0567): %s %s', (_id, _text, p) => {
+    const local = readLocally(p.text, PAGE, { ...(p.chip ? { chip: p.chip } : {}), recent: p.recent });
+    const fast = local.sure && (local.kind === 'edit' || local.kind === 'another');
+    const asked = !fast && p.chip === undefined && !(local.sure && local.kind === 'ask') && local.kind !== 'new';
+    if (asked) expect(jev[p.id], 'record this row: evals/intentRecord.eval.ts').toBeDefined();
+    const { read, by } = finalReadWithJev(p);
+    expect(read.kind).toBe(p.want.kind);
+    if (p.want.drafts) expect(read.drafts).toEqual(p.want.drafts);
+    // New questions and questions about a draft always keep the main model's read.
+    if (p.want.kind === 'new' || p.want.kind === 'ask') expect(by).not.toBe('jev');
+  });
+
+  it('the pre-router skips the main read for most edits and every unclear row, and never for new or ask', () => {
+    const rows = PHRASINGS.map((p) => ({ p, by: finalReadWithJev(p).by }));
+    const jevRows = rows.filter((r) => r.by === 'jev');
+    expect(jevRows.every((r) => r.p.want.kind === 'edit' || r.p.want.kind === 'another' || r.p.want.kind === 'unsure')).toBe(true);
+    expect(rows.filter((r) => r.p.want.kind === 'unsure').every((r) => r.by === 'jev')).toBe(true);
+    expect(jevRows.length).toBeGreaterThanOrEqual(5);
   });
 
   it('a Chinese question gets a Chinese answer', () => {
