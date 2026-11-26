@@ -1,4 +1,6 @@
-import { rollupTopic, topicNamesFor, topicOf, TOPICS } from '@/model/topics';
+import { GAP_HOMES, mcqCandidates, viewCodesOf, viewOrder, viewSectionOf, viewSections, viewTopicOf } from '@/model/mcqView';
+import { mcqTag, mcqTopic } from '@/model/topicSchemes';
+import { topicNamesFor, topicOf } from '@/model/topics';
 import type { LanguageMode } from '@/model/types';
 import { paperLanguage } from '@/settings/paperLanguage';
 import { uiLanguage } from '@/i18n/language';
@@ -34,7 +36,8 @@ const words = (lang: UiLanguage) => resolveMessages(M, lang);
 export type BankLevel =
   | { kind: 'topics' }
   | { kind: 'review'; topic: TopicPick; search?: boolean }
-  | { kind: 'untagged' }
+  /** One at a time: the untagged questions, or (`pick`, k-0569) those whose EDB topic several MCQ topics share. */
+  | { kind: 'untagged'; pick?: boolean }
   | { kind: 'patterns'; topic?: string }
   /** The 題型 sort board for a coarse topic (`PatternSortBoard`). */
   | { kind: 'sort'; topic: string };
@@ -70,7 +73,7 @@ export function parseLevel(raw: string | null | undefined): BankLevel {
   if (!raw) return TOPICS_LEVEL;
   try {
     const value = JSON.parse(raw) as Partial<{ kind: string; topic: string }>;
-    if (value.kind === 'untagged') return { kind: 'untagged' };
+    if (value.kind === 'untagged') return (value as { pick?: unknown }).pick === true ? { kind: 'untagged', pick: true } : { kind: 'untagged' };
     if (value.kind === 'patterns') {
       return typeof value.topic === 'string' && topicOf(value.topic) ? { kind: 'patterns', topic: value.topic } : { kind: 'patterns' };
     }
@@ -78,7 +81,8 @@ export function parseLevel(raw: string | null | undefined): BankLevel {
       return { kind: 'sort', topic: value.topic };
     }
     if (value.kind === 'review' && typeof value.topic === 'string') {
-      if (value.topic === 'all' || topicOf(value.topic)) return { kind: 'review', topic: value.topic };
+      // A topic of the MCQ view (k-0569); an EDB code stored by an older build reads as the topics page.
+      if (value.topic === 'all' || viewTopicOf(value.topic)) return { kind: 'review', topic: value.topic };
     }
   } catch {
     // Not JSON: fall through.
@@ -90,6 +94,7 @@ export function serializeLevel(level: BankLevel): string {
   if (level.kind === 'review') return level.search ? JSON.stringify(TOPICS_LEVEL) : JSON.stringify({ kind: 'review', topic: level.topic });
   if (level.kind === 'patterns') return JSON.stringify(level.topic ? { kind: 'patterns', topic: level.topic } : { kind: 'patterns' });
   if (level.kind === 'sort') return JSON.stringify({ kind: 'sort', topic: level.topic });
+  if (level.kind === 'untagged' && level.pick) return JSON.stringify({ kind: 'untagged', pick: true });
   return JSON.stringify({ kind: level.kind });
 }
 
@@ -145,7 +150,7 @@ export interface RailEntry {
 }
 
 export interface RailSection {
-  /** A topic code, 'general' (the coarse code only) or 'none' (no topic). */
+  /** A view code (`model/mcqView.ts`), 'general' (the section letter only) or 'none' (no topic). */
   key: string;
   label: string;
   /** In reading order: by 題型 when `parts` is set. */
@@ -164,18 +169,16 @@ export interface RailPart {
   entries: RailEntry[];
 }
 
-const GUIDE_ORDER = new Map(
-  TOPICS.flatMap((topic) => [topic, ...topic.children]).map((topic, index) => [topic.code, index] as const),
-);
-
 const unique = <T>(list: readonly T[]) => [...new Set(list)];
 
 /**
- * The review rail's headings. Inside a coarse topic: its sub-topics in guide order, then
- * "General" for questions tagged only with the coarse code. Everywhere else (all
- * questions, search results): the coarse topics in guide order, then "No topic". A
- * question is listed under every heading its tags (every part's) name, each entry saying
- * where else it is; groups keep their incoming order within a section.
+ * The review rail's headings, in the teacher's MCQ topics (k-0569). Inside a section: its
+ * MCQ topics in list order, then each EDB code still to be sorted ("Market intervention ·
+ * pick the MCQ topic"), then codes no MCQ topic names, then "General" for questions tagged
+ * only with the section letter. Everywhere else (all questions, search results): the
+ * sections in order, then "No topic". A question is listed under every heading its tags
+ * (every part's) name, each entry saying where else it is; groups keep their incoming
+ * order within a section.
  */
 export function railSections(
   groups: readonly BankGroup[],
@@ -184,32 +187,34 @@ export function railSections(
   view: LanguageMode = paperLanguage(),
 ): RailSection[] {
   const m = words(lang);
-  const picked = topic === 'all' || topic === 'untagged' ? undefined : topicOf(topic);
+  const picked = topic === 'all' || topic === 'untagged' ? undefined : viewTopicOf(topic);
   const buckets = new Map<string, BankGroup[]>();
   const put = (key: string, group: BankGroup) => buckets.set(key, [...(buckets.get(key) ?? []), group]);
 
   for (const group of groups) {
     const tags = group.rows[0]?.tags ?? [];
-    if (picked && picked.parent) {
+    if (picked && picked.kind !== 'section') {
       put(picked.code, group);
     } else if (picked) {
-      const fine = unique(tags.filter((tag) => topicOf(tag)?.parent === picked.code));
+      const fine = viewCodesOf(tags).filter((code) => code !== picked.code && viewSectionOf(code) === picked.code);
       for (const code of fine.length > 0 ? fine : ['general']) put(code, group);
     } else {
-      const coarse = unique(tags.map(rollupTopic).flatMap((t) => (t ? [t.parent ?? t.code] : [])));
-      for (const code of coarse.length > 0 ? coarse : ['none']) put(code, group);
+      const sections = viewSections(tags);
+      for (const code of sections.length > 0 ? sections : ['none']) put(code, group);
     }
   }
 
   const label = (key: string) => {
     if (key === 'general') return m.general;
     if (key === 'none') return m.noTopic;
-    const found = topicOf(key);
-    return found ? (found.parent ? topicName(key, view) : `${found.code} · ${topicName(key, view)}`) : key;
+    const found = viewTopicOf(key);
+    if (!found) return key;
+    if (found.kind === 'section') return `${found.code} · ${topicName(key, view)}`;
+    return found.kind === 'pick' ? m.pickHeading(topicName(key, view)) : topicName(key, view);
   };
   const query = (key: string): SlotQuery | undefined =>
     key === 'none' ? undefined : { topic: key === 'general' && picked ? picked.code : key };
-  const rank = (key: string) => (key === 'general' || key === 'none' ? Number.MAX_SAFE_INTEGER : (GUIDE_ORDER.get(key) ?? 0));
+  const rank = (key: string) => (key === 'general' || key === 'none' ? Number.MAX_SAFE_INTEGER : viewOrder(key));
   const sections = [...buckets]
     .sort(([a], [b]) => rank(a) - rank(b))
     .map(([key, list]) =>
@@ -223,33 +228,53 @@ export function railSections(
 }
 
 /**
+ * The EDB sub-topics whose 題型 a heading lists (題型 stay on EDB codes, k-0569): an MCQ
+ * topic's own fine codes and the gap codes filed under it; an EDB code its own; none for a
+ * section or "General".
+ */
+export function patternTopicsOf(key: string): string[] {
+  const node = viewTopicOf(key);
+  if (!node || node.kind === 'section') return holdsPatterns(key) ? [key] : [];
+  if (node.kind !== 'mcq') return [key];
+  const topic = mcqTopic(node.key!)!;
+  const own = topic.edb.filter(holdsPatterns);
+  const homed = Object.keys(GAP_HOMES).filter((code) => GAP_HOMES[code] === topic.key);
+  return [...own, ...homed];
+}
+
+/**
  * A sub-topic section split by 題型: each 題型 (sub-topic, type, name) in list order, then
  * "No 題型" last. A question is listed under every 題型 it carries for this sub-topic (its
  * parts may differ). Entries keep their incoming order inside a part; the section's
  * `entries` follow the parts.
  */
 function withParts(noPattern: string, section: RailSection): RailSection {
-  if (!holdsPatterns(section.key)) return section;
+  const topics = patternTopicsOf(section.key);
+  if (topics.length === 0) return section;
   const parts = new Map<string, RailPart>();
   const none: RailEntry[] = [];
   for (const entry of section.entries) {
     const lead = entry.group.rows[0];
-    const names = lead ? rowPatterns(lead, section.key) : [];
-    if (!lead || names.length === 0) {
+    const found = lead ? topics.flatMap((code) => rowPatterns(lead, code).map((name) => ({ code, name }))) : [];
+    if (!lead || found.length === 0) {
       none.push({ ...entry, key: `${section.key}|none|${entry.group.rootId}` });
       continue;
     }
-    for (const name of names) {
-      const key = `${lead.typeId}\u0000${name.toLocaleLowerCase()}`;
+    for (const { code, name } of found) {
+      // One sub-topic (an EDB heading) keeps the keys it always had; an MCQ topic adds the code.
+      const own = code === section.key;
+      const key = own ? `${lead.typeId}\u0000${name.toLocaleLowerCase()}` : `${code}\u0000${lead.typeId}\u0000${name.toLocaleLowerCase()}`;
       const part = parts.get(key) ?? {
         key,
         label: name,
         kind: typeName(lead.typeId),
-        pattern: { topic: section.key, typeId: lead.typeId, name },
+        pattern: { topic: code, typeId: lead.typeId, name },
         entries: [],
       };
       // The entry key lands in a DOM attribute and a selector: no NUL there.
-      const entryKey = `${section.key}|${lead.typeId}/${name.toLocaleLowerCase()}|${entry.group.rootId}`;
+      const entryKey = own
+        ? `${section.key}|${lead.typeId}/${name.toLocaleLowerCase()}|${entry.group.rootId}`
+        : `${section.key}|${code}/${lead.typeId}/${name.toLocaleLowerCase()}|${entry.group.rootId}`;
       part.entries.push({ ...entry, key: entryKey, query: { pattern: part.pattern! } });
       parts.set(key, part);
     }
@@ -388,12 +413,43 @@ export const SUGGESTION_COUNT = 5;
 /** At most this many keys go to topics the question's own words point to, so neighbours still show. */
 export const TEXT_SUGGESTION_COUNT = 3;
 
+/** Whether a view code is an MCQ topic: what the tagging keys offer (k-0569). */
+const isMcqCode = (code: string) => viewTopicOf(code)?.kind === 'mcq';
+
+const plain = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
 /**
- * The topics offered for an untagged question, best first. First those its own words point
- * to (`fromText`, `src/library/termTopics.ts:textTopics`, the best three). Then the topic
- * codes on the other questions in the same document: most questions first, then the
- * nearest by printed number, then guide order. Then the codes used most across the whole
- * bank (distinct questions). Free tags are never offered.
+ * Glossary hits (EDB codes, `termTopics.ts:textTopics`) as MCQ topics: a code with one MCQ
+ * topic (or a gap home) becomes it; a code with several becomes those whose name a hit
+ * term names ("price ceiling" → Price Ceiling), else all of them. Hits on the same topic
+ * merge; most mentioned first, as before.
+ */
+export function mcqTextTopics(hits: readonly TextTopic[]): TextTopic[] {
+  const out = new Map<string, TextTopic>();
+  for (const hit of hits) {
+    const candidates = mcqCandidates(hit.code);
+    const terms = hit.terms.map(plain);
+    const named = candidates.filter((key) => {
+      const name = plain(mcqTopic(key)!.en);
+      return terms.some((term) => term.length > 0 && (name.includes(term) || term.includes(name)));
+    });
+    for (const key of named.length > 0 ? named : candidates) {
+      const code = mcqTag(key);
+      const entry = out.get(code) ?? { code, hits: 0, terms: [] };
+      entry.hits += hit.hits;
+      entry.terms = [...new Set([...entry.terms, ...hit.terms])];
+      out.set(code, entry);
+    }
+  }
+  return [...out.values()].sort((a, b) => b.hits - a.hits || viewOrder(a.code) - viewOrder(b.code));
+}
+
+/**
+ * The MCQ topics offered for an untagged question, best first. First those its own words
+ * point to (`fromText`, already as MCQ topics: `mcqTextTopics`, the best three). Then the
+ * MCQ topics of the other questions in the same document: most questions first, then the
+ * nearest by printed number, then list order. Then those used most across the whole bank
+ * (distinct questions). Free tags, sections and codes still to be sorted are never offered.
  */
 export function suggestTopics(
   target: Pick<BankRow, 'docId' | 'rootId' | 'number'>,
@@ -404,7 +460,7 @@ export function suggestTopics(
   const local = new Map<string, { roots: Set<string>; distance: number }>();
   const overall = new Map<string, Set<string>>();
   for (const row of rows) {
-    const codes = [...new Set(row.tags)].filter((tag) => topicOf(tag));
+    const codes = viewCodesOf(row.tags).filter(isMcqCode);
     for (const code of codes) {
       overall.set(code, (overall.get(code) ?? new Set()).add(row.rootId));
       if (row.docId !== target.docId || row.rootId === target.rootId) continue;
@@ -416,7 +472,7 @@ export function suggestTopics(
       local.set(code, entry);
     }
   }
-  const guide = (code: string) => GUIDE_ORDER.get(code) ?? Number.MAX_SAFE_INTEGER;
+  const guide = (code: string) => viewOrder(code);
   const size = (code: string) => overall.get(code)?.size ?? 0;
   const first = [...local]
     .sort(
@@ -425,8 +481,22 @@ export function suggestTopics(
     )
     .map(([code]) => code);
   const rest = [...overall.keys()].filter((code) => !local.has(code)).sort((a, b) => size(b) - size(a) || guide(a) - guide(b));
-  const text = fromText.map((topic) => topic.code).filter((code) => topicOf(code)).slice(0, TEXT_SUGGESTION_COUNT);
+  const text = fromText.map((topic) => topic.code).filter(isMcqCode).slice(0, TEXT_SUGGESTION_COUNT);
   return [...new Set([...text, ...first, ...rest])].slice(0, limit);
+}
+
+/**
+ * The MCQ topics a question still to be sorted can take: its `pick` codes' candidates, in
+ * list order, each once (k-0569). Empty for a question with nothing to pick.
+ */
+export function pickCandidates(row: Pick<BankRow, 'tags'>): string[] {
+  const codes = viewCodesOf(row.tags).filter((code) => viewTopicOf(code)?.kind === 'pick');
+  return [...new Set(codes.flatMap((code) => viewTopicOf(code)!.candidates!.map(mcqTag)))];
+}
+
+/** The `pick` codes a question holds ('C.intervention'): what "Pick the MCQ topic" resolves. */
+export function pickCodes(row: Pick<BankRow, 'tags'>): string[] {
+  return viewCodesOf(row.tags).filter((code) => viewTopicOf(code)?.kind === 'pick');
 }
 
 /**
@@ -488,9 +558,9 @@ export function latestClassUsage(rows: readonly BankRow[], lang: UiLanguage = ui
   };
 }
 
-/** The key's lines: the coarse code, then the sub-topic's (or topic's) own name; a bilingual view adds the 中文 under it. */
+/** The key's lines: the section letter, then the topic's own name; a bilingual view adds the 中文 under it. */
 export function suggestionLabel(code: string, view: LanguageMode = paperLanguage()): { code: string; name: string; zh?: string } {
-  const topic = topicOf(code);
+  const topic = viewTopicOf(code) ?? topicOf(code);
   if (!topic) return { code, name: code };
   const names = topicNamesFor(view, 'wide');
   if (names === 'both') return { code: topic.parent ?? topic.code, name: topic.en, zh: topic.zh };

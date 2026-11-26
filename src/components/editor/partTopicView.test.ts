@@ -56,8 +56,9 @@ describe('the whole-question view', () => {
   });
 
   it('pairs each topic with its 題型', () => {
+    // Topics read as the teacher's MCQ topics (k-0569); a 題型 stays on its EDB sub-topic.
     expect(topicsWithPatterns(['C.ped', 'E.efficiency', 'C.ped::Price ceiling'])).toEqual([
-      { topic: 'C.ped', pattern: 'Price ceiling' },
+      { topic: '@mcq:elasticity', pattern: 'Price ceiling' },
       { topic: 'E.efficiency' },
     ]);
   });
@@ -67,15 +68,15 @@ describe('the Outline’s tag line', () => {
   it('reads by part, with labels, when the parts differ; the tooltip names every part', () => {
     const line = outlineTagLine(tagStateOf(partedQuestion([{ tags: ['C.law-of-demand'] }, { tags: ['E.efficiency'] }, {}], ['mock'])));
     expect(line).toEqual({
-      text: '(a) Law of demand (b) Efficiency mock',
-      title: '(a) Law of demand\n(b) Efficiency\n(c) No topic yet\nTags: mock',
+      text: '(a) Relative Price & Law of Demand (b) Efficiency mock',
+      title: '(a) Relative Price & Law of Demand\n(b) Efficiency\n(c) No topic yet\nTags: mock',
       byPart: true,
     });
   });
 
   it('reads as the names alone when every part tests the same', () => {
     const line = outlineTagLine(tagStateOf(partedQuestion([{ tags: ['C.ped'] }, { tags: ['C.ped'] }])));
-    expect(line?.text).toBe('Price elasticity of demand');
+    expect(line?.text).toBe('Elasticity');
     expect(line?.byPart).toBe(false);
   });
 
@@ -87,7 +88,8 @@ describe('the Outline’s tag line', () => {
 describe('Enter in a picker that takes topics only', () => {
   it('takes the one topic the text names, and nothing when it names several or none', () => {
     expect(onlyTopic('C.ped')).toBe('C.ped');
-    expect(onlyTopic('Law of demand')).toBe('C.law-of-demand');
+    expect(onlyTopic('Law of demand')).toBe('@mcq:relative-price-law-of-demand');
+    expect(onlyTopic('@mcq:quota')).toBe('@mcq:quota');
     expect(onlyTopic('demand')).toBeUndefined();
     expect(onlyTopic('mock 2025')).toBeUndefined();
     expect(onlyTopic('  ')).toBeUndefined();

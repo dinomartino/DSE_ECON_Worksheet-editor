@@ -4,7 +4,7 @@ import { copyQuestion } from '@/model/lineage';
 import { createWorksheetFrom } from '@/model/newWorksheet';
 import { sideOf } from '@/model/excerpt';
 import { derivedTags } from '@/model/tagSlots';
-import { rollupTopic, topicOf } from '@/model/topics';
+import { viewSections, viewTopicOf } from '@/model/mcqView';
 import type { LanguageMode, Question, Worksheet } from '@/model/types';
 import { getQuestionType } from '@/registry';
 import { paperLanguage } from '@/settings/paperLanguage';
@@ -85,20 +85,15 @@ function pickedName(picks: readonly PickedQuestion[], language: LanguageMode): s
 /** The filing name of a worksheet made from picks that share no topic. */
 export const BANK_WORKSHEET_NAME = 'Questions from bank';
 
-/** The one coarse topic every question is tagged under (any part counts), if there is exactly one. */
+/** The one section every question is under in the MCQ view (any part counts), if there is exactly one. */
 export function sharedTopic(questions: readonly Question[]): { en: string; zh: string } | undefined {
   if (questions.length === 0) return undefined;
   let shared: Set<string> | undefined;
   for (const question of questions) {
-    const coarse = new Set(
-      derivedTags(question).flatMap((tag) => {
-        const topic = rollupTopic(tag);
-        return topic ? [topic.parent ?? topic.code] : [];
-      }),
-    );
+    const coarse = new Set(viewSections(derivedTags(question)));
     shared = shared ? new Set([...shared].filter((code) => coarse.has(code))) : coarse;
   }
   if (!shared || shared.size !== 1) return undefined;
-  const topic = topicOf([...shared][0]);
+  const topic = viewTopicOf([...shared][0]);
   return topic ? { en: topic.en, zh: topic.zh } : undefined;
 }

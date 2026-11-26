@@ -3,10 +3,12 @@ import { tagJob } from '@/ai/credits';
 import { presetFor } from '@/ai/providers';
 import { AiError, type CompletionRequest } from '@/ai/types';
 import { choiceQuestion, docWith, partedQuestion } from '@/library/testKit';
+import { VIEW_SECTIONS } from '@/model/mcqView';
+import { MCQ_SCHEME } from '@/model/topicSchemes';
 import { TOPICS } from '@/model/topics';
 import type { McqQuestion } from '@/model/types';
 import { scriptedClient } from '@/translate/testKit';
-import { cleanSuggestion, guideTopicsInTree, itemKey, knownCode, parseTagReply, suggestionOf, TAG_MARKER, TAG_SCHEMA, topicList, type RawTag } from './prompt';
+import { buildPayload, cleanSuggestion, guideTopicsInTree, itemKey, knownCode, listPatterns, parseTagReply, suggestionOf, TAG_MARKER, TAG_SCHEMA, topicList, type RawTag } from './prompt';
 import { tagQuestionOf } from './questions';
 import { chunkQuestions, runTagging } from './run';
 import type { TagQuestion } from './types';
@@ -21,21 +23,31 @@ const question = (n: number, patterns?: TagQuestion['patterns']): TagQuestion =>
   ...(patterns ? { patterns } : {}),
 });
 
-const raw = (over: Partial<RawTag> = {}): RawTag => ({ key: 'q1', main: 'C.ped', also: '', pattern: '', conf: 'high', why: 'Reads PED from revenue.', ...over });
+const raw = (over: Partial<RawTag> = {}): RawTag => ({ key: 'q1', main: 'elasticity', also: '', pattern: '', conf: 'high', why: 'Reads PED from revenue.', ...over });
 
 /** The keys of the questions in a request, from its payload. */
 const keysOf = (req: CompletionRequest): string[] => (JSON.parse(req.turns[req.turns.length - 1].content) as { questions: Array<{ key: string }> }).questions.map((q) => q.key);
-const answerAll = (main = 'C.ped') => (req: CompletionRequest) => JSON.stringify({ items: keysOf(req).map((key) => ({ key, main, also: '', pattern: '', conf: 'high', why: 'x' })) });
+const answerAll = (main = 'elasticity') => (req: CompletionRequest) => JSON.stringify({ items: keysOf(req).map((key) => ({ key, main, also: '', pattern: '', conf: 'high', why: 'x' })) });
 
 describe('the topic list (the bank tree)', () => {
-  it('lists every part and topic the bank has, and nothing else', () => {
+  it('lists Mentor’s sections with every MCQ topic under its section, then the electives as EDB codes, and nothing else', () => {
     const list = topicList();
-    for (const part of TOPICS) {
-      expect(list).toContain(`# ${part.code} ${part.en}`);
-      for (const topic of part.children) expect(list).toMatch(new RegExp(`^${topic.code.replace('.', '\\.')}  `, 'm'));
+    for (const section of VIEW_SECTIONS) {
+      expect(list).toContain(`# ${section.code} ${section.en}`);
+      if (section.code.startsWith('EL')) {
+        for (const topic of TOPICS.find((t) => t.code === section.code)!.children) expect(list).toMatch(new RegExp(`^${topic.code.replace('.', '\\.')}  `, 'm'));
+      } else {
+        for (const node of section.children) expect(list).toMatch(new RegExp(`^${node.key}  `, 'm'));
+      }
     }
     const codes = list.split('\n').filter((line) => !line.startsWith('#')).map((line) => line.split('  ')[0]);
-    expect(codes).toHaveLength(TOPICS.reduce((n, part) => n + part.children.length, 0));
+    const electives = TOPICS.filter((t) => t.code.startsWith('EL')).reduce((n, part) => n + part.children.length, 0);
+    expect(codes).toHaveLength(MCQ_SCHEME.topics.length + electives);
+    expect(new Set(codes).size).toBe(codes.length);
+    // The old EDB lines are gone: the model is offered MCQ keys, not 'C.ped'.
+    expect(list).not.toMatch(/^C\.ped {2}/m);
+    expect(list).toMatch(/^per-unit-tax {2}Per-unit Tax: /m);
+    expect(list).toMatch(/^EL1\.pricing {2}/m);
   });
 
   it('every guide key point is a topic of the bank (the points it lists lean on it)', () => {
@@ -57,11 +69,21 @@ describe('reading a reply', () => {
   });
 
   it('knows a code however it is written, and only codes in the tree', () => {
-    expect(knownCode('C.ped')).toBe('C.ped');
-    expect(knownCode(' c.PED ')).toBe('C.ped');
-    expect(knownCode('C.ped#arc')).toBe('C.ped');
-    expect(knownCode('g')).toBe('G');
+    // An MCQ key, any case, with or without "@mcq:", is the view code.
+    expect(knownCode('per-unit-tax')).toBe('@mcq:per-unit-tax');
+    expect(knownCode('@mcq:per-unit-tax')).toBe('@mcq:per-unit-tax');
+    expect(knownCode(' @MCQ:PER-unit-tax ')).toBe('@mcq:per-unit-tax');
+    expect(knownCode('Elasticity')).toBe('@mcq:elasticity');
+    // A section and an elective code stand as they are; a section with one topic (G) reads as that topic.
+    expect(knownCode('g')).toBe('@mcq:adas');
+    expect(knownCode('C')).toBe('C');
     expect(knownCode('EL1.pricing')).toBe('EL1.pricing');
+    expect(knownCode(' el1.PRICING ')).toBe('EL1.pricing');
+    // An EDB code from an older habit reads as the one view code it falls under.
+    expect(knownCode('C.ped')).toBe('@mcq:elasticity');
+    expect(knownCode(' c.PED ')).toBe('@mcq:elasticity');
+    expect(knownCode('C.ped#arc')).toBe('@mcq:elasticity');
+    expect(knownCode('C.intervention')).toBe('C.intervention');
     expect(knownCode('C.elasticity')).toBeUndefined();
     expect(knownCode('Price elasticity of demand')).toBeUndefined();
     expect(knownCode('')).toBeUndefined();
@@ -70,26 +92,43 @@ describe('reading a reply', () => {
 
 describe('a suggestion, checked against the tree', () => {
   it('keeps the main topic first, drops unknown codes, repeats and a part beside its own topic', () => {
-    const s = cleanSuggestion(raw({ main: 'C.ped', also: 'C, C.ped, Z.nothing, free text, C.pes' }), question(1));
-    expect(s?.topics).toEqual(['C.ped', 'C.pes']);
+    const s = cleanSuggestion(raw({ main: 'elasticity', also: 'C, @mcq:elasticity, Z.nothing, free text, per-unit-tax' }), question(1));
+    expect(s?.topics).toEqual(['@mcq:elasticity', '@mcq:per-unit-tax']);
     expect(s?.rootId).toBe('root-1');
   });
 
   it('never more than three topics', () => {
-    expect(cleanSuggestion(raw({ also: 'C.pes, C.intervention, C.equilibrium' }), question(1))?.topics).toEqual(['C.ped', 'C.pes', 'C.intervention']);
+    expect(cleanSuggestion(raw({ also: 'quota, per-unit-tax, price-ceiling' }), question(1))?.topics).toEqual(['@mcq:elasticity', '@mcq:quota', '@mcq:per-unit-tax']);
   });
 
   it('moves up an "also" code when the main one is unknown, and gives nothing when no code is usable', () => {
-    expect(cleanSuggestion(raw({ main: 'elasticity', also: 'C.pes' }), question(1))?.topics).toEqual(['C.pes']);
-    expect(cleanSuggestion(raw({ main: 'elasticity', also: 'unknown' }), question(1))).toBeUndefined();
+    expect(cleanSuggestion(raw({ main: 'C.elasticity', also: 'per-unit-tax' }), question(1))?.topics).toEqual(['@mcq:per-unit-tax']);
+    expect(cleanSuggestion(raw({ main: 'C.elasticity', also: 'unknown' }), question(1))).toBeUndefined();
   });
 
-  it('takes a 題型 only from the teacher’s own names under the main topic, as stored', () => {
-    const q = question(1, { 'C.ped': ['Calculate PED from TR'], 'C.pes': ['PES and time'] });
+  it('takes a 題型 only from the teacher’s own names under the main topic, as stored (under its EDB sub-topic)', () => {
+    const q = question(1, { 'C.ped': ['Calculate PED from TR'], 'C.pes': ['PES and time'], 'C.intervention': ['Tax incidence'] });
     expect(cleanSuggestion(raw({ pattern: 'calculate  PED from TR' }), q)?.pattern).toEqual({ topic: 'C.ped', name: 'Calculate PED from TR' });
-    expect(cleanSuggestion(raw({ pattern: 'PES and time' }), q)?.pattern).toBeUndefined();
+    // 'elasticity' stands for both C.ped and C.pes.
+    expect(cleanSuggestion(raw({ pattern: 'PES and time' }), q)?.pattern).toEqual({ topic: 'C.pes', name: 'PES and time' });
+    // A name under another topic is not taken.
+    expect(cleanSuggestion(raw({ pattern: 'Tax incidence' }), q)?.pattern).toBeUndefined();
+    expect(cleanSuggestion(raw({ main: 'per-unit-tax', pattern: 'Calculate PED from TR' }), q)?.pattern).toBeUndefined();
+    // A name under 'C.intervention' is taken under 'per-unit-tax' and stored back under 'C.intervention'.
+    expect(cleanSuggestion(raw({ main: 'per-unit-tax', pattern: 'tax incidence' }), q)?.pattern).toEqual({ topic: 'C.intervention', name: 'Tax incidence' });
     expect(cleanSuggestion(raw({ pattern: 'A brand new kind' }), q)?.pattern).toBeUndefined();
     expect(cleanSuggestion(raw({ pattern: 'Calculate PED from TR' }), question(1))?.pattern).toBeUndefined();
+  });
+
+  it('offers the teacher’s 題型 under LIST codes: a name under C.intervention under each of its MCQ topics, C.ped under elasticity', () => {
+    const offered = listPatterns({ 'C.intervention': ['Tax incidence'], 'C.ped': ['Calculate PED from TR'], 'EL1.pricing': ['Kinked demand'] });
+    for (const key of ['per-unit-tax', 'per-unit-subsidy', 'price-ceiling', 'price-floor', 'quota']) expect(offered[key]).toEqual(['Tax incidence']);
+    expect(offered.elasticity).toEqual(['Calculate PED from TR']);
+    expect(offered['EL1.pricing']).toEqual(['Kinked demand']);
+    expect(offered['C.ped']).toBeUndefined();
+    expect(offered['C.intervention']).toBeUndefined();
+    const payload = buildPayload([question(1, { 'C.intervention': ['Tax incidence'] })]);
+    expect(payload.questions[0].patterns?.['per-unit-tax']).toEqual(['Tax incidence']);
   });
 });
 
@@ -130,7 +169,7 @@ describe('the run', () => {
     expect(client.requests[0].feature).toBe('tag');
     expect(client.requests[0].schema).toBe(TAG_SCHEMA);
     expect(client.requests[0].system).toContain(TAG_MARKER);
-    expect(client.requests[0].system).toContain('C.ped  Price elasticity of demand');
+    expect(client.requests[0].system).toMatch(/^elasticity {2}Elasticity: /m);
     expect(outcome.suggestions).toHaveLength(25);
     expect(outcome.failed).toEqual([]);
     expect(progress).toEqual([0, 10, 20, 25]);
@@ -241,34 +280,34 @@ describe('part by part (u-g13t)', () => {
   });
 
   it('the request lists the parts and asks for one item per part', () => {
-    const client = scriptedClient([answerParts({ '(a)': 'C.intervention', '(b)': 'E.efficiency' })]);
+    const client = scriptedClient([answerParts({ '(a)': 'price-ceiling', '(b)': 'efficiency' })]);
     return runTagging([parted(1)], { client, preset }, { whyLanguage: 'en', signal: new AbortController().signal }).then((outcome) => {
       const payload = JSON.parse(client.requests[0].turns[0].content) as { questions: Array<{ parts?: string[] }> };
       expect(payload.questions[0].parts).toEqual(['(a)', '(b)']);
       expect(client.requests[0].system).toContain('"q3(b)(ii)"');
       const s = outcome.suggestions[0];
       expect(s.parts?.map((p) => [p.label, p.slot, p.topics, p.conf, p.why])).toEqual([
-        ['(a)', 'a-1', ['C.intervention'], 'high', 'Part (a).'],
-        ['(b)', 'b-1', ['E.efficiency'], 'medium', 'Part (b).'],
+        ['(a)', 'a-1', ['@mcq:price-ceiling'], 'high', 'Part (a).'],
+        ['(b)', 'b-1', ['@mcq:efficiency'], 'medium', 'Part (b).'],
       ]);
-      expect(s.topics).toEqual(['C.intervention', 'E.efficiency']);
+      expect(s.topics).toEqual(['@mcq:price-ceiling', '@mcq:efficiency']);
       expect(s.conf).toBe('medium');
     });
   });
 
   it('reads a part key however the model spaces it', () => {
     const q = parted(1);
-    const items = new Map([['q1 (a)', raw({ key: 'q1 (a)', main: 'C.ped' })], ['Q1:(b)', raw({ key: 'Q1:(b)', main: 'C.pes' })]].map(([k, v]) => [itemKey(k as string), v as RawTag]));
-    expect(suggestionOf(q, (key) => items.get(key)).suggestion?.parts?.map((p) => p.topics[0])).toEqual(['C.ped', 'C.pes']);
+    const items = new Map([['q1 (a)', raw({ key: 'q1 (a)', main: 'elasticity' })], ['Q1:(b)', raw({ key: 'Q1:(b)', main: 'Per-Unit-Tax' })]].map(([k, v]) => [itemKey(k as string), v as RawTag]));
+    expect(suggestionOf(q, (key) => items.get(key)).suggestion?.parts?.map((p) => p.topics[0])).toEqual(['@mcq:elasticity', '@mcq:per-unit-tax']);
   });
 
   it('asks once more for a question a part was left out of, keeps the fuller answer, and keeps a partial one', async () => {
-    const client = scriptedClient([answerParts({ '(a)': 'C.intervention' }), answerParts({ '(a)': 'C.intervention', '(b)': 'E.efficiency' })]);
+    const client = scriptedClient([answerParts({ '(a)': 'price-ceiling' }), answerParts({ '(a)': 'price-ceiling', '(b)': 'efficiency' })]);
     const outcome = await runTagging([parted(1)], { client, preset }, { whyLanguage: 'en', signal: new AbortController().signal });
     expect(client.requests).toHaveLength(2);
     expect(outcome.suggestions[0].parts).toHaveLength(2);
 
-    const stubborn = scriptedClient([answerParts({ '(a)': 'C.intervention' }), '{"items":[]}']);
+    const stubborn = scriptedClient([answerParts({ '(a)': 'price-ceiling' }), '{"items":[]}']);
     const partial = await runTagging([parted(1)], { client: stubborn, preset }, { whyLanguage: 'en', signal: new AbortController().signal });
     expect(partial.suggestions[0].parts?.map((p) => p.label)).toEqual(['(a)']);
     expect(partial.failed).toEqual([]);

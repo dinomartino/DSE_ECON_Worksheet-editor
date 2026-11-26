@@ -18,47 +18,47 @@ describe('divergent copies read one set of topics', () => {
   const newer = docWith([copy], { updatedAt: '2026-01-01T00:00:00.000Z' });
   const rows = withSharedTags([...rowsOf(newer), ...rowsOf(older)]);
 
-  it('every reader files the question under C.ped', () => {
+  it('every reader files the question under Elasticity', () => {
     expect(coverage(rows).bars.find((bar) => bar.code === 'C')?.total).toBe(1);
     expect(coverage(rows).untagged).toBe(0);
     expect(railSections(groupRows(rows), 'all').map((s) => s.key)).toEqual(['C']);
     expect(railSections(groupRows(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'C' })), 'C').map((s) => s.key)).toEqual([
-      'C.ped',
+      '@mcq:elasticity',
     ]);
-    expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'C.ped' })).toHaveLength(2);
+    expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: '@mcq:elasticity' })).toHaveLength(2);
     expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'untagged' })).toHaveLength(0);
-    expect(traySummary([groupRows(rows)[0].rows[0]]).mix).toEqual([{ code: 'C.ped', count: 1 }]);
+    expect(traySummary([groupRows(rows)[0].rows[0]]).mix).toEqual([{ code: '@mcq:elasticity', count: 1 }]);
   });
 });
 
 /**
- * One question with two parts on two sub-topics: every reader goes by its derived tags,
- * so it counts once under C and is found under either sub-topic.
+ * One question with two parts on an MCQ topic and a code still to pick: every reader goes
+ * by its derived tags, so it counts once under C and is found under either.
  */
 describe('a question tagged per part reads as every part’s topics', () => {
   const original = partedQuestion([{ tags: ['C.ped'] }, { tags: ['C.intervention'] }]);
   const copy = copyQuestion(original, 'bank');
   const rows = withSharedTags([...rowsOf(docWith([original])), ...rowsOf(docWith([copy]))]);
 
-  it('counts once under its coarse topic, and every filter finds it', () => {
+  it('counts once under its section, and every filter finds it', () => {
     expect(coverage(rows).bars.find((bar) => bar.code === 'C')?.total).toBe(1);
     expect(coverage(rows).untagged).toBe(0);
-    expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'C.ped' })).toHaveLength(2);
+    expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: '@mcq:elasticity' })).toHaveLength(2);
     expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'C.intervention' })).toHaveLength(2);
     expect(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'untagged' })).toHaveLength(0);
     expect(traySummary([groupRows(rows)[0].rows[0]]).mix).toEqual(
       expect.arrayContaining([
-        { code: 'C.ped', count: 1 },
+        { code: '@mcq:elasticity', count: 1 },
         { code: 'C.intervention', count: 1 },
       ]),
     );
   });
 
-  it('is listed under both sub-topics on the rail, each entry naming the other', () => {
+  it('is listed under both the MCQ topic and the code to pick on the rail, each entry naming the other', () => {
     const sections = railSections(groupRows(filterRows(rows, { ...DEFAULT_FILTERS, topic: 'C' })), 'C');
     expect(sections.map((s) => [s.key, s.entries.map((e) => e.alsoIn)])).toEqual([
-      ['C.ped', [['Market intervention']]],
-      ['C.intervention', [['Price elasticity of demand']]],
+      ['@mcq:elasticity', [['Market intervention · pick the MCQ topic']]],
+      ['C.intervention', [['Elasticity']]],
     ]);
   });
 

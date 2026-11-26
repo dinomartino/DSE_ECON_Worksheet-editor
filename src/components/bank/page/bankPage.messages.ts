@@ -73,6 +73,8 @@ export const BANK_PAGE_MESSAGES = defineMessages({
   // Rail headings
   general: { en: 'General', zh: '一般' },
   noTopic: { en: 'No topic', zh: '未有課題' },
+  /** A rail heading for an EDB code several MCQ topics share, none chosen yet (k-0569). */
+  pickHeading: { en: (name: string) => `${name} · pick the MCQ topic`, zh: (name: string) => `${name} · 請選 MCQ 課題` },
   noPattern: { en: 'No 題型', zh: '未有題型' },
 
   // Which part tests it

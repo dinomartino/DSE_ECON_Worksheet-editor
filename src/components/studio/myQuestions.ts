@@ -1,7 +1,7 @@
 import { stimuliServing } from '@/library/stimuli';
 import { searchRows } from '@/library/search';
 import type { BankGroup, BankRow } from '@/library/types';
-import { matchesTopic, rollupTopic, TOPICS } from '@/model/topics';
+import { matchesBankTopic, VIEW_SECTIONS, viewSections } from '@/model/mcqView';
 import type { McqQuestion, Worksheet } from '@/model/types';
 import type { PastPaperItem } from '@/pastpapers/pack';
 import { sourceFromQuestion } from '@/questionStudio/source';
@@ -25,7 +25,7 @@ export type When = (typeof WHEN_CHOICES)[number];
 
 export interface MyFilter {
   words: string;
-  /** A coarse or fine topic code; absent = every topic. */
+  /** A section or MCQ topic (a view code, k-0569), or an EDB code; absent = every topic. */
   topic?: string;
   when: When;
 }
@@ -101,7 +101,7 @@ export function myQuestionList(groups: readonly BankGroup[], filter: MyFilter, r
   for (const group of mcq) {
     const row = group.rows[0];
     if (hits && !hits.has(group.rootId)) continue;
-    if (filter.topic && !matchesTopic(row.tags, filter.topic)) continue;
+    if (filter.topic && !matchesBankTopic(row.tags, filter.topic)) continue;
     if (!inWhen(row.usedOn, filter.when, now)) continue;
     const recentAt = recent[group.rootId];
     entries.push(recentAt ? { group, row, recentAt } : { group, row });
@@ -111,20 +111,15 @@ export function myQuestionList(groups: readonly BankGroup[], filter: MyFilter, r
   return { entries, total: mcq.length, otherTypes };
 }
 
-/** The coarse topics the listed questions are tagged with, in guide order, each with its count. */
+/** The sections the listed questions fall under (the teacher's MCQ topics, k-0569), in order, each with its count. */
 export function myTopics(groups: readonly BankGroup[]): { code: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const group of groups) {
     const row = group.rows[0];
     if (row?.typeId !== MCQ_TYPE) continue;
-    const coarse = new Set<string>();
-    for (const tag of row.tags) {
-      const topic = rollupTopic(tag);
-      if (topic) coarse.add(topic.parent ?? topic.code);
-    }
-    for (const code of coarse) counts.set(code, (counts.get(code) ?? 0) + 1);
+    for (const code of viewSections(row.tags)) counts.set(code, (counts.get(code) ?? 0) + 1);
   }
-  return TOPICS.filter((t) => counts.has(t.code)).map((t) => ({
+  return VIEW_SECTIONS.filter((t) => counts.has(t.code)).map((t) => ({
     code: t.code,
     count: counts.get(t.code) ?? 0,
   }));

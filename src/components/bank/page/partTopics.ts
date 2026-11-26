@@ -1,5 +1,7 @@
-import { addTopics, atSlot, changeEdit, inheritAtSlot, removeTopics, stateEdit, wholeQuestion, type StateEdit, type TagEdit } from '@/library/tagWrites';
-import { parsePatternTag, samePatternName, withPattern } from '@/model/patterns';
+import { addTopics, atSlot, inheritAtSlot, removeTopics, stateEdit, wholeQuestion, type StateEdit, type TagEdit } from '@/library/tagWrites';
+import { holdsPatterns, parsePatternTag, samePatternName, withPattern } from '@/model/patterns';
+import { mcqCovers, viewCodesOf, viewOrder, viewTopicOf } from '@/model/mcqView';
+import { mcqTagKey, mcqTopic } from '@/model/topicSchemes';
 import { collapseTagState, effectiveSlotTags, normalizeTagState, slotRef, type SlotState, type TagState } from '@/model/tagSlots';
 import { topicOf } from '@/model/topics';
 import { uiLanguage } from '@/i18n/language';
@@ -9,7 +11,9 @@ import { BANK_PAGE_MESSAGES as M } from './bankPage.messages';
 
 /**
  * Tagging a question part by part in the bank (Edit topics, tag as you go): a draft of the
- * question's tag state, and each pick as the `StateEdit` a save replays on every copy. The
+ * question's tag state, and each pick as the `StateEdit` a save replays on every copy.
+ * Topics are the MCQ view's codes (k-0569, `model/mcqView.ts`): what the lists fall under,
+ * never the raw EDB codes and `@mcq:` tags behind them. The
  * target is the whole question (`undefined`: every part) or one part or sub-part by its
  * slot key. Pure; the screens hold the draft and the edits.
  */
@@ -41,8 +45,8 @@ export interface Ticks {
 }
 
 export function ticksAt(state: TagState, at: PartTarget): Ticks {
-  const lists = listsAt(state, at);
-  const codes = [...new Set(lists.flat().filter((tag) => topicOf(tag)))];
+  const lists = listsAt(state, at).map(viewCodesOf);
+  const codes = [...new Set(lists.flat())].sort((a, b) => viewOrder(a) - viewOrder(b));
   const ticked = new Set<string>();
   const partial = new Map<string, string[]>();
   for (const code of codes) {
@@ -55,7 +59,7 @@ export function ticksAt(state: TagState, at: PartTarget): Ticks {
 /** The parts testing `code`, by label: a part whose every sub-part tests it reads as the part. */
 export function whereTested(state: TagState, code: string): string[] {
   const effective = effectiveSlotTags(state);
-  const has = (slot: SlotState) => (effective.get(slot.key) ?? []).includes(code);
+  const has = (slot: SlotState) => viewCodesOf(effective.get(slot.key) ?? []).includes(code);
   const out: string[] = [];
   for (const slot of state.slots.filter((entry) => entry.parent === undefined)) {
     if (slot.leaf) {
@@ -81,9 +85,29 @@ export function editAt(state: TagState, at: PartTarget, edit: TagEdit): StateEdi
 export const toggleAt = (state: TagState, at: PartTarget, code: string, on: boolean): StateEdit =>
   editAt(state, at, on ? addTopics([code]) : removeTopics([code]));
 
-/** The target's topics made `after` (from `before`, what it showed): only the change, so other parts keep theirs. */
-export const changeAt = (state: TagState, at: PartTarget, before: readonly string[], after: readonly string[]): StateEdit =>
-  editAt(state, at, changeEdit(before, after));
+/**
+ * The target's topics made `after` (from `before`, what it showed; view codes): only the
+ * change, each taken off or added through the view, so other parts keep theirs.
+ */
+export const changeAt = (state: TagState, at: PartTarget, before: readonly string[], after: readonly string[]): StateEdit => {
+  const removed = before.filter((code) => !after.includes(code));
+  const added = after.filter((code) => !before.includes(code));
+  return editAt(state, at, (tags) => addTopics(added)(removeTopics(removed)(tags)));
+};
+
+/**
+ * The EDB sub-topic a topic's 題型 hangs on (題型 stay on EDB codes, k-0569): for an MCQ
+ * topic, its fine code already in `tags` (or, with none there, its first own fine code)
+ * that holds 題型; an EDB code itself when it holds them; else none (a section, or a topic
+ * named only by its section letter: Interest, ADAS).
+ */
+export function patternCodeOf(code: string, tags: readonly string[] = []): string | undefined {
+  const node = viewTopicOf(code);
+  if (node?.kind !== 'mcq') return holdsPatterns(code) ? code : undefined;
+  const topic = mcqTopic(node.key!)!;
+  const held = tags.find((tag) => holdsPatterns(tag) && mcqCovers(topic, tag));
+  return held ?? topic.edb.find(holdsPatterns);
+}
 
 const patternIn = (list: readonly string[], topic: string) => {
   for (const tag of list) {
@@ -117,11 +141,15 @@ export function sameAsPart(state: TagState, key: string): StateEdit {
 }
 
 /** Whether any part (or, without parts, the question) has a topic. */
-export const hasTopic = (state: TagState): boolean => listsAt(state, undefined).some((list) => list.some((tag) => topicOf(tag)));
+export const hasTopic = (state: TagState): boolean => listsAt(state, undefined).some((list) => viewCodesOf(list).length > 0);
 
-/** Every topic code in any list of the state: what a tag-as-you-go Undo takes off again. */
+/** Every topic code and known `@mcq:` tag in any list of the state: what a tag-as-you-go Undo takes off again. */
 export const everyCode = (state: TagState): string[] => [
-  ...new Set([state.tags, ...state.slots.map((slot) => slot.own ?? [])].flat().filter((tag) => topicOf(tag))),
+  ...new Set(
+    [state.tags, ...state.slots.map((slot) => slot.own ?? [])]
+      .flat()
+      .filter((tag) => topicOf(tag) || mcqTopic(mcqTagKey(tag) ?? '')),
+  ),
 ];
 
 /** One row of the part column: the slot, its short label ("(ii)" under (a)), and what it tests. */
@@ -151,7 +179,7 @@ export function partLines(state: TagState): PartLine[] {
       sub: parent !== undefined,
       inherits: parent !== undefined && !slot.own,
       ...(parent ? { parentLabel: parent.label } : {}),
-      codes: (effective.get(slot.key) ?? []).filter((tag) => topicOf(tag)),
+      codes: viewCodesOf(effective.get(slot.key) ?? []),
     };
   });
 }
@@ -161,12 +189,12 @@ export function partLines(state: TagState): PartLine[] {
  * then each part's others (a part whose sub-parts agree reads as the part).
  */
 export function savedByPart(state: TagState): { label?: string; codes: string[] }[] {
-  const lists = listsAt(state, undefined).map((list) => list.filter((tag) => topicOf(tag)));
+  const lists = listsAt(state, undefined).map(viewCodesOf);
   const common = (lists[0] ?? []).filter((code) => lists.every((list) => list.includes(code)));
   const out: { label?: string; codes: string[] }[] = common.length > 0 ? [{ codes: common }] : [];
   if (state.slots.length === 0 || lists.every((list) => sameList(list, common))) return out;
   const effective = effectiveSlotTags(state);
-  const codes = (slot: SlotState) => (effective.get(slot.key) ?? []).filter((tag) => topicOf(tag) && !common.includes(tag));
+  const codes = (slot: SlotState) => viewCodesOf(effective.get(slot.key) ?? []).filter((code) => !common.includes(code));
   for (const slot of state.slots.filter((entry) => entry.parent === undefined)) {
     const subs = state.slots.filter((entry) => entry.parent === slot.key);
     if (subs.length === 0 || subs.every((sub) => sameList(codes(sub), codes(subs[0])))) {

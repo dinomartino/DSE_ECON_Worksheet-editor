@@ -1,4 +1,4 @@
-import { matchesTopic } from '@/model/topics';
+import { matchesBankTopic } from '@/model/mcqView';
 import { rowUsedWith } from './history';
 import type { BankQuery, BankRow } from './types';
 
@@ -25,7 +25,7 @@ export function searchRows(rows: readonly BankRow[], query: BankQuery): BankRow[
   return rows.filter(
     (row) =>
       words.every((word) => row.searchText.includes(word) || titleOf(row).includes(word)) &&
-      (!query.topic || matchesTopic(row.tags, query.topic)) &&
+      (!query.topic || matchesBankTopic(row.tags, query.topic)) &&
       (!query.typeId || row.typeId === query.typeId) &&
       (min === undefined || row.marks >= min) &&
       (max === undefined || row.marks <= max) &&

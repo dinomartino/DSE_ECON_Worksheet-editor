@@ -13,6 +13,15 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question bank sorts your questions by your MCQ topics.** By topic now follows the 72
+  topics of DSEcon Mentor's MCQ section (Price Ceiling, Per-unit Tax, Monetary Base…) in the site's
+  sections A–J, instead of the EDB syllabus points: the topic cards, the list, the filter, the tag
+  line and the topic pickers all use them, in the 題庫 tab and in a question's Topics row too.
+  Nothing in your saved papers changes: a question's existing topics are read as the matching MCQ
+  topic. Where one syllabus point covers several MCQ topics (Market intervention: ceiling, floor,
+  quota, tax, subsidy), the topics page offers **Pick the MCQ topic**, one question at a time with
+  the choices as numbered keys. The syllabus coverage check still works by the EDB syllabus.
+  <!-- zh: **題庫按你的 MCQ 課題排列題目。** 「按課題」現在跟從 DSEcon Mentor MCQ 部分的 72 個課題（價格上限、從量稅、貨幣基礎……），按網站的 A 至 J 部分排列，不再按 EDB 課程要點：課題卡、清單、篩選、標籤行及課題選擇器都使用這些課題，題庫分頁及題目的「課題」一欄亦然。已儲存的試卷不會改變：題目現有的課題會讀作相應的 MCQ 課題。若一個課程要點涵蓋多個 MCQ 課題（政府干預：價格上限、價格下限、配額、從量稅、從量津貼），課題頁會提供「選定 MCQ 課題」，逐題顯示，選項以數字鍵選擇。課程覆蓋檢查仍按 EDB 課程。 -->
 - **The Question studio answers change requests faster on DSEcon Mentor credits.** Once drafts
   are on the page, a message that changes a draft ("Q2 太易", "the options are too long"), asks for
   one more like a draft, or doesn't say which draft is read first by Jev, a fast model made for
@@ -23,12 +32,12 @@ a version heading is edited afterwards.
   <!-- zh: **使用 DSEcon Mentor 點數時，擬題工作室處理修改要求更快。** 頁面上已有草稿時，修改草稿的訊息（如「Q2 太易」、「選項太長」）、要求多出一題類似某份草稿的題目，或未說明是哪份草稿的訊息，會先由專為從清單中作選擇而設的快速模型 Jev 理解。修改會立即開始，或工作室會即時問「你指哪一份草稿？」，不用再等主要模型較慢的理解：每則這類訊息約省 7 點及數秒。要求新題目及詢問草稿的問題會照舊處理，Jev 未能確定的訊息亦然。使用自己的金鑰時一切不變。 -->
 - **AI can suggest topics for your untagged questions.** In the Question bank, ✦ AI → **Tag
   topics** suggests a syllabus part and topic for each untagged question (one question, your
-  ticked list, every question shown, or "All untagged"), plus one of your own 題型 when one
+  ticked list, every question shown, or "All untagged"), from your MCQ topics, plus one of your own 題型 when one
   fits, with a short reason and how sure it is. Nothing is saved until you accept: accept each,
   change it with the usual topic picker, skip it, or Accept all; Undo takes an accept back.
   Questions that already have topics are left alone; for one that has, "Suggest topics again"
-  replaces its topics only when you accept. Topics always come from the bank's own syllabus
-  list. It uses your AI as the other AI tools do (DSEcon Mentor credits, with an estimate first,
+  replaces its topics only when you accept. Topics always come from the bank's own list (your
+  72 MCQ topics, and the electives). It uses your AI as the other AI tools do (DSEcon Mentor credits, with an estimate first,
   or your own key), sends several questions per request, shows progress and can be stopped.
   With DSEcon Mentor credits it runs on Jev, a fast model made for choosing from a list: tagging
   100 questions uses about 12 credits and takes seconds, and under each suggestion you see the
@@ -37,7 +46,7 @@ a version heading is edited afterwards.
   A question with parts gets a suggestion for each part, (a), (b), (b)(i) and so on, and you
   accept, change, skip or undo each part on its own, or accept all its parts at once; each part
   keeps its own topics.
-  <!-- zh: **AI 可為未標記的題目建議課題。** 在題庫按 ✦ AI →「標記課題」，AI 會為每條未標記的題目（這條題目、已剔選的題目、所有顯示的題目或「所有未標記」）建議課程綱要的部分及課題，如有合適的會一併建議你自己的題型，並附簡短原因及把握程度。接受前不會儲存任何內容：可逐條接受、用課題選擇器更改、略過，或全部接受；「復原」可取消已接受的建議。已有課題的題目不會更改；如對已有課題的題目使用「重新建議課題」，只有在你接受後才會取代原有課題。課題一律來自題庫所用的課程綱要。與其他 AI 工具一樣使用你的 AI（DSEcon Mentor 點數，事先顯示估算；或你自己的金鑰），每次傳送多條題目，顯示進度，可隨時停止。使用 DSEcon Mentor 點數時會用專為從清單中作選擇而設的快速模型 Jev：標記 100 條題目約用 12 點，數秒完成，每項建議下會顯示該課題的課程綱要要點，取代 AI 的原因說明。使用自己的金鑰時會用你所選的模型（使用自己的 Gemini key 時，Flash-Lite 開關亦包括此工作）。有分題的題目會按每個分題（(a)、(b)、(b)(i) 等）建議課題，你可逐個分題接受、更改、略過或復原，亦可一次接受所有分題；每個分題會保留各自的課題。 -->
+  <!-- zh: **AI 可為未標記的題目建議課題。** 在題庫按 ✦ AI →「標記課題」，AI 會為每條未標記的題目（這條題目、已剔選的題目、所有顯示的題目或「所有未標記」）從你的 MCQ 課題中建議課題，如有合適的會一併建議你自己的題型，並附簡短原因及把握程度。接受前不會儲存任何內容：可逐條接受、用課題選擇器更改、略過，或全部接受；「復原」可取消已接受的建議。已有課題的題目不會更改；如對已有課題的題目使用「重新建議課題」，只有在你接受後才會取代原有課題。課題一律來自題庫自己的清單（你的 72 個 MCQ 課題及選修單元）。與其他 AI 工具一樣使用你的 AI（DSEcon Mentor 點數，事先顯示估算；或你自己的金鑰），每次傳送多條題目，顯示進度，可隨時停止。使用 DSEcon Mentor 點數時會用專為從清單中作選擇而設的快速模型 Jev：標記 100 條題目約用 12 點，數秒完成，每項建議下會顯示該課題的課程綱要要點，取代 AI 的原因說明。使用自己的金鑰時會用你所選的模型（使用自己的 Gemini key 時，Flash-Lite 開關亦包括此工作）。有分題的題目會按每個分題（(a)、(b)、(b)(i) 等）建議課題，你可逐個分題接受、更改、略過或復原，亦可一次接受所有分題；每個分題會保留各自的課題。 -->
 - **Past paper questions stay out of your question bank until you change them.** A question you
   add from the past paper bank to a worksheet is the exam's question, so your question bank no
   longer lists it as one of yours. Edit what it says (the question, an option, the answer, a
@@ -216,6 +225,10 @@ a version heading is edited afterwards.
   <!-- zh: **匯出的檔案會靜靜註明來自 Econ Studio。** 你匯出的每個 Word 和 Excel 檔案，以及桌面版儲存的每個 PDF，現在都會在檔案本身的內容資訊中附上幾項隱藏資料：程式名稱和版本、匯出時間，以及一個代表該工作紙的隨機編號（同一份工作紙匯出的每個檔案編號都相同）。頁面上不會加入任何內容，所以列印、複製文字或使用屏幕閱讀器時都不會看到，亦不包含任何關於你或你電腦的資料。經列印對話框製作的 PDF（網頁版，或直接儲存 PDF 失敗時）無法附上這些資料。 -->
 
 ### Changed
+- **The Past paper bank lists its topics like your Question bank.** Its topics sit in the same
+  sections A–J as your MCQ topics on DSEcon Mentor (Circular Flow under F) with the same names, and a
+  question you copy out is filed under its exact MCQ topic.
+  <!-- zh: **歷屆試題庫的課題排列與你的題庫一致。** 課題按 DSEcon Mentor 上你的 MCQ 課題，放在相同的 A 至 J 部分（經濟活動的循環流程屬 F），名稱亦相同；複製出來的題目會歸入其確切的 MCQ 課題。 -->
 - **On a bilingual paper, a question's source prints once, short.** With Show source on, an
   English + 中文 paper now prints each source as the short tag alone, such as DSE2024/P1/Q38,
   even when the source format is Full, instead of the English and Chinese full names side by

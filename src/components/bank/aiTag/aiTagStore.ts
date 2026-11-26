@@ -6,7 +6,8 @@ import { atSlot, copyWrites, stateEdit, swapTags, SWAP_STALE, wholeQuestion, wri
 import type { BankRow } from '@/library/types';
 import { patternTag } from '@/model/patterns';
 import { derivedTags, effectiveSlotTags, findSlot, questionTagSlots, slotRef, tagStateOf, type SlotRef } from '@/model/tagSlots';
-import { rollupTopic, topicOf } from '@/model/topics';
+import { hasViewTopic, viewCodesOf, withViewCodes } from '@/model/mcqView';
+import { listCode, listCodesOf } from '@/autoTag/prompt';
 import type { Worksheet } from '@/model/types';
 import type { WorksheetStore } from '@/storage/types';
 import type { RunDepsResult } from '@/translate/types';
@@ -141,15 +142,19 @@ export interface AiTagContext {
 /** Why an accept left a question alone: it has topics now (tagged elsewhere since the run). */
 export const TAGGED_MEANWHILE = 'it has topics now';
 
-/** Every topic code a row's question holds (any part). */
-export const topicCodes = (row: Pick<BankRow, 'tags'>): string[] => row.tags.filter((tag) => topicOf(tag) !== undefined);
+/** Every topic a row's question falls under (any part), as the bank reads it: view codes (k-0569). */
+export const topicCodes = (row: Pick<BankRow, 'tags'>): string[] => viewCodesOf(row.tags);
 
 /** As the bank counts it (`bankPage.ts:hasTopic`): a later build's code is a topic too. */
-export const hasAnyTopic = (row: Pick<BankRow, 'tags'>): boolean => row.tags.some((tag) => rollupTopic(tag) !== undefined);
+export const hasAnyTopic = (row: Pick<BankRow, 'tags'>): boolean => hasViewTopic(row.tags);
 
-/** The tags Accept adds: the topics, then the 題型 under the main one. */
+/**
+ * The tags Accept adds: the topics (view codes, written through the MCQ view), then the 題型
+ * under the main one, on its EDB sub-topic (k-0569: a 題型 stays on an EDB code).
+ */
 export function acceptedTags(topics: readonly string[], pattern?: { topic: string; name: string }): string[] {
-  return [...topics, ...(pattern && topics.includes(pattern.topic) ? [patternTag(pattern.topic, pattern.name)] : [])];
+  const fits = pattern && (topics.includes(pattern.topic) || (topics.length > 0 && listCodesOf(pattern.topic).includes(listCode(topics[0]))));
+  return [...topics, ...(pattern && fits ? [patternTag(pattern.topic, pattern.name)] : [])];
 }
 
 /**
@@ -161,11 +166,12 @@ export function acceptEdit(topics: readonly string[], pattern: { topic: string; 
   const tags = acceptedTags(topics, pattern);
   if (again) return wholeQuestion(replaceTopics(tags));
   const add = wholeQuestion(addTopics(tags));
-  return stateEdit((state) => (derivedTags(state).some((tag) => topicOf(tag)) ? state : add(state)));
+  return stateEdit((state) => (hasViewTopic(derivedTags(state)) ? state : add(state)));
 }
 
-/** Topic codes in a list. */
-const codesIn = (tags: readonly string[]) => tags.filter((tag) => topicOf(tag) !== undefined);
+/** The topics a list falls under (view codes); for written topics, what writing them means. */
+const codesIn = (tags: readonly string[]) => viewCodesOf(tags);
+const meant = (tags: readonly string[]) => viewCodesOf(withViewCodes([], tags));
 
 /**
  * The edit a part's accept writes (u-g13t): the topics on that part only (found in each copy
@@ -195,7 +201,7 @@ export function undoPartEdit(ref: SlotRef, wrote: readonly string[], before: rea
     if (!slot) return state;
     // Its topic codes, as the accept left them (a 題型 the teacher had may have stayed beside them).
     const now = codesIn(effectiveSlotTags(state).get(slot.key) ?? []);
-    const codes = [...new Set(codesIn(wrote))];
+    const codes = meant(wrote);
     if (now.length !== codes.length || !codes.every((code) => now.includes(code))) return state;
     return put(state);
   });

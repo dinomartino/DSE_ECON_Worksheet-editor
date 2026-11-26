@@ -74,29 +74,32 @@ describe('tagging a question part by part (Edit topics, tag as you go)', () => {
 
   it('shows the whole question’s ticks: on every part, or on some (where)', () => {
     const { draft } = pick(start, [
-      (d) => toggleAt(d, undefined, 'C', true),
-      (d) => toggleAt(d, key['(b)'], 'I', true),
-      (d) => toggleAt(d, key['(a)(ii)'], 'C.ped', true),
+      (d) => toggleAt(d, undefined, '@mcq:elasticity', true),
+      (d) => toggleAt(d, key['(b)'], '@mcq:business-cycle', true),
+      (d) => toggleAt(d, key['(a)(ii)'], '@mcq:consumer-producer-surplus', true),
     ]);
     const whole = ticksAt(draft, undefined);
-    expect([...whole.ticked]).toEqual(['C']);
-    expect(Object.fromEntries(whole.partial)).toEqual({ 'C.ped': ['(a)(ii)'], I: ['(b)'] });
-    expect([...ticksAt(draft, key['(a)(i)']).ticked]).toEqual(['C']);
-    expect([...ticksAt(draft, key['(b)']).ticked]).toEqual(['C', 'I']);
+    expect([...whole.ticked]).toEqual(['@mcq:elasticity']);
+    expect(Object.fromEntries(whole.partial)).toEqual({ '@mcq:consumer-producer-surplus': ['(a)(ii)'], '@mcq:business-cycle': ['(b)'] });
+    expect([...ticksAt(draft, key['(a)(i)']).ticked]).toEqual(['@mcq:elasticity']);
+    expect([...ticksAt(draft, key['(b)']).ticked]).toEqual(['@mcq:elasticity', '@mcq:business-cycle']);
     // A part whose every sub-part tests a topic reads as the part.
-    expect(whereTested(draft, 'C')).toEqual(['(a)', '(b)']);
+    expect(whereTested(draft, '@mcq:elasticity')).toEqual(['(a)', '(b)']);
     // Ticking a half-ticked topic on the whole question puts it on every part.
-    const all = applyDraft(draft, toggleAt(draft, undefined, 'I', true));
-    expect(ticksAt(all, undefined).ticked.has('I')).toBe(true);
+    const all = applyDraft(draft, toggleAt(draft, undefined, '@mcq:business-cycle', true));
+    expect(ticksAt(all, undefined).ticked.has('@mcq:business-cycle')).toBe(true);
   });
 
   it('reads each part for the column, and a sub-part back to its part’s (Same as (a))', () => {
-    const { draft } = pick(start, [(d) => toggleAt(d, undefined, 'C', true), (d) => toggleAt(d, key['(a)(ii)'], 'D', true)]);
+    const { draft } = pick(start, [
+      (d) => toggleAt(d, undefined, '@mcq:elasticity', true),
+      (d) => toggleAt(d, key['(a)(ii)'], '@mcq:consumer-producer-surplus', true),
+    ]);
     expect(partLines(draft).map(({ short, sub, inherits, codes }) => [short, sub, inherits, codes])).toEqual([
-      ['(a)', false, false, ['C']],
-      ['(i)', true, true, ['C']],
-      ['(ii)', true, false, ['C', 'D']],
-      ['(b)', false, false, ['C']],
+      ['(a)', false, false, ['@mcq:elasticity']],
+      ['(i)', true, true, ['@mcq:elasticity']],
+      ['(ii)', true, false, ['@mcq:elasticity', '@mcq:consumer-producer-surplus']],
+      ['(b)', false, false, ['@mcq:elasticity']],
     ]);
     // The column says "its own" on a sub-part with its own list, as the editor does.
     const m = resolveMessages(TOPIC_PICKER_MESSAGES, 'en');
@@ -129,9 +132,10 @@ describe('tagging a question part by part (Edit topics, tag as you go)', () => {
 
   it('All topics changes only what was ticked or unticked on the target', () => {
     const { draft } = pick(start, [(d) => toggleAt(d, key['(a)'], 'C', true), (d) => toggleAt(d, key['(b)'], 'I', true)]);
-    // On the whole question nothing is on every part; ticking D there leaves (a) and (b) their own.
-    const next = applyDraft(draft, changeAt(draft, undefined, [], ['D']));
-    expect(partLines(next).map((line) => line.codes)).toEqual([['C', 'D'], ['C', 'D'], ['C', 'D'], ['I', 'D']]);
+    // On the whole question nothing is on every part; ticking a topic there leaves (a) and (b) their own.
+    const markets = '@mcq:types-of-market-structures';
+    const next = applyDraft(draft, changeAt(draft, undefined, [], [markets]));
+    expect(partLines(next).map((line) => line.codes)).toEqual([['C', markets], ['C', markets], ['C', markets], [markets, 'I']]);
   });
 
   it('a save replays on another copy by part, even reordered, and Undo takes every part’s topics off', () => {

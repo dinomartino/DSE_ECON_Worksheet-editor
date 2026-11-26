@@ -14,7 +14,7 @@ import {
   type SlotState,
   type TagState,
 } from '@/model/tagSlots';
-import { topicOf } from '@/model/topics';
+import { addViewCode, removeViewCode, withViewCodes } from '@/model/mcqView';
 import type { Question, Worksheet } from '@/model/types';
 import { liveIds, writableDocument, type CopySkip } from './sameCopies';
 import { stateOfRow, tagTime } from './sharedTags';
@@ -138,36 +138,33 @@ export const thenState = (...edits: readonly (TagEdit | StateEdit)[]): StateEdit
   stateEdit((state) => edits.reduce((acc, edit) => asStateEdit(edit)(acc), state));
 
 /**
- * Replace the topic codes, keep free tags (in their place, after the codes). A 題型 stays
- * only while its sub-topic does.
+ * Replace the topics, keep free tags (in their place, after the topics). Topics are read
+ * and written through the MCQ view (k-0569, `model/mcqView.ts:withViewCodes`): an MCQ topic
+ * keeps or gains the EDB codes it stands for (and its `@mcq:` tag where those do not say
+ * it); a section or an EDB code stays itself. A 題型 stays only while its sub-topic does.
  */
 export const replaceTopics =
   (codes: readonly string[]): TagEdit =>
   (tags) =>
-    unique([
-      ...codes,
-      ...tags.filter((tag) => {
-        if (topicOf(tag)) return false;
-        const pattern = parsePatternTag(tag);
-        return !pattern || codes.includes(pattern.topic);
-      }),
-    ]);
+    unique(withViewCodes(tags, codes));
 
-/** Add topic codes to whatever is there. */
+/** Add topics (view codes, or EDB codes) to whatever is there. */
 export const addTopics =
   (codes: readonly string[]): TagEdit =>
-  (tags) => unique([...tags, ...codes]);
+  (tags) =>
+    unique(codes.reduce<string[]>((acc, code) => addViewCode(acc, code), [...tags]));
 
-/** Take topic codes off, with their 題型; keep everything else. */
+/** Take topics off, with their 題型 (an MCQ topic with the EDB codes only it needed); keep everything else. */
 export const removeTopics =
   (codes: readonly string[]): TagEdit =>
   (tags) =>
-    unique(
-      tags.filter((tag) => {
-        const pattern = parsePatternTag(tag);
-        return !codes.includes(tag) && !(pattern && codes.includes(pattern.topic));
-      }),
-    );
+    unique(codes.reduce<string[]>((acc, code) => removeViewCode(acc, code), [...tags]));
+
+/** Take these exact tags off (and the 題型 hanging on any of them), reading nothing: an Undo of what one save added. */
+export const withoutTags =
+  (tags: readonly string[]): TagEdit =>
+  (list) =>
+    list.filter((tag) => !tags.includes(tag) && !(parsePatternTag(tag) && tags.includes(parsePatternTag(tag)!.topic)));
 
 /**
  * Bulk "Set topic": add the ticked topics, take them off, or make them the only ones. On

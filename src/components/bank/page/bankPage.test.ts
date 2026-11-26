@@ -187,10 +187,10 @@ describe('traySummary', () => {
     // Two MCQs at 60/45 min each, six structured marks at 1.2: 2.67 + 7.2 → 10.
     expect(summary.minutes).toBe(10);
     expect(summary.mix).toEqual([
-      { code: 'C.ped', count: 3 },
+      { code: '@mcq:elasticity', count: 3 },
       { code: 'C.intervention', count: 1 },
     ]);
-    expect(mixLabel(summary.mix)).toBe('Price elasticity of demand ×3, Market intervention ×1');
+    expect(mixLabel(summary.mix)).toBe('Elasticity ×3, Market intervention ×1');
     expect(mixLabel([1, 2, 3, 4, 5].map((n) => ({ code: `X${n}`, count: 1 })))).toBe('X1 ×1, X2 ×1, X3 ×1 +2 more');
   });
 });

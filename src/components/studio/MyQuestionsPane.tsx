@@ -6,7 +6,7 @@ import { useOwningDocument } from '@/components/bank/page/useOwningDocument';
 import { useMessages } from '@/i18n/language';
 import { dayOf, distinctDocLabels } from '@/library/docLabels';
 import { useBank } from '@/library/useBank';
-import { rollupTopic } from '@/model/topics';
+import { viewCodesOf } from '@/model/mcqView';
 import type { LanguageMode, Worksheet } from '@/model/types';
 import { worksheetStore } from '@/storage';
 import { REFERENCE_PICKER_MESSAGES } from './picker.messages';
@@ -116,7 +116,7 @@ export function MyQuestionsPane({
       on ? 'bg-surface font-medium text-ink shadow-sm' : 'text-ink-muted hover:bg-surface/70 hover:text-ink'
     }`;
   const topicLine = (e: MyEntry) => {
-    const code = e.row.tags.map((t) => rollupTopic(t)).find(Boolean)?.code;
+    const code = viewCodesOf(e.row.tags)[0];
     return code ? topicName(code, language) : m.untagged;
   };
   const excerpt = (e: MyEntry) => (language === 'zh' ? e.row.excerpt.zh || e.row.excerpt.en : e.row.excerpt.en || e.row.excerpt.zh);

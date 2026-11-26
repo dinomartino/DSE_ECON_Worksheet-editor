@@ -1,3 +1,4 @@
+import { viewDisplay, viewHeading, viewTopicOf } from '@/model/mcqView';
 import { topicDisplay, topicHeading, topicNamesFor } from '@/model/topics';
 import type { LanguageMode } from '@/model/types';
 import { paperLanguage } from '@/settings/paperLanguage';
@@ -9,14 +10,20 @@ import { paperLanguage } from '@/settings/paperLanguage';
  */
 type Room = 'tight' | 'wide';
 
-/** The name. */
+/**
+ * The name. The bank groups by the teacher's MCQ topics (k-0569): a view code (a section,
+ * `@mcq:<key>`, or an EDB code the view keeps) reads by the view (`model/mcqView.ts`); any
+ * other EDB code ('C.ped', a 題型's sub-topic) by `model/topics.ts`.
+ */
 export function topicName(code: string, language: LanguageMode = paperLanguage(), room: Room = 'tight'): string {
-  return topicDisplay(code, topicNamesFor(language, room));
+  const names = topicNamesFor(language, room);
+  return viewTopicOf(code) ? viewDisplay(code, names) : topicDisplay(code, names);
 }
 
-/** The name with its coarse letter first (`topicHeading`). */
+/** The name with its section letter first (`viewHeading`, else `topicHeading`). */
 export function topicTitle(code: string, language: LanguageMode = paperLanguage(), room: Room = 'tight'): string {
-  return topicHeading(code, topicNamesFor(language, room));
+  const names = topicNamesFor(language, room);
+  return viewTopicOf(code) ? viewHeading(code, names) : topicHeading(code, names);
 }
 
 /** The name of a tag; a free tag as stored. */

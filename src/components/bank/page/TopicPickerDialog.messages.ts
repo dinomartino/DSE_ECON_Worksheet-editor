@@ -9,6 +9,10 @@ export const TOPIC_PICKER_MESSAGES = defineMessages({
   },
   onCount: { en: (n: number) => `(on ${n})`, zh: (n: number) => `（${n} 條）` },
   noneTicked: { en: 'No topic ticked', zh: '未剔選課題' },
+  /** Beside an EDB topic several MCQ topics share, still to be picked (k-0569). */
+  pickNote: { en: 'EDB topic · pick an MCQ topic', zh: 'EDB 課題 · 請選 MCQ 課題' },
+  /** Beside an EDB topic no MCQ topic names. */
+  edbNote: { en: 'EDB topic', zh: 'EDB 課題' },
   ticked: { en: (n: number) => `${n} ticked`, zh: (n: number) => `已剔選 ${n} 項` },
   cancel: { en: 'Cancel', zh: '取消' },
 

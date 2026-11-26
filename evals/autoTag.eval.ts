@@ -6,14 +6,17 @@ import { MENTOR_MODEL, PRESETS, presetFor } from '@/ai/providers';
 import type { AiClient, AiFeature, ProviderConfig } from '@/ai/types';
 import { runTagging, tagQuestionOf, type TagQuestion } from '@/autoTag';
 import { migrate } from '@/model/migrations';
-import { parsePatternTag } from '@/model/patterns';
-import { isTopicCode, topicOf } from '@/model/topics';
+import { mcqTopic } from '@/model/topicSchemes';
+import { viewSectionOf } from '@/model/mcqView';
 import type { Worksheet } from '@/model/types';
 
 /**
- * AI tagging's hit rate (k-0560): past-paper questions whose topic the bank already knows,
- * sent with their tags hidden (the request carries the words only), the AI's main topic
- * compared with the bank's. Through Mentor, so the model is the one Mentor routes `tag` to;
+ * AI tagging's hit rate (k-0560; k-0569: against the exact MCQ topic): past-paper questions
+ * whose topic the bank already knows, sent with their tags hidden (the request carries the
+ * words only), the AI's main topic compared with the bank topic file(s) each question sits
+ * in. Those files are the teacher's MCQ topics, so the gold is exact: `@mcq:<topic id>`.
+ * EVAL_ARM=prompt drops the client's `decide`, so a Mentor-credits run goes through the
+ * prompt (the Gemini light model) instead of Jev. Through Mentor, so the model is the one Mentor routes `tag` to;
  * EVAL_FEATURE sends the calls under another feature name to reach the main model instead
  * (a Mentor dev with HOSTED_AI_LIGHT_FEATURES=translate,test,tag routes `tag` to Flash-Lite
  * and, say, `coverage` to the main model).
@@ -32,6 +35,8 @@ const SEED = Number(process.env.EVAL_SEED ?? 560);
 const FEATURE = (process.env.EVAL_FEATURE ?? 'tag') as AiFeature;
 /** Whole papers instead of a spread (u-sqrx's blind test): `DSE2024/P1,DSE2023/P1`, every question of each, in paper order. */
 const PAPERS = (process.env.EVAL_PAPERS ?? '').split(',').map((p) => p.trim()).filter(Boolean);
+/** `jev` (default on Mentor credits) or `prompt`. */
+const ARM = process.env.EVAL_ARM === 'prompt' ? 'prompt' : 'jev';
 
 interface Gold {
   q: TagQuestion;
@@ -64,17 +69,18 @@ function sample(): Gold[] {
 
 /** Every topic file's questions with their tags (a question filed under two topics appears in both). */
 function bankQuestions(): Gold[][] {
-  const manifest = JSON.parse(readFileSync(path.join(BANK!, 'manifest.json'), 'utf8')) as { topics: Array<{ file: string }> };
+  const manifest = JSON.parse(readFileSync(path.join(BANK!, 'manifest.json'), 'utf8')) as { topics: Array<{ id: string; file: string }> };
   const perFile: Gold[][] = [];
   for (const topic of manifest.topics) {
     const file = topic.file.startsWith('topics/') ? topic.file : path.join('topics', topic.file);
     const raw = JSON.parse(readFileSync(path.join(BANK!, file), 'utf8'));
     const worksheet: Worksheet = migrate(raw);
     const golds: Gold[] = [];
+    // The topic file is one MCQ topic: every question in it is gold for exactly that topic.
+    if (!mcqTopic(topic.id)) continue;
+    const gold = [`@mcq:${topic.id}`];
     for (const question of worksheet.questions) {
       const tags = (question.tags ?? []).filter((t): t is string => typeof t === 'string');
-      const gold = tags.filter((t) => isTopicCode(t) && topicOf(t) && !parsePatternTag(t));
-      if (gold.length === 0) continue;
       const source = tags.find((t) => /\//.test(t)) ?? question.id;
       // The tags never reach the request: the payload is built from the printed words only.
       const q = tagQuestionOf(worksheet, question.id, question.id, 'q', undefined);
@@ -119,7 +125,7 @@ function spread(): Gold[] {
   return out.map((g, i) => ({ ...g, q: { ...g.q, key: `q${i + 1}` } }));
 }
 
-const partOf = (code: string) => topicOf(code)?.parent ?? code;
+const partOf = (code: string) => viewSectionOf(code) ?? code;
 
 /** The calls, under EVAL_FEATURE, with what Mentor charged. */
 function counting(client: AiClient) {
@@ -131,6 +137,15 @@ function counting(client: AiClient) {
       calls.push({ model: result.model, input: result.usage?.input, output: result.usage?.output, thinking: result.usage?.thinking, charged: result.charged, ms: result.ms });
       return result;
     },
+    ...(client.decide
+      ? {
+          decide: async (request) => {
+            const result = await client.decide!(request);
+            if (result) calls.push({ model: `${result.model}${result.fallback ? ' (fallback)' : ''}`, input: result.usage?.input, output: result.usage?.output, charged: result.charged, ms: result.ms });
+            return result;
+          },
+        }
+      : {}),
   };
   return { client: wrapped, calls };
 }
@@ -145,7 +160,9 @@ describe.skipIf(!process.env.EVAL_MENTOR_TOKEN || !BANK)('AI tagging hit rate, l
       baseUrl: process.env.EVAL_MENTOR_API ? `${process.env.EVAL_MENTOR_API.replace(/\/+$/, '').replace(/\/ai$/, '')}/ai` : PRESETS.mentor.baseUrl,
     };
     const preset = presetFor(config.provider);
-    const { client, calls } = counting(createClient(config));
+    const base = createClient(config);
+    if (ARM === 'prompt') delete (base as { decide?: unknown }).decide;
+    const { client, calls } = counting(base);
     const golds = sample();
     const started = Date.now();
     const outcome = await runTagging(
@@ -157,7 +174,7 @@ describe.skipIf(!process.env.EVAL_MENTOR_TOKEN || !BANK)('AI tagging hit rate, l
     const rows = golds.map((g) => {
       const s = byRoot.get(g.q.rootId);
       const main = s?.topics[0];
-      const goldFine = g.gold.filter((c) => topicOf(c)?.parent);
+      const goldFine = g.gold;
       const goldParts = [...new Set(g.gold.map(partOf))];
       return {
         source: g.source,
@@ -184,6 +201,8 @@ describe.skipIf(!process.env.EVAL_MENTOR_TOKEN || !BANK)('AI tagging hit rate, l
       models?: { default: string; byFeature: Record<string, string> };
     };
     const summary = {
+      arm: ARM,
+      gold: 'exact MCQ topic (bank topic file)',
       feature: FEATURE,
       model: account.models ? (account.models.byFeature[FEATURE] ?? account.models.default) : 'unknown',
       questions: n,
