@@ -15,6 +15,12 @@ import { numbered } from './versions';
  * saved: they are read again from its `figureBlocks`. Those blocks' pictures are kept outside
  * localStorage since k-0551 (`chatPictures.ts`): the saved chat holds a token per picture, the
  * picture goes to IndexedDB, and a save that still fails is reported, never silent.
+ *
+ * Deleting (k-0564): every save writes the whole list, an empty one too, so a deleted chat stays
+ * gone. A write never loses what a newer build saved under the same key: the chats it cannot
+ * read because their `v` is above 1 are read from storage again at each write and written back
+ * as they are (`heldBack`), and a list that is no longer an array is not written over at all.
+ * A newer build keeps this key an array of chats, each with its own `v`, so both can share it.
  */
 
 export const CHATS_KEY = 'econgen.studioChats.v1';
@@ -200,6 +206,26 @@ async function keep(keeper: Keeper, pictures: ReadonlyMap<string, string>): Prom
   return (await Promise.all(waits)).every(Boolean);
 }
 
+/** A chat a newer build saved (`v` above 1): this build cannot read it, so it keeps it as it is. */
+const isNewer = (x: unknown): boolean => isObj(x) && typeof x.v === 'number' && x.v > 1;
+
+/**
+ * What a write must keep from the list saved now (k-0564): the newer build's chats in it, or
+ * `'newer'` when the saved list is not an array but an object (a shape this build does not
+ * know: never written over). Nothing to keep when it is missing, unreadable or this build's.
+ */
+export function heldBack(raw: string | null): unknown[] | 'newer' {
+  if (!raw) return [];
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (isObj(data)) return 'newer';
+  return Array.isArray(data) ? data.filter(isNewer) : [];
+}
+
 const isQuota = (error: unknown) => {
   const e = error as { name?: string; code?: number } | null;
   return e?.name === 'QuotaExceededError' || e?.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e?.code === 22 || e?.code === 1014;
@@ -240,18 +266,34 @@ export function localChatStorage(
     }
   };
 
-  /** Writes the list, the oldest chats dropped until it fits; what the teacher must hear. */
+  /**
+   * Writes the list, the oldest chats dropped until it fits; what the teacher must hear. An
+   * empty list is written too (k-0564: the last chat deleted stays deleted), always with the
+   * newer build's chats kept (`heldBack`, read now: another window may have saved since).
+   */
   const write = (list: readonly Chat[], { keepOnFailure = false } = {}): SaveReport => {
+    let current: string | null = null;
+    try {
+      current = store!.getItem(key);
+    } catch {
+      // Unreadable now: nothing of it can be kept; the write below says whether storage works.
+    }
+    const back = heldBack(current);
+    if (back === 'newer') return { problem: 'error', left: list.length, of: list.length };
+    // Two builds open at once may hold the same chat: this build's copy is the one written.
+    const mineIds = new Set(list.map((c) => c.id));
+    const held = back.filter((x) => !mineIds.has((x as { id?: unknown }).id as string));
     let count = list.length;
     let problem: SaveReport['problem'];
-    while (count > 0) {
+    for (;;) {
       try {
-        store!.setItem(key, JSON.stringify(list.slice(0, count)));
+        store!.setItem(key, JSON.stringify([...list.slice(0, count), ...held]));
         break;
       } catch (error) {
         problem ??= isQuota(error) ? 'full' : 'error';
         // Moving old chats over: what is there stays as it is rather than lose a chat.
         if (keepOnFailure) return { problem, left: list.length, of: list.length };
+        if (count === 0) break;
         count -= 1;
       }
     }
