@@ -124,7 +124,8 @@ function bigSeed() {
 
 // ---- helpers ----
 
-const shot = (page, name) => page.screenshot({ path: `${OUT}/${name}.png` });
+// Transitions finish first: a shot right after a click caught the rail mid-fade (k-0578).
+const shot = (page, name) => page.screenshot({ path: `${OUT}/${name}.png`, animations: 'disabled' });
 const picker = (page) => page.locator('[data-reference-picker]');
 async function openStudio(page, row = /Question studio 擬題工作室/) {
   await page.goto(APP, { waitUntil: 'networkidle' });
@@ -171,14 +172,53 @@ try {
     await page.waitForTimeout(300);
     expect((await cards(page).count()) === 1, `search: ${await cards(page).count()}`);
     await page.locator('[data-my-search]').fill('');
-    await page.locator('[data-my-topic="F"]').click();
-    expect((await cards(page).count()) === 1 && (await cards(page).first().innerText()).includes('Quiz 2024'), 'topic F');
-    await page.locator('[data-my-topic=""]').click();
-    await page.locator('[data-my-when="month"]').click();
+    const rail = page.locator('[data-my-rail]');
+    await rail.locator('[data-pastpaper-part="F"] > button').click();
+    await rail.locator('[data-pastpaper-part="F"] [data-pastpaper-topic]').first().click();
+    expect((await cards(page).count()) === 1 && (await cards(page).first().innerText()).includes('Quiz 2024'), 'topic in F');
+    await rail.locator('[data-pastpaper-topic=""]').click();
+    await page.locator('[data-my-when]').selectOption('month');
     expect((await cards(page).count()) === 3, `past month: ${await cards(page).count()}`);
-    await page.locator('[data-my-when="older"]').click();
+    await page.locator('[data-my-when]').selectOption('older');
     expect((await cards(page).count()) === 1, `older: ${await cards(page).count()}`);
-    await page.locator('[data-my-when="any"]').click();
+    await page.locator('[data-my-when]').selectOption('any');
+  });
+
+  await check('k-0578: the rail is the Past paper bank\'s: sections A–J open onto MCQ topics with counts; the topic filter and search still work', async () => {
+    const rail = page.locator('[data-my-rail]');
+    const parts = await rail.locator('[data-pastpaper-part]').evaluateAll((els) => els.map((el) => el.getAttribute('data-pastpaper-part')));
+    expect(parts.join(',') === 'A,C,F', `sections ${parts}`);
+    const c = rail.locator('[data-pastpaper-part="C"]');
+    expect((await c.locator('> button').innerText()).replace(/\s+/g, ' ').trim().endsWith('2'), `C count: ${await c.locator('> button').innerText()}`);
+    await c.locator('> button').click();
+    const rows = await c.locator('[data-pastpaper-topic]').evaluateAll((els) => els.map((el) => [el.getAttribute('data-pastpaper-topic'), el.textContent.replace(/\s+/g, ' ').trim()]));
+    expect(rows.length === 2 && rows.every(([, text]) => /1$/.test(text)), `C topics ${JSON.stringify(rows)}`);
+    expect(rows.some(([id, text]) => id === '@mcq:elasticity' && text.startsWith('Elasticity')), `elasticity row ${JSON.stringify(rows)}`);
+    await rail.locator('[data-pastpaper-topic="@mcq:elasticity"]').click();
+    expect((await cards(page).count()) === 1 && (await cards(page).first().innerText()).includes('bubble tea'), 'elasticity filter');
+    expect((await rail.locator('[data-pastpaper-topic="@mcq:elasticity"]').getAttribute('aria-current')) === 'true', 'topic marked open');
+    await shot(page, 'k0578-en-my-questions-topics');
+    // The rail's own filter finds a topic by name in either language.
+    await rail.locator('input[type="search"]').fill('彈性');
+    const found = await rail.locator('[data-pastpaper-topic]').count();
+    expect(found === 1, `filter 彈性: ${found}`);
+    await rail.locator('input[type="search"]').fill('');
+    // Search still works inside a topic, and All topics clears it.
+    await page.locator('[data-my-search]').fill('price ceiling');
+    await page.waitForTimeout(300);
+    expect((await cards(page).count()) === 0, `search inside elasticity: ${await cards(page).count()}`);
+    await rail.locator('[data-pastpaper-topic=""]').click();
+    expect((await cards(page).count()) === 1, `search in all: ${await cards(page).count()}`);
+    await page.locator('[data-my-search]').fill('');
+    // The Past papers side: the same picker, its topics under A–J.
+    await page.locator('[data-picker-source="past"]').click();
+    const past = page.locator('[data-reference-rail]');
+    await past.locator('[data-pastpaper-part]').first().waitFor({ timeout: 30_000 });
+    const pastTopics = await past.locator('[data-pastpaper-topic]').count();
+    expect(pastTopics > 0, 'past side lists topics');
+    await shot(page, 'k0578-en-past-papers-topics');
+    await page.locator('[data-picker-source="mine"]').click();
+    await cards(page).first().waitFor();
   });
 
   await check('k-0529: the preview draws the question as it prints: table, answer, explanation; a diagram too', async () => {
@@ -360,6 +400,9 @@ try {
     await zh.page.locator('[data-my-preview] [data-reference-explanation]').waitFor();
     expect((await zh.page.locator('[data-my-preview] [data-reference-answer]').innerText()).includes('答案'), 'answer chip');
     await shot(zh.page, 'k0529-zh-my-questions');
+    // k-0578: the rail's own words in 中文 (topic names follow the paper language, English here).
+    const zrail = zh.page.locator('[data-my-rail]');
+    expect((await zrail.innerText()).includes('最近使用或製作') && (await zrail.innerText()).includes('所有課題'), 'rail heading in 中文');
     await zh.page.getByRole('button', { name: '用作參考' }).click();
     await zh.page.locator('[data-chat-send]').click();
     await zh.page.locator('[data-chat-draft]').first().waitFor({ timeout: 60_000 });
@@ -377,6 +420,26 @@ try {
     expect(zh.errors.length === 0, zh.errors[0]);
   });
   await zh.context.close();
+
+  // k-0578: a 中文 paper names the sections and MCQ topics in 中文, as the Past paper bank does.
+  const zhPaper = await newPage(browser, { ui: 'zh-HK', paper: 'zh', seed: SEED });
+  await check('k-0578 中文: sections and topics in 中文 with their counts', async () => {
+    await openStudio(zhPaper.page, /擬題工作室/);
+    await openMine(zhPaper.page);
+    await cards(zhPaper.page).first().waitFor({ timeout: 30_000 });
+    const rail = zhPaper.page.locator('[data-my-rail]');
+    await rail.locator('[data-pastpaper-part="C"] > button').click();
+    const text = await rail.innerText();
+    expect(text.includes('所有課題') && text.includes('彈性'), `rail: ${text.slice(0, 200)}`);
+    await rail.locator('[data-pastpaper-topic="@mcq:elasticity"]').click();
+    expect((await cards(zhPaper.page).count()) === 1, 'elasticity filter');
+    await shot(zhPaper.page, 'k0578-zh-my-questions-topics');
+    await zhPaper.page.locator('[data-picker-source="past"]').click();
+    await zhPaper.page.locator('[data-reference-rail] [data-pastpaper-part]').first().waitFor({ timeout: 30_000 });
+    await shot(zhPaper.page, 'k0578-zh-past-papers-topics');
+    expect(zhPaper.errors.length === 0, zhPaper.errors[0]);
+  });
+  await zhPaper.context.close();
 } finally {
   await browser.close();
   bankServer.close();

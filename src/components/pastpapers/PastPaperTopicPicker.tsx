@@ -27,6 +27,8 @@ export function PastPaperTopicPicker({
   active,
   language,
   top,
+  all,
+  partCounts,
   onPick,
 }: {
   topics: readonly TopicEntry[];
@@ -37,6 +39,13 @@ export function PastPaperTopicPicker({
   language: LanguageMode;
   /** Drawn above the list (the By topic / By year switch, k-0497). */
   top?: ReactNode;
+  /**
+   * A first row choosing every topic at once (the studio's My questions, k-0578), on while
+   * `active` and no topic is open; absent on the Past paper screen.
+   */
+  all?: { label: string; count?: number; onPick: () => void };
+  /** A section's count when its topics' counts do not add up to it (a question under two topics). */
+  partCounts?: ReadonlyMap<string, number>;
   onPick: (id: string) => void;
 }) {
   const m = useMessages(PAST_PAPER_MESSAGES);
@@ -102,6 +111,7 @@ export function PastPaperTopicPicker({
 
   const groupBlock = (group: TopicGroup) => {
     const expanded = filtering || open.has(group.code);
+    const count = (!filtering && partCounts?.get(group.code)) || group.questions;
     const name = partName(group, names, m.otherTopics);
     const listId = `pastpaper-part-${group.code || 'other'}`;
     const heading = (
@@ -117,9 +127,9 @@ export function PastPaperTopicPicker({
         <span className="line-clamp-2 min-w-0 flex-1 text-left leading-snug" title={name}>
           {name}
         </span>
-        {group.questions !== undefined && (
-          <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle" title={m.partQuestions(group.questions)}>
-            {group.questions}
+        {count !== undefined && (
+          <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle" title={m.partQuestions(count)}>
+            {count}
           </span>
         )}
       </>
@@ -174,7 +184,7 @@ export function PastPaperTopicPicker({
             {currentPart}
           </span>
         )}
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{current ? packName(current.title, language) : m.chooseTopic}</span>
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink">{current ? packName(current.title, language) : (all?.label ?? m.chooseTopic)}</span>
         {current?.questions !== undefined && <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle">{current.questions}</span>}
         <ChevronDownIcon size={16} className={`shrink-0 text-ink-subtle transition-transform duration-150 ${phoneOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -215,6 +225,23 @@ export function PastPaperTopicPicker({
           </label>
         </div>
         <div className="scroll-slim min-h-0 flex-1 overflow-y-auto pb-3">
+          {all && !filtering && (
+            <button
+              type="button"
+              aria-current={active && !current ? 'true' : undefined}
+              data-pastpaper-topic=""
+              onClick={() => {
+                all.onPick();
+                setPhoneOpen(false);
+              }}
+              className={`flex w-full cursor-pointer items-baseline gap-2 py-1.5 pl-[42px] pr-4 text-left text-[12.5px] font-semibold transition-colors duration-150 pointer-coarse:py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+                active && !current ? 'bg-accent-soft text-ink' : 'text-ink hover:bg-surface-sunken'
+              }`}
+            >
+              <span className="min-w-0 flex-1 truncate">{all.label}</span>
+              {all.count !== undefined && <span className="shrink-0 text-[11px] font-normal tabular-nums text-ink-subtle">{all.count}</span>}
+            </button>
+          )}
           {shown.length === 0 && <p className="px-5 py-2 text-[12.5px] text-ink-muted">{m.topicFilterNone}</p>}
           {groups ? <ul>{shown.map(groupBlock)}</ul> : <ul>{shown.flatMap((g) => g.topics).map((entry) => topicRow(entry, false))}</ul>}
         </div>

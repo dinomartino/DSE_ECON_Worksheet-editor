@@ -107,22 +107,22 @@ export const expect = (cond, message) => {
 };
 const PROVIDER_HOSTS = ['generativelanguage.googleapis.com', 'api.deepseek.com', 'dashscope.aliyuncs.com', 'dashscope-intl.aliyuncs.com', 'openrouter.ai', 'api.openai.com', 'api.anthropic.com'];
 
-export async function newPage(browser, { ui = 'en', slow = 0, seed, viewport = { width: 1440, height: 900 }, bank } = {}) {
+export async function newPage(browser, { ui = 'en', paper = 'en', slow = 0, seed, viewport = { width: 1440, height: 900 }, bank } = {}) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 2 });
   context.setDefaultTimeout(20_000);
   const ai = { v: 1, provider: 'custom', models: { custom: MOCK_MODEL }, baseUrls: { custom: `${MOCK}/v1` } };
   await context.addInitScript(
-    ([aiJson, bank, lang, extra]) => {
+    ([aiJson, bank, lang, extra, paperLang]) => {
       if (sessionStorage.getItem('chat-seeded')) return;
       sessionStorage.setItem('chat-seeded', '1');
       localStorage.clear();
       for (const [key, value] of Object.entries(extra)) localStorage.setItem(key, value);
       localStorage.setItem('econgen.settings.ai', aiJson);
       sessionStorage.setItem('econgen.secret.ai:custom', 'sk-mock-verify-0000');
-      localStorage.setItem('econgen.settings.language', JSON.stringify({ v: 1, ui: lang, paper: 'en' }));
+      localStorage.setItem('econgen.settings.language', JSON.stringify({ v: 1, ui: lang, paper: paperLang }));
       localStorage.setItem('econgen.settings.pastPapers', JSON.stringify({ v: 1, mode: 'custom', url: bank }));
     },
-    [JSON.stringify(ai), bank ?? BANK, ui, seed ?? {}],
+    [JSON.stringify(ai), bank ?? BANK, ui, seed ?? {}, paper],
   );
   const leaks = [];
   await context.route((url) => PROVIDER_HOSTS.includes(url.hostname), (r) => {

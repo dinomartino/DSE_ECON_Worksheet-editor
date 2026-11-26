@@ -49,6 +49,8 @@ export const REFERENCE_PICKER_MESSAGES = defineMessages({
   showMore: { en: (n: number) => `Show more (${n} left)`, zh: (n: number) => `顯示更多（尚餘 ${n} 條）` },
   recent: { en: 'Recently used', zh: '最近使用' },
   untagged: { en: 'No topic', zh: '未有課題' },
+  /** A rail topic in the paper language (k-0578): questions under a section alone, as the 題庫 says. */
+  general: { en: 'General', zh: '一般' },
   previewNone: { en: 'Select a question to see it here.', zh: '選取題目後會在這裏顯示。' },
   previewLoading: { en: 'Opening…', zh: '正在開啟…' },
   previewFailed: { en: 'This question could not be opened.', zh: '未能開啟這條題目。' },

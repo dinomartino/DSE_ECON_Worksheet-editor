@@ -7,8 +7,9 @@ import { choiceQuestion, docWith, partsQuestion } from '@/library/testKit';
 import { createImageBlock, createParagraphBlock } from '@/model/factories';
 import { bi } from '@/model/text';
 import type { McqQuestion, Question, Worksheet } from '@/model/types';
+import { groupTopics, OTHER_PART } from '@/pastpapers/groups';
 import { examplePayload } from '@/questionStudio/brief';
-import { inWhen, mineReference, mineSourceId, myQuestionList, myTopics, noteRecent, NO_FILTER, parseMineId, readRecent, RECENT_KEY } from './myQuestions';
+import { inWhen, mineReference, mineSourceId, generalTopic, inTopic, myQuestionList, myTopicEntries, NO_TOPIC, noteRecent, NO_FILTER, parseMineId, readRecent, RECENT_KEY } from './myQuestions';
 
 const NOW = Date.parse('2026-11-24T00:00:00Z');
 
@@ -66,17 +67,52 @@ describe('My questions list (k-0529)', () => {
     expect(list.entries[0].recentAt).toBe(NOW - 10);
   });
 
-  it('names the coarse topics with counts, in guide order, MC only', () => {
-    expect(myTopics(groups)).toEqual([
-      { code: 'A', count: 1 },
-      { code: 'C', count: 1 },
-      { code: 'F', count: 1 },
+  const NAMES = { general: { en: 'General', zh: '一般' }, none: { en: 'No topic', zh: '未有課題' } };
+
+  it('lists the MCQ topics with counts, grouped like the Past paper bank (k-0578), MC only', () => {
+    const { topics, parts } = myTopicEntries(groups, NAMES);
+    // C.ped is the MCQ topic Elasticity; 'A' and 'F' alone are "General" in their section.
+    expect(topics.map((t) => [t.id, t.questions])).toEqual([
+      [generalTopic('A'), 1],
+      ['@mcq:elasticity', 1],
+      [generalTopic('F'), 1],
     ]);
+    expect(topics[1].title).toEqual({ en: 'Elasticity', zh: expect.any(String) });
+    expect(groupTopics(topics)?.map((g) => [g.code, g.topics.length])).toEqual([['A', 1], ['C', 1], ['F', 1]]);
+    expect(Object.fromEntries(parts)).toEqual({ A: 1, C: 1, F: 1 });
+    // Each entry filters to exactly its questions; a section letter still takes everything in it.
+    for (const t of topics) expect(myQuestionList(groups, { ...NO_FILTER, topic: t.id }, {}, NOW).entries).toHaveLength(1);
+    expect(myQuestionList(groups, { ...NO_FILTER, topic: 'C' }, {}, NOW).entries).toHaveLength(1);
     // The teacher's MCQ topics' sections (k-0569): Circular Flow sits in F, as on DSEcon Mentor.
     const flow = groupRows(rowsOf(paper('cf', 'Flow', '2026-01-01', [mcq('Circular flow', ['A.circular-flow'])])));
-    expect(myTopics(flow)).toEqual([{ code: 'F', count: 1 }]);
+    expect(myTopicEntries(flow, NAMES).topics.map((t) => t.id)).toEqual(['@mcq:circular-flow']);
+    expect(groupTopics(myTopicEntries(flow, NAMES).topics)?.map((g) => g.code)).toEqual(['F']);
     expect(myQuestionList(flow, { ...NO_FILTER, topic: 'F' }, {}, NOW).entries).toHaveLength(1);
     expect(myQuestionList(flow, { ...NO_FILTER, topic: '@mcq:circular-flow' }, {}, NOW).entries).toHaveLength(1);
+  });
+
+  it('a question under two topics counts in each, its section once; General after the topics; untagged last', () => {
+    const two = mcq('Tax and elasticity', ['C.ped', 'I.fiscal']);
+    const both = mcq('Elasticity, and something in C', ['C.ped', 'C.intervention', '@mcq:quota']);
+    const general = mcq('Somewhere in C', ['C']);
+    const bare = mcq('No tags at all', []);
+    const g = groupRows(rowsOf(paper('m', 'Mixed', '2026-11-01', [two, both, general, bare])));
+    const { topics, parts } = myTopicEntries(g, NAMES);
+    expect(topics.map((t) => [t.id, t.questions])).toEqual([
+      ['@mcq:elasticity', 2],
+      ['@mcq:quota', 1],
+      [generalTopic('C'), 1],
+      ['I.fiscal', 1], // several MCQ topics fit, none chosen: listed by its EDB name
+      [NO_TOPIC, 1],
+    ]);
+    expect(parts.get('C')).toBe(3);
+    expect(topics.at(-1)?.title).toEqual(NAMES.none);
+    expect(groupTopics(topics)?.map((group) => group.code)).toEqual(['C', 'I', OTHER_PART]);
+    expect(inTopic(general.tags, generalTopic('C'))).toBe(true);
+    expect(inTopic(both.tags, generalTopic('C'))).toBe(false);
+    expect(inTopic(bare.tags, NO_TOPIC)).toBe(true);
+    expect(myQuestionList(g, { ...NO_FILTER, topic: NO_TOPIC }, {}, NOW).entries.map((e) => e.group.rootId)).toEqual([bare.id]);
+    expect(myQuestionList(g, { ...NO_FILTER, topic: '@mcq:elasticity' }, {}, NOW).entries).toHaveLength(2);
   });
 
   it('stays quick on a large bank', () => {

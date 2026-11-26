@@ -1,9 +1,9 @@
 import { stimuliServing } from '@/library/stimuli';
 import { searchRows } from '@/library/search';
 import type { BankGroup, BankRow } from '@/library/types';
-import { matchesBankTopic, VIEW_SECTIONS, viewSections } from '@/model/mcqView';
+import { matchesBankTopic, VIEW_SECTIONS, viewCodesOf, viewOrder, viewSectionOf, viewTopicOf } from '@/model/mcqView';
 import type { McqQuestion, Worksheet } from '@/model/types';
-import type { PastPaperItem } from '@/pastpapers/pack';
+import type { PastPaperItem, TopicEntry } from '@/pastpapers/pack';
 import { sourceFromQuestion } from '@/questionStudio/source';
 import type { SourceQuestion } from '@/questionStudio/types';
 import { keyPointOfTags } from './studioView';
@@ -25,7 +25,10 @@ export type When = (typeof WHEN_CHOICES)[number];
 
 export interface MyFilter {
   words: string;
-  /** A section or MCQ topic (a view code, k-0569), or an EDB code; absent = every topic. */
+  /**
+   * A section or MCQ topic (a view code, k-0569), or an EDB code; `generalTopic(section)` for
+   * the questions under the section alone, `NO_TOPIC` for none; absent = every topic.
+   */
   topic?: string;
   when: When;
 }
@@ -101,7 +104,7 @@ export function myQuestionList(groups: readonly BankGroup[], filter: MyFilter, r
   for (const group of mcq) {
     const row = group.rows[0];
     if (hits && !hits.has(group.rootId)) continue;
-    if (filter.topic && !matchesBankTopic(row.tags, filter.topic)) continue;
+    if (filter.topic && !inTopic(row.tags, filter.topic)) continue;
     if (!inWhen(row.usedOn, filter.when, now)) continue;
     const recentAt = recent[group.rootId];
     entries.push(recentAt ? { group, row, recentAt } : { group, row });
@@ -111,18 +114,62 @@ export function myQuestionList(groups: readonly BankGroup[], filter: MyFilter, r
   return { entries, total: mcq.length, otherTypes };
 }
 
-/** The sections the listed questions fall under (the teacher's MCQ topics, k-0569), in order, each with its count. */
-export function myTopics(groups: readonly BankGroup[]): { code: string; count: number }[] {
+/** The rail entry of questions filed under a section alone, no finer topic ("General", as the 題庫 says). */
+export const generalTopic = (section: string) => `general:${section}`;
+/** The rail entry of questions with no topic at all. */
+export const NO_TOPIC = 'none';
+
+/** Whether a question's tags fall under a rail filter (see `MyFilter.topic`). */
+export function inTopic(tags: readonly string[] | undefined, topic: string): boolean {
+  if (topic === NO_TOPIC) return viewCodesOf(tags).length === 0;
+  if (topic.startsWith('general:')) return viewCodesOf(tags).includes(topic.slice('general:'.length));
+  return matchesBankTopic(tags, topic);
+}
+
+/** What `myTopicEntries` names the two entries that are not topics, in the paper language. */
+export interface RailNames {
+  general: { en: string; zh: string };
+  none: { en: string; zh: string };
+}
+
+/**
+ * The topics the listed questions fall under, as the Past paper bank's topic picker lists its
+ * own (k-0578): the teacher's MCQ topics (k-0569) by view code, each with its count, grouped by
+ * the picker under their section A–J. An EDB code no single MCQ topic stands for is listed by
+ * its own name; questions under a section alone come last in it as "General"; untagged ones
+ * as "No topic", under Other topics. A question under two topics counts in each. MC only.
+ * `parts` counts each question once per section, for the section headings.
+ */
+export function myTopicEntries(groups: readonly BankGroup[], names: RailNames): { topics: TopicEntry[]; parts: Map<string, number> } {
   const counts = new Map<string, number>();
+  const parts = new Map<string, number>();
+  let none = 0;
   for (const group of groups) {
     const row = group.rows[0];
     if (row?.typeId !== MCQ_TYPE) continue;
-    for (const code of viewSections(row.tags)) counts.set(code, (counts.get(code) ?? 0) + 1);
+    const codes = viewCodesOf(row.tags);
+    if (codes.length === 0) none++;
+    for (const code of codes) counts.set(code, (counts.get(code) ?? 0) + 1);
+    for (const section of new Set(codes.map((code) => viewSectionOf(code)!))) parts.set(section, (parts.get(section) ?? 0) + 1);
   }
-  return VIEW_SECTIONS.filter((t) => counts.has(t.code)).map((t) => ({
-    code: t.code,
-    count: counts.get(t.code) ?? 0,
-  }));
+  const sectionCodes = new Set(VIEW_SECTIONS.map((s) => s.code));
+  // A section alone sorts after everything in it.
+  const rank = (code: string) => (sectionCodes.has(code) ? viewOrder(code) + 999 : viewOrder(code));
+  const codes = [...counts.keys()].sort((a, b) => rank(a) - rank(b));
+  const topics: TopicEntry[] = codes.map((code, order) => {
+    const general = sectionCodes.has(code);
+    const node = viewTopicOf(code)!;
+    return {
+      id: general ? generalTopic(code) : code,
+      title: general ? { ...names.general } : { en: node.en, zh: node.zh },
+      order,
+      questions: counts.get(code),
+      file: '',
+      syllabus: [general ? code : viewSectionOf(code)!],
+    };
+  });
+  if (none > 0) topics.push({ id: NO_TOPIC, title: { ...names.none }, order: topics.length, questions: none, file: '', syllabus: [] });
+  return { topics, parts };
 }
 
 /** How many entries a page of the list shows; "Show more" adds another. */

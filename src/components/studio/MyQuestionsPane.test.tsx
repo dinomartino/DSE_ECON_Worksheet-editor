@@ -45,7 +45,9 @@ describe('My questions pane (k-0529)', () => {
     // Newest paper first (the older quiz is on the next page); the rail offers the topic.
     expect(out).toContain('Mock 2026 · Q1');
     expect(out).not.toContain('Quiz · Q1');
-    expect(out).toContain('data-my-topic="C"');
+    // k-0578: the Past paper bank's topic picker, sections A–J with their counts; All topics first.
+    expect(out).toContain('data-pastpaper-part="C"');
+    expect(out).toMatch(/data-pastpaper-topic=""[^>]*>.*?All topics.*?52</);
     expect(out).toContain('Select a question to see it here.');
   });
 

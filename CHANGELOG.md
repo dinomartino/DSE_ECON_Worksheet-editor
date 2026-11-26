@@ -13,6 +13,12 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **My questions in the Question studio's reference picker lists your questions by MCQ topic.**
+  As in the Past paper bank, the sections A–J open onto their MCQ topics (Elasticity, Price
+  Ceiling…), each with how many of your multiple-choice questions it holds; questions filed under a
+  section alone show as General, untagged ones as No topic. Find a topic by name, pick All topics to
+  see everything, and search and Last used or made still narrow the list.
+  <!-- zh: **擬題工作室參考題選擇器的「我的題目」按 MCQ 課題列出你的題目。** 與歷屆試題庫一樣，A 至 J 部分可展開至各 MCQ 課題（彈性、價格上限……），並顯示每個課題有多少條你的多項選擇題；只標示部分的題目列為「一般」，未有課題的列為「未有課題」。可按名稱搜尋課題，選「所有課題」查看全部，搜尋及「最近使用或製作」仍可收窄清單。 -->
 - **The Question bank sorts your questions by your MCQ topics.** By topic now follows the 72
   topics of DSEcon Mentor's MCQ section (Price Ceiling, Per-unit Tax, Monetary Base…) in the site's
   sections A–J, instead of the EDB syllabus points: the topic cards, the list, the filter, the tag

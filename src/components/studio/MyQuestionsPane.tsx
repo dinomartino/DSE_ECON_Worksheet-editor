@@ -2,6 +2,7 @@
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { topicName } from '@/components/bank/page/topicText';
+import { PastPaperTopicPicker } from '@/components/pastpapers/PastPaperTopicPicker';
 import { useOwningDocument } from '@/components/bank/page/useOwningDocument';
 import { useMessages } from '@/i18n/language';
 import { dayOf, distinctDocLabels } from '@/library/docLabels';
@@ -15,7 +16,7 @@ import {
   mineLabel,
   mineReference,
   myQuestionList,
-  myTopics,
+  myTopicEntries,
   noteRecent,
   PAGE_SIZE,
   readRecent,
@@ -60,7 +61,11 @@ export function MyQuestionsPane({
   const deferredWords = useDeferredValue(words);
 
   const list = useMemo(() => myQuestionList(bank.groups, { words: deferredWords, topic, when }, recent, now), [bank.groups, deferredWords, topic, when, recent, now]);
-  const topics = useMemo(() => myTopics(bank.groups), [bank.groups]);
+  const rail = useMemo(
+    () => myTopicEntries(bank.groups, { general: REFERENCE_PICKER_MESSAGES.general, none: REFERENCE_PICKER_MESSAGES.untagged }),
+    [bank.groups],
+  );
+  const currentTopic = topic !== undefined ? rail.topics.find((t) => t.id === topic) : undefined;
   const labels = useMemo(() => distinctDocLabels(bank.rows), [bank.rows]);
 
   const filterKey = `${deferredWords}\u0000${topic ?? ''}\u0000${when}`;
@@ -111,10 +116,6 @@ export function MyQuestionsPane({
 
   const status = bank.status.state;
   const shown = list.entries.slice(0, limit);
-  const railButton = (on: boolean) =>
-    `flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[12.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-      on ? 'bg-surface font-medium text-ink shadow-sm' : 'text-ink-muted hover:bg-surface/70 hover:text-ink'
-    }`;
   const topicLine = (e: MyEntry) => {
     const code = viewCodesOf(e.row.tags)[0];
     return code ? topicName(code, language) : m.untagged;
@@ -123,43 +124,36 @@ export function MyQuestionsPane({
 
   return (
     <div className="flex min-h-0 flex-1" data-my-questions>
-      <nav
-        className="scroll-slim flex w-[212px] min-h-0 shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-surface-sunken p-3"
-        aria-label={m.mineRail}
-        data-my-rail
-      >
-        <section>
-          <h3 className="mb-1 px-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">{m.whenHeading}</h3>
-          {WHEN_CHOICES.map((w) => (
-            <button key={w} type="button" aria-pressed={when === w} className={railButton(when === w)} onClick={() => setWhen(w)} data-my-when={w}>
-              {m.when(w)}
-            </button>
-          ))}
-        </section>
-        <section>
-          <h3 className="mb-1 px-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">{m.topicHeading}</h3>
-          <button type="button" aria-pressed={topic === undefined} className={railButton(topic === undefined)} onClick={() => setTopic(undefined)} data-my-topic="">
-            <span className="min-w-0 flex-1 truncate">{m.allTopics}</span>
-            <span className="tabular-nums text-ink-subtle">{list.total}</span>
-          </button>
-          {topics.map((t) => (
-            <button
-              key={t.code}
-              type="button"
-              aria-pressed={topic === t.code}
-              className={railButton(topic === t.code)}
-              onClick={() => setTopic(t.code)}
-              data-my-topic={t.code}
-            >
-              <span className="min-w-0 flex-1 truncate" title={topicName(t.code, language)}>
-                <span className="mr-1.5 text-ink-subtle">{t.code}</span>
-                {topicName(t.code, language)}
-              </span>
-              <span className="tabular-nums text-ink-subtle">{t.count}</span>
-            </button>
-          ))}
-        </section>
-      </nav>
+      {/* The Past paper bank's topic picker (k-0578): sections A–J, each opening onto its
+          MCQ topics with their counts, a filter across them, and All topics first. */}
+      <div className="flex min-h-0 shrink-0 border-r border-line bg-surface-sunken [&>nav]:min-h-0" aria-label={m.mineRail} data-my-rail>
+        <PastPaperTopicPicker
+          topics={rail.topics}
+          current={currentTopic}
+          active
+          language={language}
+          partCounts={rail.parts}
+          all={{ label: m.allTopics, count: list.total, onPick: () => setTopic(undefined) }}
+          onPick={setTopic}
+          top={
+            <label className="flex shrink-0 flex-col gap-1 px-4 pt-3">
+              <span className="pl-1 text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-subtle">{m.whenHeading}</span>
+              <select
+                value={when}
+                onChange={(event) => setWhen(WHEN_CHOICES.find((w) => w === event.target.value) ?? 'any')}
+                data-my-when
+                className="h-8 w-full cursor-pointer rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent pointer-coarse:h-10"
+              >
+                {WHEN_CHOICES.map((w) => (
+                  <option key={w} value={w}>
+                    {m.when(w)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          }
+        />
+      </div>
 
       <div className="scroll-slim flex w-[min(400px,36%)] min-h-0 shrink-0 flex-col overflow-y-auto border-r border-line p-3" data-my-list>
         <p className="mb-1 px-1 text-[12px] tabular-nums text-ink-subtle" role="status">
