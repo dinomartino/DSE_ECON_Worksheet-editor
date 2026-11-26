@@ -298,9 +298,9 @@ describe('the past paper bank sets it as questions go in', () => {
 });
 
 describe('the line above the question, in every language and backend', () => {
-  it('a bilingual paper prints the label once: both sides on one line, or the short tag alone', () => {
+  it('a bilingual paper prints the label once, as the short tag alone, even when the format is full (u-gnmu, k-0563)', () => {
     const full = renderWorksheet(paper([Q2], { showQuestionSources: true }), { language: 'bilingual', version: 'student' });
-    expect(printed(full.questions[0].nodes, 'bilingual')).toBe('(HKCEE 2006 Paper 2 Q32) （香港中學會考 2006 卷二 第 32 題）');
+    expect(printed(full.questions[0].nodes, 'bilingual')).toBe('(CE2006/P2/Q32)');
     expect(sourceLine(full.questions[0].nodes)!.text.zh).toEqual([]);
   });
 
@@ -317,6 +317,54 @@ describe('the line above the question, in every language and backend', () => {
     expect(html).toMatch(/<p[^>]*>\(DSE2019\/P1\/Q12\)<\/p>/);
     expect(html.indexOf('(DSE2019/P1/Q12)')).toBeLessThan(html.indexOf('Which of the following is correct?'));
     expect(html).not.toContain('float:right">(DSE2019');
+  });
+});
+
+describe('a bilingual paper prints the short tag alone (user u-gnmu, k-0563)', () => {
+  const ws = paper([Q1, Q2], { showQuestionSources: true });
+  const SHORT_TAGS = ['(DSE2019/P1/Q12)', '(CE2006/P2/Q32)'];
+  const FULL_WORDS = [nb('HKDSE 2019 Paper 1 Q12'), nb('HKCEE 2006 Paper 2 Q32'), '香港中學文憑考試', '香港中學會考'];
+
+  it('with the format Full, the page prints the short tag, never both full forms', () => {
+    expect(questionSourceFormat(ws)).toBe('full');
+    for (const version of ['student', 'teacher'] as const) {
+      const ir = renderWorksheet(ws, { language: 'bilingual', version });
+      expect(ir.questions.map((q) => printed(q.nodes, 'bilingual'))).toEqual(SHORT_TAGS);
+      for (const question of ir.questions) expect(sourceLine(question.nodes)!.text.zh).toEqual([]);
+    }
+  });
+
+  it('with the format Full, the .docx and the clipboard print the short tag once per question', () => {
+    const xml = buildDocxParts(ws, { language: 'bilingual', version: 'student' }).documentXml;
+    const paragraphs = (xml.match(/<w:p[ >](?:(?!<\/w:p>).)*<\/w:p>/g) ?? []).map((p) => p.replace(/<[^>]+>/g, ''));
+    for (const tag of SHORT_TAGS) expect(paragraphs.filter((p) => p === tag)).toHaveLength(1);
+    for (const words of FULL_WORDS) expect(xml).not.toContain(words);
+    const html = worksheetClipboardHtml(ws, { language: 'bilingual', version: 'student' });
+    for (const tag of SHORT_TAGS) expect(html.split(tag).length - 1).toBe(1);
+    for (const words of FULL_WORDS) expect(html).not.toContain(words);
+  });
+
+  it('a short format the teacher picked stays as picked; English and 中文 papers keep Full', () => {
+    const roman = renderWorksheet({ ...ws, questionSourceFormat: 'shortRoman' }, { language: 'bilingual', version: 'student' });
+    expect(roman.questions.map((q) => printed(q.nodes, 'bilingual'))).toEqual(['(DSE2019/I/Q12)', '(CE2006/II/Q32)']);
+    const en = renderWorksheet(ws, { language: 'en', version: 'student' });
+    expect(en.questions.map((q) => printed(q.nodes, 'en'))).toEqual(['(HKDSE 2019 Paper 1 Q12)', '(HKCEE 2006 Paper 2 Q32)']);
+    const zh = renderWorksheet(ws, { language: 'zh', version: 'student' });
+    expect(zh.questions.map((q) => printed(q.nodes, 'zh'))).toEqual(['（香港中學文憑考試 2019 卷一 第 12 題）', '（香港中學會考 2006 卷二 第 32 題）']);
+    const enXml = buildDocxParts(ws, { language: 'en', version: 'student' }).documentXml;
+    expect(enXml).toContain(nb('(HKDSE 2019 Paper 1 Q12)'));
+    expect(enXml).not.toContain('(DSE2019/P1/Q12)');
+  });
+
+  it('a source the short form cannot read (a teacher\'s own words) still prints in full, once', () => {
+    const own = pastMcq('X/P1/Q1', 'From our mock, 2024', '本校模擬試卷 2024');
+    const ir = renderWorksheet(paper([own], { showQuestionSources: true }), { language: 'bilingual', version: 'student' });
+    expect(printed(ir.questions[0].nodes, 'bilingual')).toBe('(From our mock, 2024) （本校模擬試卷 2024）');
+  });
+
+  it('the stored format is untouched: switching the paper to English prints Full again', () => {
+    expect(ws.questionSourceFormat).toBeUndefined();
+    expect(Object.keys(serializeWorksheet(ws))).not.toContain('questionSourceFormat');
   });
 });
 
