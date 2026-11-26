@@ -323,7 +323,7 @@ export function createClient(config: ProviderConfig, deps?: Partial<HttpDeps>): 
       const res = await request(
         { url: `${trimBase(cfg.baseUrl)}/decide`, headers, body: JSON.stringify({ feature: req.feature, state: req.state, questions: req.questions }) },
         req.signal,
-        DECIDE_TIMEOUT_MS,
+        req.timeoutMs ?? DECIDE_TIMEOUT_MS,
       );
       const relay = relayErrorOf(res.body);
       const field = typeof res.body === 'object' && res.body !== null ? (res.body as { field?: unknown }).field : undefined;

@@ -9,6 +9,7 @@ import { localChatStorage } from './chatStorage';
 import { createChatStore } from './chatStore';
 import type { AiTurn, Chat } from './chatTypes';
 import { computerPick, type PickInput, type StudioEngine } from './engine';
+import type { StudioReadInput, StudioRoute } from '@/questionStudio/jevRead';
 
 /** k-0535: once drafts exist, the store acts on what the message means, never adding a card for an edit. */
 
@@ -43,7 +44,7 @@ function setup(read?: (input: PickInput) => TurnRead | undefined) {
   useChat.subscribe((s) => s.run && runCounts.push(s.run.count));
   const chat = () => useChat.getState().chats.find((c) => c.id === useChat.getState().activeId) as Chat;
   const lastAi = () => [...chat().turns].reverse().find((t): t is AiTurn => t.role === 'ai') as AiTurn;
-  return { useChat, chat, lastAi, calls, runCounts };
+  return { useChat, chat, lastAi, calls, runCounts, engine };
 }
 
 const ai = (o: Partial<TurnRead>): TurnRead => ({ intent: 'edit', drafts: [], how: 'change', parts: [], reply: '', ...o });
@@ -164,5 +165,69 @@ describe('the chat acts on what a message means (k-0535)', () => {
     const { useChat, chat } = await withThree();
     await useChat.getState().send('another like draft 2');
     expect(chat().drafts.map((d) => d.no)).toEqual([1, 2, 4, 3]);
+  });
+});
+
+describe('the Jev pre-router (k-0567, u-5sy9)', () => {
+  async function withRouter(route: StudioRoute | undefined, read?: Parameters<typeof setup>[0]) {
+    const t = await withThree(read);
+    const seen: StudioReadInput[] = [];
+    (t.engine as StudioEngine).read = async (input) => {
+      seen.push(input);
+      return route;
+    };
+    return { ...t, seen };
+  }
+
+  it('an edit Jev is sure of runs at once: no main-model read', async () => {
+    const { useChat, calls, seen, lastAi } = await withRouter({ route: 'act', kind: 'edit', drafts: [2], wanted: 'edit', parts: ['stem'] });
+    await useChat.getState().send('the second one is too wordy');
+    expect(seen).toHaveLength(1);
+    expect(seen[0].drafts).toHaveLength(3);
+    expect(calls.picks).toHaveLength(0);
+    expect(calls.refines).toEqual([expect.objectContaining({ refinement: { kind: 'change', text: 'the second one is too wordy', parts: ['stem'] } })]);
+    expect(lastAi().steps.find((s) => s.kind === 'understand')).toMatchObject({ state: 'done', intent: 'edit', drafts: [2], by: 'ai' });
+  });
+
+  it('unclear: "Which draft do you mean?" straight away, with Jev\'s candidates', async () => {
+    const { useChat, calls, lastAi } = await withRouter({ route: 'act', kind: 'unsure', drafts: [2, 3], wanted: 'edit' });
+    await useChat.getState().send('the numbers look off');
+    expect(calls.picks).toHaveLength(0);
+    expect(calls.refines).toHaveLength(0);
+    expect(lastAi().ask).toMatchObject({ kind: 'which', wanted: 'edit', options: [2, 3] });
+  });
+
+  it('one more like a draft: written beside it; harder/easier falls back to the computer\'s words when Jev isn\'t sure', async () => {
+    const t = await withRouter({ route: 'act', kind: 'another', drafts: [1], wanted: 'another' });
+    await t.useChat.getState().send('one similar to the first, please');
+    expect(t.calls.picks).toHaveLength(0);
+    expect(t.calls.refines).toEqual([expect.objectContaining({ refinement: { kind: 'another' } })]);
+    const u = await withRouter({ route: 'act', kind: 'edit', drafts: [1, 2, 3], wanted: 'edit' });
+    await u.useChat.getState().send('全部改易啲');
+    expect(u.calls.refines.map((r) => r.refinement)).toEqual([{ kind: 'easier' }, { kind: 'easier' }, { kind: 'easier' }]);
+  });
+
+  it('new, ask, any doubt or no answer: today\'s main-model read, as before', async () => {
+    for (const route of [{ route: 'main', why: 'new' } as const, { route: 'main', why: 'doubt' } as const, undefined]) {
+      const { useChat, calls, seen } = await withRouter(route, () => ai({ intent: 'edit', drafts: [2], parts: ['stem'] }));
+      await useChat.getState().send('the second one is too wordy');
+      expect(seen).toHaveLength(1);
+      expect(calls.picks).toHaveLength(1);
+      expect(calls.refines).toHaveLength(1);
+    }
+  });
+
+  it('not asked when the words already read as new questions: the main read runs straight away', async () => {
+    const { useChat, calls, seen } = await withRouter({ route: 'act', kind: 'edit', drafts: [2], wanted: 'edit' });
+    await useChat.getState().send('write 3 more on price ceilings');
+    expect(seen).toHaveLength(0);
+    expect(calls.picks).toHaveLength(1);
+  });
+
+  it('not asked when the computer is sure, or the draft is known (the chip)', async () => {
+    const { useChat, chat, seen } = await withRouter({ route: 'act', kind: 'edit', drafts: [3], wanted: 'edit' });
+    await useChat.getState().send('Q2 太易');
+    await useChat.getState().send('why is B wrong?', chat().drafts[0].id);
+    expect(seen).toHaveLength(0);
   });
 });

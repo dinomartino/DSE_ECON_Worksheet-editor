@@ -13,6 +13,14 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question studio answers change requests faster on DSEcon Mentor credits.** Once drafts
+  are on the page, a message that changes a draft ("Q2 太易", "the options are too long"), asks for
+  one more like a draft, or doesn't say which draft is read first by Jev, a fast model made for
+  choosing from a list. The change starts straight away, or the studio asks "Which draft do you
+  mean?", without the main model's slower read: about 7 credits and a few seconds less for
+  each such message. New questions and questions about a draft are read as before, and so is
+  anything Jev isn't sure of. With your own key nothing changes.
+  <!-- zh: **使用 DSEcon Mentor 點數時，擬題工作室處理修改要求更快。** 頁面上已有草稿時，修改草稿的訊息（如「Q2 太易」、「選項太長」）、要求多出一題類似某份草稿的題目，或未說明是哪份草稿的訊息，會先由專為從清單中作選擇而設的快速模型 Jev 理解。修改會立即開始，或工作室會即時問「你指哪一份草稿？」，不用再等主要模型較慢的理解：每則這類訊息約省 7 點及數秒。要求新題目及詢問草稿的問題會照舊處理，Jev 未能確定的訊息亦然。使用自己的金鑰時一切不變。 -->
 - **AI can suggest topics for your untagged questions.** In the Question bank, ✦ AI → **Tag
   topics** suggests a syllabus part and topic for each untagged question (one question, your
   ticked list, every question shown, or "All untagged"), plus one of your own 題型 when one

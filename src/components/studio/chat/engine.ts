@@ -5,6 +5,7 @@ import { pickKeyPoints } from '@/questionStudio/pick';
 import { refine as refineDraft, writeDrafts, type RunHooks } from '@/questionStudio/run';
 import type { Refinement, SourceQuestion, StudioDeps, StudioDraft, StudioOutcome, StudioRequest, Usage } from '@/questionStudio/types';
 import { understandTurn, type DraftBrief, type TurnRead } from '@/questionStudio/understand';
+import { buildStudioRead, routeStudioRead, type StudioReadInput, type StudioRoute } from '@/questionStudio/jevRead';
 import { localPick } from './localPick';
 
 export type { PartialDraft } from '@/questionStudio/partial';
@@ -77,6 +78,12 @@ export type PickOutcome =
 export type WriteHooks = RunHooks;
 
 export interface StudioEngine {
+  /**
+   * The pre-router (k-0567, u-5sy9): a message read first by Jev on Mentor credits. `act` = do
+   * it now (an edit, one more like a draft, or "Which draft?"); `main` or undefined = read it
+   * with `pick` as before (new, ask, any doubt, Jev failing, own key, an older Mentor).
+   */
+  read?(input: StudioReadInput, deps: StudioDeps, signal: AbortSignal): Promise<StudioRoute | undefined>;
   pick(input: PickInput, deps: StudioDeps, signal: AbortSignal): Promise<PickOutcome>;
   write(request: StudioRequest, deps: StudioDeps, hooks: WriteHooks, avoid: readonly StudioDraft[]): Promise<StudioOutcome>;
   refine(request: StudioRequest, target: StudioDraft, refinement: Refinement, others: readonly StudioDraft[], deps: StudioDeps, hooks: WriteHooks): Promise<StudioOutcome>;
@@ -89,7 +96,34 @@ export async function computerPick(input: PickInput): Promise<PickOutcome> {
   return { ok: true, picks: localPick(input), usage: noUsage(), model: '', local: true };
 }
 
+/** The studio read waits this long for Mentor (Jev answers in ~0.2 s; Mentor gives up on it at 6 s). */
+export const READ_TIMEOUT_MS = 12_000;
+/** After Mentor said it doesn't offer `studio.read`, don't ask again for this long. */
+const NOT_OFFERED_MS = 10 * 60_000;
+let notOfferedUntil = 0;
+
+/** Jev's read through Mentor's `/ai/decide`; undefined whenever it can't be had (today's read then runs). Never rejects. */
+export async function jevStudioRead(input: StudioReadInput, deps: Pick<StudioDeps, 'client'>, signal: AbortSignal, now = Date.now): Promise<StudioRoute | undefined> {
+  if (typeof deps.client.decide !== 'function' || now() < notOfferedUntil || signal.aborted) return undefined;
+  try {
+    const res = await deps.client.decide({ ...buildStudioRead(input, signal), timeoutMs: READ_TIMEOUT_MS });
+    if (!res) {
+      notOfferedUntil = now() + NOT_OFFERED_MS;
+      return undefined;
+    }
+    return routeStudioRead(res, input);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Tests: forget that Mentor said no. */
+export function resetStudioRead(): void {
+  notOfferedUntil = 0;
+}
+
 export const liveEngine: StudioEngine = {
+  read: (input, deps, signal) => jevStudioRead(input, deps, signal),
   async pick(input, deps, signal) {
     if (input.drafts?.length) {
       const wantPicks = input.picks !== false;

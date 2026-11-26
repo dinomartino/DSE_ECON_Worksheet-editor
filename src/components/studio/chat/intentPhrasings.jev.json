@@ -1,0 +1,896 @@
+{
+ "_about": "Jev's answers to the studio pre-router (k-0567, src/questionStudio/jevRead.ts), recorded 2026-11-26 through Mentor dev /ai/decide (feature studio.read) by evals/intentRecord.eval.ts, for every phrasing without a chip that the computer is not sure of. Re-record after changing jevRead.ts's questions.",
+ "answers": {
+  "en-04": {
+   "model": "jev-1.14.0",
+   "fallback": false,
+   "answers": {
+    "intent": {
+     "type": "choice",
+     "choice": "edit",
+     "confidence": 1,
+     "probabilities": {
+      "edit": 1,
+      "another": 0,
+      "new": 0,
+      "ask": 0
+     }
+    },
+    "all": {
+     "type": "noul",
+     "noul": 0.02
+    },
+    "missing": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "harder": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "easier": {
+     "type": "noul",
+     "noul": 0.16
+    },
+    "d1": {
+     "type": "noul",
+     "noul": 0.01
+    },
+    "d2": {
+     "type": "noul",
+     "noul": 0.99
+    },
+    "d3": {
+     "type": "noul",
+     "noul": 0.01
+    },
+    "part_stem": {
+     "type": "noul",
+     "noul": 0.83
+    },
+    "part_options": {
+     "type": "noul",
+     "noul": 0.2
+    },
+    "part_statements": {
+     "type": "noul",
+     "noul": 0.12
+    },
+    "part_answer": {
+     "type": "noul",
+     "noul": 0.08
+    },
+    "part_explanation": {
+     "type": "noul",
+     "noul": 0.2
+    },
+    "part_diagram": {
+     "type": "noul",
+     "noul": 0.06
+    },
+    "part_table": {
+     "type": "noul",
+     "noul": 0.14
+    },
+    "part_numbers": {
+     "type": "noul",
+     "noul": 0.15
+    },
+    "part_language": {
+     "type": "noul",
+     "noul": 0.26
+    }
+   }
+  },
+  "en-13": {
+   "model": "jev-1.14.0",
+   "fallback": false,
+   "answers": {
+    "intent": {
+     "type": "choice",
+     "choice": "new",
+     "confidence": 1,
+     "probabilities": {
+      "edit": 0,
+      "another": 0,
+      "new": 1,
+      "ask": 0
+     }
+    },
+    "all": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "missing": {
+     "type": "noul",
+     "noul": 0.06
+    },
+    "harder": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "easier": {
+     "type": "noul",
+     "noul": 0.02
+    },
+    "d1": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "d2": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "d3": {
+     "type": "noul",
+     "noul": 0.06
+    },
+    "part_stem": {
+     "type": "noul",
+     "noul": 0.5
+    },
+    "part_options": {
+     "type": "noul",
+     "noul": 0.33
+    },
+    "part_statements": {
+     "type": "noul",
+     "noul": 0.24
+    },
+    "part_answer": {
+     "type": "noul",
+     "noul": 0.16
+    },
+    "part_explanation": {
+     "type": "noul",
+     "noul": 0.18
+    },
+    "part_diagram": {
+     "type": "noul",
+     "noul": 0.22
+    },
+    "part_table": {
+     "type": "noul",
+     "noul": 0.16
+    },
+    "part_numbers": {
+     "type": "noul",
+     "noul": 0.26
+    },
+    "part_language": {
+     "type": "noul",
+     "noul": 0.07
+    }
+   }
+  },
+  "en-14": {
+   "model": "jev-1.14.0",
+   "fallback": false,
+   "answers": {
+    "intent": {
+     "type": "choice",
+     "choice": "another",
+     "confidence": 0.55,
+     "probabilities": {
+      "edit": 0.12,
+      "another": 0.66,
+      "new": 0.22,
+      "ask": 0
+     }
+    },
+    "all": {
+     "type": "noul",
+     "noul": 0.08
+    },
+    "missing": {
+     "type": "noul",
+     "noul": 0.04
+    },
+    "harder": {
+     "type": "noul",
+     "noul": 0.11
+    },
+    "easier": {
+     "type": "noul",
+     "noul": 0.06
+    },
+    "d1": {
+     "type": "noul",
+     "noul": 0.06
+    },
+    "d2": {
+     "type": "noul",
+     "noul": 0.08
+    },
+    "d3": {
+     "type": "noul",
+     "noul": 0.79
+    },
+    "part_stem": {
+     "type": "noul",
+     "noul": 0.52
+    },
+    "part_options": {
+     "type": "noul",
+     "noul": 0.41
+    },
+    "part_statements": {
+     "type": "noul",
+     "noul": 0.42
+    },
+    "part_answer": {
+     "type": "noul",
+     "noul": 0.3
+    },
+    "part_explanation": {
+     "type": "noul",
+     "noul": 0.35
+    },
+    "part_diagram": {
+     "type": "noul",
+     "noul": 0.49
+    },
+    "part_table": {
+     "type": "noul",
+     "noul": 0.17
+    },
+    "part_numbers": {
+     "type": "noul",
+     "noul": 0.34
+    },
+    "part_language": {
+     "type": "noul",
+     "noul": 0.1
+    }
+   }
+  },
+  "en-15": {
+   "model": "jev-1.14.0",
+   "fallback": false,
+   "answers": {
+    "intent": {
+     "type": "choice",
+     "choice": "edit",
+     "confidence": 0.97,
+     "probabilities": {
+      "edit": 0.98,
+      "another": 0.01,
+      "new": 0.01,
+      "ask": 0
+     }
+    },
+    "all": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "missing": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "harder": {
+     "type": "noul",
+     "noul": 0.92
+    },
+    "easier": {
+     "type": "noul",
+     "noul": 0.01
+    },
+    "d1": {
+     "type": "noul",
+     "noul": 0.02
+    },
+    "d2": {
+     "type": "noul",
+     "noul": 0.02
+    },
+    "d3": {
+     "type": "noul",
+     "noul": 0.02
+    },
+    "part_stem": {
+     "type": "noul",
+     "noul": 0.63
+    },
+    "part_options": {
+     "type": "noul",
+     "noul": 0.51
+    },
+    "part_statements": {
+     "type": "noul",
+     "noul": 0.34
+    },
+    "part_answer": {
+     "type": "noul",
+     "noul": 0.27
+    },
+    "part_explanation": {
+     "type": "noul",
+     "noul": 0.28
+    },
+    "part_diagram": {
+     "type": "noul",
+     "noul": 0.31
+    },
+    "part_table": {
+     "type": "noul",
+     "noul": 0.27
+    },
+    "part_numbers": {
+     "type": "noul",
+     "noul": 0.51
+    },
+    "part_language": {
+     "type": "noul",
+     "noul": 0.08
+    }
+   }
+  },
+  "en-17": {
+   "model": "jev-1.14.0",
+   "fallback": false,
+   "answers": {
+    "intent": {
+     "type": "choice",
+     "choice": "edit",
+     "confidence": 0.89,
+     "probabilities": {
+      "edit": 0.92,
+      "another": 0.05,
+      "new": 0.03,
+      "ask": 0
+     }
+    },
+    "all": {
+     "type": "noul",
+     "noul": 0.07
+    },
+    "missing": {
+     "type": "noul",
+     "noul": 0.97
+    },
+    "harder": {
+     "type": "noul",
+     "noul": 0.84
+    },
+    "easier": {
+     "type": "noul",
+     "noul": 0.01
+    },
+    "d1": {
+     "type": "noul",
+     "noul": 0.1
+    },
+    "d2": {
+     "type": "noul",
+     "noul": 0.05
+    },
+    "d3": {
+     "type": "noul",
+     "noul": 0.14
+    },
+    "part_stem": {
+     "type": "noul",
+     "noul": 0.44
+    },
+    "part_options": {
+     "type": "noul",
+     "noul": 0.43
+    },
+    "part_statements": {
+     "type": "noul",
+     "noul": 0.3
+    },
+    "part_answer": {
+     "type": "noul",
+     "noul": 0.38
+    },
+    "part_explanation": {
+     "type": "noul",
+     "noul": 0.26
+    },
+    "part_diagram": {
+     "type": "noul",
+     "noul": 0.23
+    },
+    "part_table": {
+     "type": "noul",
+     "noul": 0.2
+    },
+    "part_numbers": {
+     "type": "noul",
+     "noul": 0.34
+    },
+    "part_language": {
+     "type": "noul",
+     "noul": 0.09
+    }
+   }
+  },
+  "en-22": {
+   "model": "jev-1.14.0",
+   "fallback": false,
+   "answers": {
+    "intent": {
+     "type": "choice",
+     "choice": "new",
+     "confidence": 0.89,
+     "probabilities": {
+      "edit": 0.01,
+      "another": 0.06,
+      "new": 0.92,
+      "ask": 0.01
+     }
+    },
+    "all": {
+     "type": "noul",
+     "noul": 0.02
+    },
+    "missing": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "harder": {
+     "type": "noul",
+     "noul": 0.05
+    },
+    "easier": {
+     "type": "noul",
+     "noul": 0.04
+    },
+    "d1": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "d2": {
+     "type": "noul",
+     "noul": 0.71
+    },
+    "d3": {
+     "type": "noul",
+     "noul": 0.44
+    },
+    "part_stem": {
+     "type": "noul",
+     "noul": 0.39
+    },
+    "part_options": {
+     "type": "noul",
+     "noul": 0.31
+    },
+    "part_statements": {
+     "type": "noul",
+     "noul": 0.27
+    },
+    "part_answer": {
+     "type": "noul",
+     "noul": 0.18
+    },
+    "part_explanation": {
+     "type": "noul",
+     "noul": 0.3
+    },
+    "part_diagram": {
+     "type": "noul",
+     "noul": 0.47
+    },
+    "part_table": {
+     "type": "noul",
+     "noul": 0.19
+    },
+    "part_numbers": {
+     "type": "noul",
+     "noul": 0.25
+    },
+    "part_language": {
+     "type": "noul",
+     "noul": 0.09
+    }
+   }
+  },
+  "en-24": {
+   "model": "jev-1.14.0",
+   "fallback": false,
+   "answers": {
+    "intent": {
+     "type": "choice",
+     "choice": "edit",
+     "confidence": 1,
+     "probabilities": {
+      "edit": 1,
+      "another": 0,
+      "new": 0,
+      "ask": 0
+     }
+    },
+    "all": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "missing": {
+     "type": "noul",
+     "noul": 0.05
+    },
+    "harder": {
+     "type": "noul",
+     "noul": 0.05
+    },
+    "easier": {
+     "type": "noul",
+     "noul": 0.11
+    },
+    "d1": {
+     "type": "noul",
+     "noul": 0.08
+    },
+    "d2": {
+     "type": "noul",
+     "noul": 0.07
+    },
+    "d3": {
+     "type": "noul",
+     "noul": 0.05
+    },
+    "part_stem": {
+     "type": "noul",
+     "noul": 0.91
+    },
+    "part_options": {
+     "type": "noul",
+     "noul": 0.19
+    },
+    "part_statements": {
+     "type": "noul",
+     "noul": 0.2
+    },
+    "part_answer": {
+     "type": "noul",
+     "noul": 0.12
+    },
+    "part_explanation": {
+     "type": "noul",
+     "noul": 0.15
+    },
+    "part_diagram": {
+     "type": "noul",
+     "noul": 0.14
+    },
+    "part_table": {
+     "type": "noul",
+     "noul": 0.17
+    },
+    "part_numbers": {
+     "type": "noul",
+     "noul": 0.29
+    },
+    "part_language": {
+     "type": "noul",
+     "noul": 0.16
+    }
+   }
+  },
+  "zh-03": {
+   "model": "jev-1.14.0",
+   "fallback": false,
+   "answers": {
+    "intent": {
+     "type": "choice",
+     "choice": "edit",
+     "confidence": 0.91,
+     "probabilities": {
+      "edit": 0.93,
+      "another": 0.04,
+      "new": 0,
+      "ask": 0.03
+     }
+    },
+    "all": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "missing": {
+     "type": "noul",
+     "noul": 0.1
+    },
+    "harder": {
+     "type": "noul",
+     "noul": 0.7
+    },
+    "easier": {
+     "type": "noul",
+     "noul": 0.08
+    },
+    "d1": {
+     "type": "noul",
+     "noul": 0.04
+    },
+    "d2": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "d3": {
+     "type": "noul",
+     "noul": 0.06
+    },
+    "part_stem": {
+     "type": "noul",
+     "noul": 0.36
+    },
+    "part_options": {
+     "type": "noul",
+     "noul": 0.3
+    },
+    "part_statements": {
+     "type": "noul",
+     "noul": 0.28
+    },
+    "part_answer": {
+     "type": "noul",
+     "noul": 0.25
+    },
+    "part_explanation": {
+     "type": "noul",
+     "noul": 0.23
+    },
+    "part_diagram": {
+     "type": "noul",
+     "noul": 0.22
+    },
+    "part_table": {
+     "type": "noul",
+     "noul": 0.18
+    },
+    "part_numbers": {
+     "type": "noul",
+     "noul": 0.29
+    },
+    "part_language": {
+     "type": "noul",
+     "noul": 0.42
+    }
+   }
+  },
+  "zh-04": {
+   "model": "jev-1.14.0",
+   "fallback": false,
+   "answers": {
+    "intent": {
+     "type": "choice",
+     "choice": "edit",
+     "confidence": 1,
+     "probabilities": {
+      "edit": 1,
+      "another": 0,
+      "new": 0,
+      "ask": 0
+     }
+    },
+    "all": {
+     "type": "noul",
+     "noul": 0.42
+    },
+    "missing": {
+     "type": "noul",
+     "noul": 0.07
+    },
+    "harder": {
+     "type": "noul",
+     "noul": 0.1
+    },
+    "easier": {
+     "type": "noul",
+     "noul": 0.09
+    },
+    "d1": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "d2": {
+     "type": "noul",
+     "noul": 0.11
+    },
+    "d3": {
+     "type": "noul",
+     "noul": 0.04
+    },
+    "part_stem": {
+     "type": "noul",
+     "noul": 0.3
+    },
+    "part_options": {
+     "type": "noul",
+     "noul": 0.71
+    },
+    "part_statements": {
+     "type": "noul",
+     "noul": 0.38
+    },
+    "part_answer": {
+     "type": "noul",
+     "noul": 0.54
+    },
+    "part_explanation": {
+     "type": "noul",
+     "noul": 0.29
+    },
+    "part_diagram": {
+     "type": "noul",
+     "noul": 0.27
+    },
+    "part_table": {
+     "type": "noul",
+     "noul": 0.33
+    },
+    "part_numbers": {
+     "type": "noul",
+     "noul": 0.39
+    },
+    "part_language": {
+     "type": "noul",
+     "noul": 0.36
+    }
+   }
+  },
+  "zh-09": {
+   "model": "jev-1.14.0",
+   "fallback": false,
+   "answers": {
+    "intent": {
+     "type": "choice",
+     "choice": "new",
+     "confidence": 1,
+     "probabilities": {
+      "edit": 0,
+      "another": 0,
+      "new": 1,
+      "ask": 0
+     }
+    },
+    "all": {
+     "type": "noul",
+     "noul": 0.08
+    },
+    "missing": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "harder": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "easier": {
+     "type": "noul",
+     "noul": 0.02
+    },
+    "d1": {
+     "type": "noul",
+     "noul": 0.02
+    },
+    "d2": {
+     "type": "noul",
+     "noul": 0.02
+    },
+    "d3": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "part_stem": {
+     "type": "noul",
+     "noul": 0.6
+    },
+    "part_options": {
+     "type": "noul",
+     "noul": 0.41
+    },
+    "part_statements": {
+     "type": "noul",
+     "noul": 0.29
+    },
+    "part_answer": {
+     "type": "noul",
+     "noul": 0.18
+    },
+    "part_explanation": {
+     "type": "noul",
+     "noul": 0.18
+    },
+    "part_diagram": {
+     "type": "noul",
+     "noul": 0.23
+    },
+    "part_table": {
+     "type": "noul",
+     "noul": 0.21
+    },
+    "part_numbers": {
+     "type": "noul",
+     "noul": 0.34
+    },
+    "part_language": {
+     "type": "noul",
+     "noul": 0.28
+    }
+   }
+  },
+  "zh-13": {
+   "model": "jev-1.14.0",
+   "fallback": false,
+   "answers": {
+    "intent": {
+     "type": "choice",
+     "choice": "new",
+     "confidence": 1,
+     "probabilities": {
+      "edit": 0,
+      "another": 0,
+      "new": 1,
+      "ask": 0
+     }
+    },
+    "all": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "missing": {
+     "type": "noul",
+     "noul": 0.02
+    },
+    "harder": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "easier": {
+     "type": "noul",
+     "noul": 0.03
+    },
+    "d1": {
+     "type": "noul",
+     "noul": 0.02
+    },
+    "d2": {
+     "type": "noul",
+     "noul": 0.02
+    },
+    "d3": {
+     "type": "noul",
+     "noul": 0.04
+    },
+    "part_stem": {
+     "type": "noul",
+     "noul": 0.62
+    },
+    "part_options": {
+     "type": "noul",
+     "noul": 0.45
+    },
+    "part_statements": {
+     "type": "noul",
+     "noul": 0.28
+    },
+    "part_answer": {
+     "type": "noul",
+     "noul": 0.2
+    },
+    "part_explanation": {
+     "type": "noul",
+     "noul": 0.19
+    },
+    "part_diagram": {
+     "type": "noul",
+     "noul": 0.22
+    },
+    "part_table": {
+     "type": "noul",
+     "noul": 0.19
+    },
+    "part_numbers": {
+     "type": "noul",
+     "noul": 0.3
+    },
+    "part_language": {
+     "type": "noul",
+     "noul": 0.25
+    }
+   }
+  }
+ }
+}

@@ -102,7 +102,7 @@ export interface CompletionRequest {
 }
 /** The relay's `feature` (CONTRACT §3): recorded with the usage, never sent to Google. */
 export type AiFeature =
-  | 'translate' | 'importCheck' | 'studio' | 'studio.pick' | 'studio.write' | 'studio.solve' | 'studio.quality' | 'studio.diagram'
+  | 'translate' | 'importCheck' | 'studio' | 'studio.pick' | 'studio.read' | 'studio.write' | 'studio.solve' | 'studio.quality' | 'studio.diagram'
   | 'answers' | 'quality' | 'polish' | 'coverage' | 'tag' | 'generate' | 'assist' | 'test' | 'other';
 export interface CompletionResult {
   text: string;
@@ -188,6 +188,8 @@ export interface DecideRequest {
   signal: AbortSignal;
   /** The relay's `Idempotency-Key`, as for `complete`. */
   requestKey?: string;
+  /** Give up after this long (default 60 s, room for Mentor's Gemini fallback); the studio read waits less. */
+  timeoutMs?: number;
 }
 export type DecideAnswer =
   | { type: 'choice'; choice: string; confidence: number | null; probabilities: Record<string, number> }
