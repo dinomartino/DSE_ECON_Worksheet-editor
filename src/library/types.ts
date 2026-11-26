@@ -64,6 +64,12 @@ export interface BankRow {
   contentKey: string;
   /** The printed number in its document (`computeNumbering`). */
   number?: number;
+  /**
+   * The past-paper source tag ("DSE2024/P1/Q38") of an edited past-paper copy: the teacher's
+   * own question, adapted from it (`pastPaperCopies.ts:adaptedFrom`, k-0559). Shown on the
+   * bank row only; never printed, exported or copied.
+   */
+  adaptedFrom?: string;
 }
 
 /** One part or sub-part of a row's question (`model/tagSlots.ts:SlotState`) and what it tests. */

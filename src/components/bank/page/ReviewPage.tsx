@@ -355,6 +355,12 @@ function RailItem({
           <SourceText title={docLabel(state, lead)} number={lead.number} />
           <AiGlyph tone={state.aiTones?.get(group.rootId)} />
         </p>
+        {/* An edited past-paper copy (k-0559): named here and in the facts, never on the page or in an export. */}
+        {lead.adaptedFrom && (
+          <p className="truncate text-[11px] tabular-nums text-ink-muted" title={m.adaptedFromTitle(lead.adaptedFrom)} data-rail-adapted-from={lead.adaptedFrom}>
+            {m.adaptedFrom(lead.adaptedFrom)}
+          </p>
+        )}
         {where && (
           <p className="line-clamp-2 text-[11px] leading-snug text-ink-muted" title={where} data-rail-where>
             {where}
@@ -772,6 +778,14 @@ function Stage({
                 {row.docKind === 'bank' && <span className="shrink-0 whitespace-pre text-ink-subtle">{m.bankSuffix}</span>}
               </SourceText>
             </dd>
+            {row.adaptedFrom && (
+              <>
+                <dt className="text-ink-subtle">{m.adaptedFromFact}</dt>
+                <dd className="min-w-0 truncate" title={m.adaptedFromTitle(row.adaptedFrom)} data-fact-adapted-from={row.adaptedFrom}>
+                  {row.adaptedFrom}
+                </dd>
+              </>
+            )}
           </Facts>
           <Facts>
             <dt className="text-ink-subtle">{m.usedIn}</dt>

@@ -32,11 +32,12 @@ a version heading is edited afterwards.
   longer lists it as one of yours. Edit what it says (the question, an option, the answer, a
   picture or a table) and it joins your question bank as your own, keeping its source.
   Renumbering it, moving it or showing its source does not count as a change. Questions you
-  copy to your bank on purpose (Copy to my question bank) are there as before. Worksheets made
-  before this update: Settings → Past paper bank → **Find them** lists the past paper questions
-  still in your question bank that you never changed, and takes them out once you confirm. Your
-  worksheets stay exactly as they are.
-  <!-- zh: **歷屆試題在你修改之前不會進入你的題庫。** 從歷屆試題庫加入工作紙的題目是考試的題目，你的題庫不再把它當作你自己的題目列出。修改它的內容（題目、選項、答案、圖片或表格）後，它便會作為你自己的題目加入題庫，並保留其出處。重新編號、移動位置或顯示出處都不算修改。你特意複製到題庫的題目（複製到我的題庫）會照舊保留。此更新之前製作的工作紙：設定 → 歷屆試題庫 → **尋找**，會列出仍在你題庫中而你從未修改的歷屆試題，確認後便會把它們移出。你的工作紙會完全保持不變。 -->
+  copy to your bank on purpose (Copy to my question bank) are there as before. A changed one
+  says **Adapted from DSE2024/P1/Q38** (its source) in your question bank, and only there: it
+  never prints on a worksheet, in Word or in a PDF. Change it back to the exact past paper words
+  (or undo) and it leaves your question bank again. Past paper questions already in your
+  question bank from before this update stay as they are.
+  <!-- zh: **歷屆試題在你修改之前不會進入你的題庫。** 從歷屆試題庫加入工作紙的題目是考試的題目，你的題庫不再把它當作你自己的題目列出。修改它的內容（題目、選項、答案、圖片或表格）後，它便會作為你自己的題目加入題庫，並保留其出處。重新編號、移動位置或顯示出處都不算修改。你特意複製到題庫的題目（複製到我的題庫）會照舊保留。修改過的題目在題庫中會顯示 **改編自 DSE2024/P1/Q38**（其出處），只在題庫顯示，不會印在工作紙、Word 或 PDF 上。改回與歷屆試題完全相同的文字（或復原）後，它便會再次離開你的題庫。此更新之前已在你題庫中的歷屆試題保持不變。 -->
 - **Arrange the past paper bank your own way, and make worksheets from it in one go.** The
   Past paper bank has a third view beside By topic and By year: **Arrange**. It lists every
   question of the bank on one page, under its syllabus part and topic, each with its source in

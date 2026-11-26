@@ -4,8 +4,8 @@ import { mkdirSync } from 'node:fs';
 /**
  * A past-paper copy and the teacher's 題庫 (k-0559), in a real browser against the live built-in
  * Past paper bank. Copies put into a worksheet carry `lineage.pastPaper` and stay out of the 題庫
- * until edited; editing in and undoing out; copies from older builds (no mark) show, and
- * Settings → Past paper bank → "Past paper questions in my bank" takes them out (adds the mark only).
+ * until edited; an edited one's 題庫 row says "Adapted from <tag>" (改編自 in 中文), never the page;
+ * editing in and undoing out; copies from older builds (no mark) stay in the 題庫 (no clean-up, u-sqrx).
  *
  *   node scripts/pastpaper-bank-link-verify.mjs <out-dir> [--port=3000]
  *
@@ -44,12 +44,11 @@ const docs = (p = page) =>
     for (const k of Object.keys(localStorage)) if (k.startsWith('econ-worksheet:')) out[k.slice(15)] = JSON.parse(localStorage.getItem(k));
     return out;
   });
-const plain = (questions) => JSON.stringify(questions, (key, value) => (key === 'lineage' ? undefined : value));
 
 /** The 題庫 count: the Question bank screen's header, “N questions · M worksheets”. */
 async function bankCount(p = page, { search } = {}) {
   await p.goto(URL);
-  await p.getByRole('button', { name: /Question bank 題庫/ }).first().click();
+  await p.getByRole('button', { name: /^(Question bank )?題庫/ }).first().click();
   await p.waitForFunction(() => /\d+\s(questions?|條題目)[^\n]{0,6}\d+\s(worksheets?|份)/.test(document.body.innerText), undefined, { timeout: 30_000 }).catch(async (e) => { console.log(JSON.stringify(await p.evaluate(() => document.body.innerText.slice(0, 160)))); await p.screenshot({ path: OUT + '/debug.png' }); throw e; });
   await p.waitForTimeout(3500);
   const text = await p.evaluate(() => /\d+\s(questions?|條題目)[^\n]{0,6}\d+\s(worksheets?|份)[^\n]*/.exec(document.body.innerText)?.[0] ?? '');
@@ -61,16 +60,6 @@ async function bankCount(p = page, { search } = {}) {
   }
   return n;
 }
-
-const openSettingsSection = async () => {
-  await page.goto(URL);
-  await page.getByRole('button', { name: /Settings|設定/ }).first().click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByText(/^(Past paper bank|歷屆試題庫)$/).first().click();
-  await page.locator('[data-old-copies]').waitFor({ timeout: 30_000 });
-  await page.locator('[data-old-copies]').scrollIntoViewIfNeeded();
-  await page.waitForTimeout(500);
-};
 
 // ---- 1. a teacher's own worksheet, then the bank before ----
 await page.goto(URL);
@@ -169,9 +158,31 @@ await shot('04-bank-after-edit');
 check(A4 === A + 1, `4. the 題庫 now holds ${A + 1}: the edited question (${A4})`);
 const hits = await page.getByText(/ZQXMARKER/).count();
 check(hits >= 1, `4. the edited question is found by its new words (${hits} hit)`);
+const editedTag = editedDoc.questions.find((q) => JSON.stringify(q).includes('ZQXMARKER'))?.lineage?.pastPaper?.tag;
+const adaptedText = (await page.locator('[data-rail-adapted-from]').first().innerText().catch(() => '')).trim();
+check(Boolean(editedTag) && adaptedText === `Adapted from ${editedTag}`, `4. its 題庫 row says "${adaptedText}" (source ${editedTag})`);
+const factText = (await page.locator('[data-fact-adapted-from]').first().innerText().catch(() => '')).trim();
+check(factText === editedTag, `4. its facts say Adapted from ${factText}`);
+await shot('04b-bank-adapted-from');
+// The worksheet itself never says it.
+await page.goto(URL);
+await page.getByText('Imports A', { exact: true }).first().click();
+await page.locator('#print-root').waitFor({ timeout: 30_000 });
+await page.waitForTimeout(1500);
+const sheet = await page.locator('#print-root').innerText();
+check(sheet.includes('ZQXMARKER') && !/Adapted from|改編自/.test(sheet), '4. the worksheet page shows the edited question and no "Adapted from"');
+// 中文
+await lang('zh');
+await bankCount();
+await page.getByPlaceholder(/搜尋|Search/).first().fill('ZQXMARKER');
+await page.waitForTimeout(1500);
+const zhText = (await page.locator('[data-rail-adapted-from]').first().innerText().catch(() => '')).trim();
+check(zhText === `改編自 ${editedTag}`, `4. 中文: the row says "${zhText}"`);
+await shot('04c-bank-adapted-from-zh');
+await lang('en');
 const A4b = await bankCount();
 
-// ---- 5. older builds: no mark ----
+// ---- 5. older builds: no mark, left as they are ----
 await page.goto(URL);
 await page.waitForTimeout(1500);
 const unmarked = await page.evaluate(() => {
@@ -195,92 +206,7 @@ const unmarked = await page.evaluate(() => {
 });
 const B = await bankCount();
 await shot('05-bank-old-copies');
-check(B > A4b, `5. with the marks stripped (${unmarked} questions) the 題庫 shows them: B = ${B} (> ${A4b})`);
-
-// ---- 6. Settings: find them ----
-const beforeDocs = await docs();
-const byId = (o) => Object.keys(o).sort().map((id) => o[id].questions);
-const beforeClean = plain(byId(beforeDocs));
-await openSettingsSection();
-await page.locator('[data-old-copies-find]').click();
-await page.locator('[data-old-copies-found], [data-old-copies-none], [role="alert"]').first().waitFor({ timeout: 90_000 });
-await page.waitForTimeout(500);
-const foundAttr = await page.locator('[data-old-copies-found]').getAttribute('data-old-copies-found').catch(() => null);
-const foundNum = Number(foundAttr);
-await page.locator('[data-old-copies]').scrollIntoViewIfNeeded();
-await shot('06-settings-found-en');
-console.log(`found text: ${(await page.locator('[data-old-copies]').innerText()).replace(/\n+/g, ' / ')}`);
-check(foundNum === B - A4b, `6. Find them lists ${foundNum}, = B - (A+1) = ${B - A4b}`);
-await page.locator('[data-old-copies-take-out]').click();
-await page.locator('[data-old-copies-confirm]').waitFor();
-await page.locator('[data-old-copies]').scrollIntoViewIfNeeded();
-await shot('07-settings-confirm-en');
-await page.locator('[data-old-copies-confirm]').click();
-await page.locator('[data-old-copies-done]').waitFor({ timeout: 30_000 }).catch(async (e) => { await p.screenshot({ path: OUT + '/debug.png' }); throw e; });
-await shot('08-settings-done-en');
-const doneText = await page.locator('[data-old-copies-done]').innerText();
-check(new RegExp(`${foundNum}\\b`).test(doneText), `6. the result line says: ${doneText.replace(/\n/g, ' ')}`);
-
-// ---- 7. the 題庫 afterwards; worksheets untouched ----
-const afterById = await docs();
-const afterDocs = Object.values(afterById);
-const A7 = await bankCount();
-await shot('09-bank-after-cleanup');
-check(A7 === A4b, `7. the 題庫 is back to ${A4b}: only the edited question (${A7})`);
-const afterClean = plain(byId(afterById));
-let where = '';
-if (afterClean !== beforeClean) {
-  let i = 0;
-  while (afterClean[i] === beforeClean[i]) i += 1;
-  where = `first difference at ${i}: before ...${beforeClean.slice(Math.max(0, i - 60), i + 80)} | after ...${afterClean.slice(Math.max(0, i - 60), i + 80)}; docs before ${Object.keys(beforeDocs).length} after ${afterDocs.length}`;
-}
-check(afterClean === beforeClean, '7. every worksheet has the same questions and text as before the clean-up (lineage aside)', where);
-const nowMarked = afterDocs.flatMap((d) => d.questions).filter((q) => q.lineage?.pastPaper).length;
-check(nowMarked === foundNum, `7. the clean-up only added the mark: ${nowMarked} questions marked`);
-
-// ---- 8. again: none ----
-await openSettingsSection();
-await page.locator('[data-old-copies-find]').click();
-await page.locator('[data-old-copies-none]').waitFor({ timeout: 90_000 });
-await shot('08b-settings-none-en');
-check(true, '8. Find them again: none');
-
-// ---- 9. 中文 ----
-await page.goto(URL);
-await lang('zh');
-await page.evaluate(() => {
-  function bump(d) {
-    // The bank caches rows by the document's updatedAt: a hand edit must move it, as a save does.
-    const at = new Date(Date.now() + 1000).toISOString();
-    d.updatedAt = at;
-    const idx = JSON.parse(localStorage.getItem('econ-worksheet-index') ?? '[]');
-    for (const row of idx) if (row.id === d.id) row.updatedAt = at;
-    localStorage.setItem('econ-worksheet-index', JSON.stringify(idx));
-  }
-  for (const k of Object.keys(localStorage)) {
-    if (!k.startsWith('econ-worksheet:')) continue;
-    const d = JSON.parse(localStorage.getItem(k));
-    let touched = false;
-    for (const q of d.questions) if (q.lineage?.pastPaper) { delete q.lineage.pastPaper; touched = true; }
-    if (touched) { bump(d); localStorage.setItem(k, JSON.stringify(d)); }
-  }
-});
-await openSettingsSection();
-await page.locator('[data-old-copies-find]').click();
-await page.locator('[data-old-copies-found], [data-old-copies-none]').first().waitFor({ timeout: 90_000 });
-const zhFound = Number(await page.locator('[data-old-copies-found]').getAttribute('data-old-copies-found').catch(() => 0));
-await page.locator('[data-old-copies]').scrollIntoViewIfNeeded();
-await shot('10-settings-found-zh');
-const zhText = await page.locator('[data-old-copies]').innerText();
-console.log(`zh text: ${zhText.replace(/\n+/g, ' / ')}`);
-check(zhFound > 0 && /我的題庫中的歷屆試題/.test(zhText) && /尋找|未修改/.test(zhText), `9. 中文: found ${zhFound}, the section reads in 中文`);
-await page.locator('[data-old-copies-take-out]').click();
-await page.locator('[data-old-copies-confirm]').waitFor();
-await page.locator('[data-old-copies]').scrollIntoViewIfNeeded();
-await shot('11-settings-confirm-zh');
-check((await page.locator('[data-old-copies-confirm]').innerText()).trim() === '移出', '9. 中文: the confirm button reads 移出');
-await page.getByRole('button', { name: '取消' }).last().click();
-await lang('en');
+check(B > A4b, `5. copies from older builds (${unmarked} marks stripped) stay in the 題庫 as they are, no clean-up: B = ${B} (> ${A4b})`);
 
 // ---- 10. undo ----
 const page2 = await context.newPage();
@@ -315,7 +241,7 @@ check(!(await page.locator('#print-root').innerText()).includes('UNDOWORDS'), '1
 const undone = await bankCount(page2);
 check(undone === base, `10. undone back to the original words, it leaves the 題庫 again (${undone})`);
 
-console.log(`A = ${A}, A+1 = ${A4}, B = ${B}, found = ${foundNum}`);
+console.log(`A = ${A}, A+1 = ${A4}, B = ${B}`);
 await browser.close();
 console.log(`${checks} checks, ${failures} failed`);
 process.exit(failures === 0 ? 0 : 1);

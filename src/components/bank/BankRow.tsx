@@ -179,6 +179,12 @@ export function BankRow({
             </span>
           ))}
           {row.hasDiagram && <span>{m.diagram}</span>}
+          {row.adaptedFrom && (
+            // An edited past-paper copy (k-0559): the bank row only, never the page or an export.
+            <span className="min-w-0 max-w-full truncate text-ink-muted" title={m.adaptedFromTitle(row.adaptedFrom)} data-row-adapted-from={row.adaptedFrom}>
+              {m.adaptedFrom(row.adaptedFrom)}
+            </span>
+          )}
           {differs && (
             <span className="min-w-0 max-w-full truncate text-ink-muted" title={differs}>
               {differs}

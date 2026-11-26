@@ -137,6 +137,11 @@ export const BANK_ROW_MESSAGES = defineMessages({
     zh: (name: string) => `只顯示歸入題型「${name}」的題目`,
   },
   versions: { en: (n: number) => `${n} versions`, zh: (n: number) => `${n} 個版本` },
+  adaptedFrom: { en: (tag: string) => `Adapted from ${tag}`, zh: (tag: string) => `改編自 ${tag}` },
+  adaptedFromTitle: {
+    en: (tag: string) => `Your own version of past paper question ${tag}. Shown here only; it never prints.`,
+    zh: (tag: string) => `你根據歷屆試題 ${tag} 改編的題目。只在這裏顯示，不會印出。`,
+  },
   partsTest: {
     en: (parts: string, count: number, topic: string) => `${parts} ${count === 1 ? 'tests' : 'test'} ${topic}`,
     zh: (parts: string, _count: number, topic: string) => `${parts} 考核 ${topic}`,

@@ -31,7 +31,7 @@ export interface BankIndexBackend {
  * text, `contentKey`), and every persisted index is dropped and rebuilt on next use. The
  * golden test in `indexer.test.ts` fails when the output moves, to say so.
  */
-export const INDEX_FORMAT = 8; // 8: a paper's unchanged past-paper copies yield no row (k-0559)
+export const INDEX_FORMAT = 9; // 8: a paper's unchanged past-paper copies yield no row (k-0559); 9: rows carry adaptedFrom
 
 /**
  * What a stored index is stamped with and checked against: the rows version plus a hash of
@@ -91,7 +91,8 @@ export function isBankRow(value: unknown): value is BankRow {
     (row.missing === undefined || isStringArray(row.missing)) &&
     (row.missingTeacher === undefined || isStringArray(row.missingTeacher)) &&
     isString(row.contentKey) &&
-    (row.number === undefined || typeof row.number === 'number')
+    (row.number === undefined || typeof row.number === 'number') &&
+    (row.adaptedFrom === undefined || isString(row.adaptedFrom))
   );
 }
 

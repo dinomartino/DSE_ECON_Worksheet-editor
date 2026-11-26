@@ -6,7 +6,6 @@ import { PAST_PAPER_SETTINGS_MESSAGES } from '@/components/pastpapers/messages';
 import { BUILT_IN_SOURCE, gitHubSource, PAST_PAPER_SETTINGS, sourceAddress, type PastPaperMode } from '@/pastpapers/config';
 import { pastPaperCache } from '@/pastpapers/bank';
 import { useSettings } from '@/settings/store';
-import { OldCopiesCleanUp } from './OldCopiesCleanUp';
 
 /**
  * Settings → Past paper bank (k-0443): the one switch for this computer. Built-in reads the
@@ -106,7 +105,6 @@ export default function PastPapersSection() {
         )}
       </section>
 
-      <OldCopiesCleanUp />
     </div>
   );
 }

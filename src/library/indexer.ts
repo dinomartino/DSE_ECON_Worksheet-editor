@@ -13,7 +13,7 @@ import type { Question, Worksheet } from '@/model/types';
 import { worksheetTitle } from '@/storage/document';
 import type { WorksheetSummary } from '@/storage/types';
 import { contentKey } from './contentKey';
-import { showsInBank } from './pastPaperCopies';
+import { adaptedFrom, showsInBank } from './pastPaperCopies';
 import { rowTagFields } from './sharedTags';
 import type { BankLang, BankRow } from './types';
 
@@ -95,5 +95,12 @@ function rowOf(question: Question, doc: DocFields, number: number | undefined): 
     ...(missingTeacher.length ? { missingTeacher } : {}),
     contentKey: contentKey(question),
     ...(number !== undefined ? { number } : {}),
+    ...withAdaptedFrom(question),
   };
+}
+
+/** An edited past-paper copy's source tag (k-0559); a row without one stays byte-identical. */
+function withAdaptedFrom(question: Question): Pick<BankRow, 'adaptedFrom'> {
+  const tag = adaptedFrom(question);
+  return tag ? { adaptedFrom: tag } : {};
 }

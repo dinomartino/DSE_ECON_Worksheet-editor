@@ -1,6 +1,8 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { LANGUAGE_SETTINGS } from '@/settings/language';
+import { appSettings } from '@/settings/store';
 import { row } from '@/library/testKit';
 import { createMcqQuestion, createStructuredQuestion } from '@/model/factories';
 import { BankRow, missingLanguageLabel, typeLabel, sittingLabel, usedLabel, type BankRowProps } from './BankRow';
@@ -116,5 +118,27 @@ describe('BankRow', () => {
     expect(usedLabel({ docId: 'd', docTitle: 'x', classes: ['5A', '5B'], usedOn: '2025-11-03' })).toBe('Used with 5A, 5B · Nov 2025');
     expect(sittingLabel({ docId: 'd', docTitle: 'x', classes: ['5A'], usedOn: '2025-11-03' })).toBe('5A · Nov 2025');
     expect(sittingLabel({ docId: 'd', docTitle: 'x', usedOn: '2025-11-03T09:00:00.000Z' })).toBe('No class · Nov 2025');
+  });
+});
+
+describe('an edited past-paper copy (k-0559)', () => {
+  afterEach(() => appSettings.reset(LANGUAGE_SETTINGS));
+
+  it('says what it was adapted from, in English and 中文', () => {
+    const adapted = { ...base, adaptedFrom: 'DSE2024/P1/Q38' };
+    const en = html({ row: adapted });
+    expect(en).toContain('Adapted from DSE2024/P1/Q38');
+    expect(en).toContain('data-row-adapted-from="DSE2024/P1/Q38"');
+    expect(en).toContain('it never prints');
+    appSettings.write(LANGUAGE_SETTINGS, { ui: 'zh-HK' });
+    const zh = html({ row: adapted });
+    expect(zh).toContain('改編自 DSE2024/P1/Q38');
+    expect(zh).toContain('不會印出');
+  });
+
+  it('says nothing on any other row', () => {
+    const out = html({ row: base });
+    expect(out).not.toContain('Adapted from');
+    expect(out).not.toContain('data-row-adapted-from');
   });
 });

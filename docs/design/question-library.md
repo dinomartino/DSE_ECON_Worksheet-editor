@@ -195,10 +195,10 @@ question, adapted from its tag, and shows like any other. Its number, place, top
 Show source are not what it says. The rule compares with the copy's own record, never the
 bank, so it needs no download; undoing an edit back to the exact words hides it again.
 A bank document is always shown whole: Copy to my question bank and Copy to bank are on
-purpose. Copies made before k-0559 carry no record; Settings → Past paper bank → "Past paper
-questions in my bank" finds the unchanged ones by `rootId` against the bank's current topics
-and, on the teacher's confirm, records the origin on them (nothing deleted, nothing printed
-changes; `src/pastpapers/oldCopies.ts`).
+purpose. An edited copy's row carries `adaptedFrom` (its tag) and the row reads "Adapted from
+DSE2024/P1/Q38" / 「改編自 …」 (`BankRow.tsx`); it lives on the row only, so it never prints,
+exports or copies. Copies made before k-0559 carry no record and stay in the 題庫 as they are
+(the user, u-sqrx: no clean-up).
 
 ### What a use means (C5)
 

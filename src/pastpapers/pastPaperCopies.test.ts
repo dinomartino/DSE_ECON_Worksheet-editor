@@ -1,4 +1,8 @@
+import JSZip from 'jszip';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { worksheetClipboardHtml } from '@/export/clipboard';
+import { exportDocxBuffer } from '@/export/docx';
+import { renderWorksheet } from '@/render/worksheet';
 import { useBankSession } from '@/components/bank/bankSession';
 import { copyToBank } from '@/library/bankDocs';
 import { contentKey } from '@/library/contentKey';
@@ -9,18 +13,16 @@ import { createMcqQuestion } from '@/model/factories';
 import { copyQuestion, rootIdOf } from '@/model/lineage';
 import { migrate } from '@/model/migrations';
 import { bi } from '@/model/text';
-import type { McqQuestion, Question, Worksheet } from '@/model/types';
+import type { McqQuestion, OutputMode, Question, Worksheet } from '@/model/types';
 import type { WorksheetStore } from '@/storage/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { copyIntoMyBank, emptyPaperFor, insertIntoOpen } from './actions';
-import { cleanUpOldCopies, findOldCopies, nudged, recordOldCopies, scanOldCopies, topicsFor, type BankReader } from './oldCopies';
 import { sourceOf, type PastPaperItem } from './pack';
 
 /**
  * A past-paper question copied into a paper is not the teacher's question until they change
  * it (k-0559, user u-rkoi): the 題庫 leaves an unchanged copy out, shows an edited one as
- * their own (adapted from its source), and copies made before this build can be found and
- * taken out without changing a paper.
+ * their own (adapted from its source, shown on its 題庫 row only).
  */
 
 function pastMcq(tag: string): McqQuestion {
@@ -175,92 +177,62 @@ describe('a past-paper copy in a paper', () => {
   });
 });
 
-describe('copies made before this build', () => {
-  const paperOf = (id: string, questions: Question[], updatedAt = '2026-10-01T08:00:00.000Z'): Worksheet => ({
-    ...emptyPaperFor('classroom', id),
-    id,
-    name: id,
-    questions,
-    flow: questions.map((q) => ({ type: 'question' as const, id: q.id })),
-    updatedAt,
-  });
-  const bankByRoot = new Map<string, Question>([
-    [rootIdOf(Q38), Q38],
-    [rootIdOf(Q5), Q5],
-  ]);
+describe('"Adapted from" on the 題庫 row (k-0559, u-sqrx)', () => {
+  const editStem = (id: string) =>
+    useWorksheetStore.getState().updateQuestion(id, { blocks: [{ kind: 'paragraph', id: 'new-stem', text: bi('My own stem', '我的題幹') }] } as Partial<Question>);
 
-  it('finds unchanged copies, and leaves edited ones, ones the bank no longer has, and banks', () => {
-    const unchanged = oldCopy(Q38);
-    const edited = { ...oldCopy(Q5), answerIndex: 3 } as Question;
-    const gone = oldCopy(pastMcq('CE1999/P2/Q1'));
-    const own = createMcqQuestion();
-    const paper = paperOf('p1', [own, unchanged, edited, gone]);
-    const bank = { ...paperOf('bank', [oldCopy(Q5)]), kind: 'bank' as const };
-    const scan = findOldCopies([paper, bank], bankByRoot);
-    expect(scan.copies).toEqual([{ docId: 'p1', docTitle: expect.any(String), questionId: unchanged.id, number: 2, tag: 'DSE2024/P1/Q38', key: contentKey(Q38) }]);
-    expect(scan.changed).toBe(1);
-    expect(scan.notInBank).toBe(1);
-    expect(bankRows(paper)).toHaveLength(4);
-    const recorded = recordOldCopies(paper, scan.copies);
-    expect(bankRows(recorded)).toEqual([own.id, edited.id, gone.id]);
-    expect(recordOldCopies(recorded, scan.copies)).toBe(recorded);
+  it('an edited copy’s row names its source; an unchanged one, in a bank document, does not', async () => {
+    insertIntoOpen([item(Q38), item(Q5)], (n) => `${n} added`);
+    const [first] = open().questions;
+    editStem(first.id);
+    expect(rowsOf(open()).map((row) => [row.questionId, row.adaptedFrom])).toEqual([[first.id, 'DSE2024/P1/Q38']]);
+    // Copy to bank keeps the record: the edited one still says where it came from, the unchanged one nothing.
+    const { store } = memoryStore();
+    const done = await copyToBank(open().questions, open().id, {}, { store, openDocId: open().id });
+    expect(rowsOf(done.bank).map((row) => row.adaptedFrom)).toEqual(['DSE2024/P1/Q38', undefined]);
+    expect('adaptedFrom' in rowsOf(done.bank)[1]).toBe(false);
   });
 
-  it('reads only the bank topics the papers name', () => {
-    const manifest = {
-      topics: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] as never,
-      search: [
-        { topicId: 'a', source: sourceOf(Q38) },
-        { topicId: 'c', source: sourceOf(Q5) },
-      ] as never,
+  it('goes again when the edit is undone back to the exact words (the row leaves with it)', () => {
+    insertIntoOpen([item(Q38)], (n) => `${n} added`);
+    editStem(open().questions[0].id);
+    expect(rowsOf(open())[0].adaptedFrom).toBe('DSE2024/P1/Q38');
+    useWorksheetStore.getState().undo();
+    expect(rowsOf(open())).toEqual([]);
+  });
+
+  it('never reaches the page, the .docx or the clipboard: the paper prints as if it had no record', async () => {
+    insertIntoOpen([item(Q38)], (n) => `${n} added`);
+    editStem(open().questions[0].id);
+    const adapted = open();
+    const unrecorded = (question: Question): Question => {
+      const { pastPaper: _drop, ...lineage } = question.lineage as NonNullable<Question['lineage']>;
+      void _drop;
+      return { ...question, lineage };
     };
-    expect(topicsFor([oldCopy(Q38)], manifest)).toEqual(['a']);
-    expect(topicsFor([oldCopy(Q38)], { topics: manifest.topics })).toEqual(['a', 'b', 'c']);
-  });
-
-  it('cleans up: one save per paper, nothing printed changes, the open paper adopts it too', async () => {
-    const p1 = paperOf('p1', [oldCopy(Q38), oldCopy(Q5)]);
-    const p2 = paperOf('p2', [oldCopy(Q5)], '2026-10-02T08:00:00.000Z');
-    const { map, store } = memoryStore([p1, p2]);
-    const reader: BankReader = {
-      manifest: async () => ({ topics: [{ id: 'elasticity' }] as never }),
-      topic: async () => [Q38, Q5],
-    };
-    const outcome = await scanOldCopies(store, reader);
-    expect(outcome.ok && outcome.scan.copies.map((c) => `${c.docId} ${c.tag}`)).toEqual(['p2 DSE2023/P1/Q5', 'p1 DSE2024/P1/Q38', 'p1 DSE2023/P1/Q5']);
-    if (!outcome.ok) throw new Error('scan failed');
-
-    useWorksheetStore.getState().replaceWorksheet(structuredClone(p1));
-    // Typed in the open paper before the clean-up: an edited copy is no longer the past paper's.
-    useWorksheetStore.getState().updateQuestion(p1.questions[1].id, { answerIndex: 0 } as Partial<Question>);
-    const done = await cleanUpOldCopies(outcome.scan.copies, store, { id: 'p1', adopt: useWorksheetStore.getState().adoptSavedElsewhere });
-    expect(done).toEqual({ recorded: 3, skipped: 0 });
-    for (const doc of map.values()) expect(bankRows(doc)).toEqual([]);
-    expect(map.get('p1')!.updatedAt).toBe(nudged(p1.updatedAt));
-    expect(map.get('p1')!.questions.map(contentKey)).toEqual(p1.questions.map(contentKey));
-    // The open paper: the unchanged copy recorded in memory, the edited one left to the 題庫.
-    expect(bankRows(open())).toEqual([p1.questions[1].id]);
-    expect(isUnchangedPastPaperCopy(open().questions[0])).toBe(true);
-
-    const again = await scanOldCopies(store, reader);
-    expect(again.ok && again.scan.copies).toEqual([]);
-  });
-
-  it('skips a copy changed since it was found', async () => {
-    const p1 = paperOf('p1', [oldCopy(Q38)]);
-    const { map, store } = memoryStore([p1]);
-    const [found] = findOldCopies([p1], bankByRoot).copies;
-    map.set('p1', { ...p1, questions: [{ ...p1.questions[0], answerIndex: 0 } as Question] });
-    expect(await cleanUpOldCopies([found], store)).toEqual({ recorded: 0, skipped: 1 });
-    expect(map.get('p1')!.updatedAt).toBe(p1.updatedAt);
-  });
-
-  it('says why when the bank is off or cannot be read, and needs no bank when nothing could be a copy', async () => {
-    const { store } = memoryStore([paperOf('p1', [oldCopy(Q38)])]);
-    expect(await scanOldCopies(store, { manifest: async () => 'off', topic: async () => [] })).toEqual({ ok: false, reason: 'bankOff' });
-    expect(await scanOldCopies(store, { manifest: async () => undefined, topic: async () => [] })).toEqual({ ok: false, reason: 'bankUnavailable' });
-    expect(await scanOldCopies(store, { manifest: async () => ({ topics: [{ id: 'a' }] as never }), topic: async () => undefined })).toEqual({ ok: false, reason: 'bankUnavailable' });
-    const empty = memoryStore([paperOf('p1', [createMcqQuestion()])]);
-    expect(await scanOldCopies(empty.store, { manifest: async () => 'off', topic: async () => [] })).toEqual({ ok: true, scan: { copies: [], changed: 0, notInBank: 0 }, papers: 1 });
+    const stripped: Worksheet = { ...adapted, questions: adapted.questions.map(unrecorded) };
+    expect(rowsOf(stripped)[0].adaptedFrom).toBeUndefined();
+    const modes: OutputMode[] = [
+      { language: 'bilingual', version: 'teacher' },
+      { language: 'en', version: 'student' },
+      { language: 'zh', version: 'student' },
+    ];
+    for (const showQuestionSources of [false, true]) {
+      const [a, b] = [adapted, stripped].map((doc) => ({ ...doc, showQuestionSources }));
+      for (const mode of modes) {
+        const ir = JSON.stringify(renderWorksheet(a, mode));
+        expect(ir).toBe(JSON.stringify(renderWorksheet(b, mode)));
+        const html = worksheetClipboardHtml(a, mode);
+        expect(html).toBe(worksheetClipboardHtml(b, mode));
+        const xml = async (doc: Worksheet) => (await JSZip.loadAsync(await exportDocxBuffer(doc, mode))).file('word/document.xml')!.async('string');
+        const docx = await xml(a);
+        expect(docx).toBe(await xml(b));
+        for (const out of [ir, html, docx]) {
+          expect(out).not.toMatch(/Adapted from|改編自/);
+          // The tag itself prints only as the question's own source: Show source, or the key's Source line.
+          if (!showQuestionSources && mode.version === 'student') expect(out).not.toContain('DSE2024/P1/Q38');
+        }
+      }
+    }
   });
 });

@@ -50,6 +50,12 @@ export const REVIEW_PAGE_MESSAGES = defineMessages({
     zh: (name: string) => `只顯示歸入題型「${name}」的題目`,
   },
   livesIn: { en: 'Lives in', zh: '所在位置' },
+  adaptedFromFact: { en: 'Adapted from', zh: '改編自' },
+  adaptedFrom: { en: (tag: string) => `Adapted from ${tag}`, zh: (tag: string) => `改編自 ${tag}` },
+  adaptedFromTitle: {
+    en: (tag: string) => `Your own version of past paper question ${tag}. Shown here only; it never prints.`,
+    zh: (tag: string) => `你根據歷屆試題 ${tag} 改編的題目。只在這裏顯示，不會印出。`,
+  },
   bankSuffix: { en: ' · bank', zh: ' · 題庫' },
   usedIn: { en: 'Used in', zh: '使用於' },
   versionsFact: { en: 'Versions', zh: '版本' },
