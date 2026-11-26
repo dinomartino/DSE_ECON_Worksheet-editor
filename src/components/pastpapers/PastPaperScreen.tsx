@@ -214,12 +214,12 @@ export function PastPaperScreen({
       {showSources && withSources && (
         <SourceFormatSelect value={sourceFormat} onChange={(next) => setBankSettings({ sourceFormat: next })} className="max-w-[240px]" />
       )}
-      <label className="flex items-center gap-2 text-[12.5px] text-ink-muted">
+      <label className="flex min-w-0 items-center gap-2 whitespace-nowrap text-[12.5px] text-ink-muted" data-pastpaper-add-to>
         {m.addTo}
         <select
           value={target}
           onChange={(e) => setTarget(e.target.value)}
-          className="h-8 max-w-[260px] rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="h-8 min-w-0 max-w-[260px] rounded-lg border border-line bg-surface px-2 text-[12.5px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <option value="new:classroom">{m.newWorksheet}</option>
           <option value="new:paper1">{m.newPaper1}</option>
