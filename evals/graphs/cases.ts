@@ -8,6 +8,8 @@
  * `want` is what a right figure shows, for the reviewer's score; `labels` are the labels the
  * question names, which must all be on the figure.
  */
+import { LORENZ_CASES } from '@/diagramGen/lorenz.fixture';
+
 export interface GraphCase {
   id: string;
   /** The graph type, as in the k-0577 inventory. */
@@ -22,7 +24,44 @@ export interface GraphCase {
   labels: string[];
 }
 
+/** The writer's figure note and the reviewer's "want" for each Lorenz case (k-0584), vague as a writer's. */
+const LORENZ_NOTES: Record<string, { figure: string; want: string; labels: string[] }> = {
+  'lz-two-economies': {
+    figure: 'Two Lorenz curve diagrams side by side, one for Economy X and one for Economy Y. Y is closer to the line of equality. Key: B.',
+    want: 'two square boxes titled Economy X and Economy Y; Y nearer the diagonal; smooth convex curves through both corners; no before/after key',
+    labels: [],
+  },
+  'lz-grid-gini': {
+    figure: 'Lorenz curves of Country A and Country B, each on its own grid (0 to 100, every 20), cumulative percentages. A is closer to the line of equality. Key: D.',
+    want: 'two square boxes with 20% grids and 0–100 numbers; A nearer the diagonal; titles Country A, Country B',
+    labels: [],
+  },
+  'lz-before-after': {
+    figure: 'One Lorenz diagram with two curves: A (pre-tax pre-transfer, dashed) and B (post-tax post-transfer), B further from the line of equality, with a key. Key: C.',
+    want: 'one square box; A dashed nearer the diagonal, B further; key beside the box; letters by their curves',
+    labels: ['A', 'B'],
+  },
+  'lz-old-new': {
+    figure: 'One Lorenz diagram on a grid: old curve A and new curve B, B closer to the line of equality, line of equality drawn. Key: C.',
+    want: 'one square box with grid; A further, B nearer the diagonal; line of equality; key old/new',
+    labels: ['A', 'B'],
+  },
+};
+
+/** The Lorenz cases (k-0584, u-25vr), from the fixture the offline tests use. */
+const LORENZ_GRAPH_CASES: GraphCase[] = LORENZ_CASES.map((c) => ({
+  id: c.id,
+  type: `Lorenz curves (${c.like})`,
+  family: 'other',
+  stem: c.mcq.stem,
+  options: c.mcq.options as [string, string, string, string],
+  answer: c.mcq.answer as 0 | 1 | 2 | 3,
+  explanation: c.key,
+  ...LORENZ_NOTES[c.id],
+}));
+
 export const GRAPH_CASES: GraphCase[] = [
+  ...LORENZ_GRAPH_CASES,
   {
     // k-0577 round 2 (u-fbsp): the user's HKDSE 2018 P1 Q22 draft, areas named by their corners; the note is as vague as a writer's.
     id: 'e-tax-raise',

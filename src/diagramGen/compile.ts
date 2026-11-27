@@ -1,3 +1,4 @@
+import { compileLorenz } from './lorenz';
 import type { Diagram, DiagramAnchorRef, DiagramArea, DiagramArrow, DiagramCurve, DiagramPointMark, DiagramSpan } from '@/model/diagram';
 import { MAX_CHART_CATEGORIES, MAX_CHART_SERIES } from '@/model/diagram';
 import { curveXAt, curveYAt, resolveAnchor } from '@/model/diagramAnchors';
@@ -325,6 +326,7 @@ export function compileSpec(given: DiagramSpec): Compiled {
 
   if (spec.kind === 'none') return { diagram: null, issues, curveIds, roles, levels: levelAt };
   if (spec.kind === 'scene') return compileScene(spec);
+  if (spec.kind === 'lorenz') return compileLorenz(spec);
 
   if (spec.kind === 'template') {
     const template = getDiagramTemplate(spec.template);

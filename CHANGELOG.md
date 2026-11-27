@@ -13,6 +13,14 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question studio draws Lorenz curves the way HKDSE prints them.** A question comparing two
+  economies gets one square box per economy, titled as the stem names them; a question about a
+  change gets both curves in one box, lettered by the curves, with the key beside the box. The
+  curves are smooth, run from corner to corner under the line of equality and never cross; the
+  line of equality and a 20% grid with 0–100 are drawn when the question wants them. The studio
+  checks that every economy and curve the question names is on the figure and that the answer
+  agrees with the drawing, and fixes the figure before you see it.
+  <!-- zh: **擬題工作室能按 HKDSE 的方式繪畫洛倫茲曲線。** 比較兩個經濟體的題目，每個經濟體各有一個正方形圖框，標題與題幹所用名稱一致；關於變化的題目，兩條曲線畫在同一圖框內，字母標在曲線旁，圖例放在圖框旁邊。曲線平滑，由一角伸延至另一角，位於絕對平等線之下，且互不相交；題目需要時會畫出絕對平等線及以 20% 為一格、標示 0–100 的方格。擬題工作室會檢查題目提到的每個經濟體及曲線都在圖上，以及答案與圖表相符，並在你看到前修正圖表。 -->
 - **My questions in the Question studio's reference picker lists your questions by MCQ topic.**
   As in the Past paper bank, the sections A–J open onto their MCQ topics (Elasticity, Price
   Ceiling…), each with how many of your multiple-choice questions it holds; questions filed under a

@@ -194,7 +194,38 @@ export interface SpecChart {
   xTitle: SpecText;
 }
 
-export const SPEC_KINDS = ['none', 'curves', 'chart', 'template', 'scene'] as const;
+export const SPEC_KINDS = ['none', 'curves', 'chart', 'template', 'scene', 'lorenz'] as const;
+
+/**
+ * Lorenz curves (k-0584, u-25vr): one square box, or two side by side (Economy X | Economy Y),
+ * each with one or two curves. The model says how unequal each curve is, never its shape:
+ * code draws a smooth convex curve through both corners, below the line of equality, and two
+ * curves of one box never cross.
+ */
+export const LORENZ_INEQUALITY = ['slight', 'moderate', 'high', 'extreme'] as const;
+export type LorenzInequality = (typeof LORENZ_INEQUALITY)[number];
+export interface SpecLorenzCurve {
+  /** The letter printed by the curve ("A"), or "" for a box's only curve. */
+  label: string;
+  /** What it is, printed in the key beside the box ("before tax"); "" = no key line. */
+  name: SpecText;
+  inequality: LorenzInequality;
+  style: 'solid' | 'dashed';
+}
+export interface SpecLorenzPanel {
+  /** Under the box ("Lorenz curve of Economy X"); "" for one box whose stem says what it is. */
+  title: SpecText;
+  curves: SpecLorenzCurve[];
+}
+export interface SpecLorenz {
+  panels: SpecLorenzPanel[];
+  /** Draw the diagonal line of equality. */
+  equality: boolean;
+  /** A 20% grid with 0–100 on both sides (HKDSE 2020, 2025). */
+  grid: boolean;
+  /** "% of income" / "% of households", or "Cumulative percentage of …". */
+  axes: 'percent' | 'cumulative';
+}
 
 /**
  * A typed market scene (k-0577): the topic-E diagrams (surplus areas, tax and subsidy
@@ -344,6 +375,8 @@ export interface DiagramSpec {
   chart: SpecChart;
   /** kind 'scene' (k-0577); absent in a spec saved before = type 'none'. */
   scene?: SpecScene;
+  /** kind 'lorenz' (k-0584); absent in a spec saved before. */
+  lorenz?: SpecLorenz;
 }
 
 /**

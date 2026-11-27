@@ -15,6 +15,8 @@ import {
   SCENE_MARKETS,
   EXTERNALITIES,
   SCENE_ASKS,
+  LORENZ_INEQUALITY,
+  type SpecLorenz,
   type SpecScene,
   type DiagramIssue,
   type DiagramSpec,
@@ -93,6 +95,17 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
     yTitle: TEXT,
     xTitle: TEXT,
   }),
+  lorenz: obj({
+    panels: list(
+      obj({
+        title: TEXT,
+        curves: list(obj({ label: str, name: TEXT, inequality: { type: 'string', enum: [...LORENZ_INEQUALITY] }, style: { type: 'string', enum: ['solid', 'dashed'] } })),
+      }),
+    ),
+    equality: { type: 'boolean' },
+    grid: { type: 'boolean' },
+    axes: { type: 'string', enum: ['percent', 'cumulative'] },
+  }),
   scene: obj({
     type: { type: 'string', enum: [...SCENE_TYPES] },
     market: { type: 'string', enum: [...SCENE_MARKETS] },
@@ -117,9 +130,9 @@ export const DIAGRAM_EDIT_SCHEMA: JsonSchema = {
 
 /** For the rungs that do not enforce the schema (json_object, prompt). */
 export const DIAGRAM_SHAPE_HINT =
-  'Reply with one JSON object only, with exactly these keys: kind, reason, placement, template, title, xAxis, yAxis, curves, shifts, levels, points, gaps, shades, marks, changeArrows, asks, chart, scene (see the shape described above). Every key is always present; use "" or [] for unused ones.';
+  'Reply with one JSON object only, with exactly these keys: kind, reason, placement, template, title, xAxis, yAxis, curves, shifts, levels, points, gaps, shades, marks, changeArrows, asks, chart, scene, lorenz (see the shape described above). Every key is always present; use "" or [] for unused ones.';
 
-export const EDIT_SHAPE_HINT = DIAGRAM_SHAPE_HINT.replace('changeArrows, asks, chart, scene', 'changeArrows, asks, chart, scene, questionChange');
+export const EDIT_SHAPE_HINT = DIAGRAM_SHAPE_HINT.replace('changeArrows, asks, chart, scene, lorenz', 'changeArrows, asks, chart, scene, lorenz, questionChange');
 
 const EMPTY_TEXT: SpecText = { en: '', zh: '' };
 
@@ -147,7 +160,12 @@ export function emptySpec(kind: DiagramSpec['kind'] = 'none'): DiagramSpec {
     asks: { what: 'none', state: 'after' },
     chart: { type: 'bar', categories: [], series: [], yTitle: { ...EMPTY_TEXT }, xTitle: { ...EMPTY_TEXT } },
     scene: emptyScene(),
+    lorenz: emptyLorenz(),
   };
+}
+
+export function emptyLorenz(): SpecLorenz {
+  return { panels: [], equality: true, grid: false, axes: 'percent' };
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -265,6 +283,27 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
       })),
       yTitle: text(c.yTitle),
       xTitle: text(c.xTitle),
+    };
+  }
+  if (isRecord(raw.lorenz)) {
+    const c = raw.lorenz;
+    spec.lorenz = {
+      panels: arr(c.panels)
+        .filter(isRecord)
+        .map((p) => ({
+          title: text(p.title),
+          curves: arr(p.curves)
+            .filter(isRecord)
+            .map((k) => ({
+              label: s(k.label).trim(),
+              name: text(k.name),
+              inequality: pick(k.inequality, LORENZ_INEQUALITY, 'moderate', 'lorenz inequality'),
+              style: pick(k.style, ['solid', 'dashed'] as const, 'solid', 'lorenz style'),
+            })),
+        })),
+      equality: c.equality !== false,
+      grid: c.grid === true,
+      axes: pick(c.axes, ['percent', 'cumulative'] as const, 'percent', 'lorenz axes'),
     };
   }
   if (isRecord(raw.scene)) {

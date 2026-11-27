@@ -4,7 +4,7 @@ import { describe, it } from 'vitest';
 import { clearDialectCache, createClient } from '@/ai/client';
 import { MENTOR_MODEL, PRESETS, presetFor } from '@/ai/providers';
 import type { AiClient, ProviderConfig } from '@/ai/types';
-import { generateDiagram } from '@/diagramGen/run';
+import { evaluateReply, generateDiagram } from '@/diagramGen/run';
 import type { DiagramGenInput } from '@/diagramGen/types';
 import type { Diagram } from '@/model/diagram';
 import { plainOf } from '@/diagramGen/text';
@@ -70,26 +70,37 @@ describe.skipIf(!process.env.EVAL_MENTOR_TOKEN)('graph set, live (k-0577)', () =
     const cases = GRAPH_CASES.filter((c) => !only.length || only.includes(c.id));
     const rows: unknown[] = [];
     let total = 0;
-    for (const c of cases) {
+    // k-0584 (the independent review): each case run EVAL_REPEAT times, and the first reply's issues saved when a repair ran.
+    const repeat = Math.max(1, Number(process.env.EVAL_REPEAT ?? 1) || 1);
+    for (const c of cases.flatMap((k) => Array.from({ length: repeat }, (_, r) => ({ ...k, run: r + 1 })))) {
       let charged = 0;
       let calls = 0;
-      const tokens = { input: 0, output: 0, thinking: 0 };
+      const replies: string[] = [];
+      const tokens = { input: 0, output: 0, thinking: 0, cached: 0 };
       const client: AiClient = {
         listModels: (s) => base.listModels(s),
         complete: async (req) => {
           const res = await base.complete(req);
+          replies.push(res.text);
           calls += 1;
           charged += res.charged ?? 0;
           tokens.input += res.usage?.input ?? 0;
           tokens.output += res.usage?.output ?? 0;
           tokens.thinking += res.usage?.thinking ?? 0;
+          tokens.cached += res.usage?.cached ?? 0;
           return res;
         },
       };
       const started = Date.now();
       const outcome = await generateDiagram(inputOf(c), { client, preset }, new AbortController().signal);
       total += charged;
-      const row: Record<string, unknown> = { id: c.id, type: c.type, family: c.family, charged: Math.round(charged * 100) / 100, calls, tokens, ms: Date.now() - started };
+      const id = repeat > 1 ? `${c.id}-r${c.run}` : c.id;
+      const row: Record<string, unknown> = { id, type: c.type, family: c.family, charged: Math.round(charged * 100) / 100, calls, tokens, ms: Date.now() - started };
+      if (calls > 1 && replies[0]) {
+        const first = evaluateReply(replies[0], inputOf(c));
+        row.firstIssues = first ? first.issues.filter((i) => i.level === 'error').map((i) => `${i.code}: ${i.text}`) : ['(first reply was not a spec)'];
+        if (first) row.firstKind = first.spec.kind;
+      }
       if (!outcome.ok) {
         row.status = 'error';
         row.error = outcome.error;
@@ -100,20 +111,22 @@ describe.skipIf(!process.env.EVAL_MENTOR_TOKEN)('graph set, live (k-0577)', () =
         row.solved = outcome.solved;
         row.kind = outcome.spec.kind;
         row.template = outcome.spec.template;
-        writeFileSync(path.join(out, `${c.id}.spec.json`), JSON.stringify(outcome.spec, null, 2));
+        writeFileSync(path.join(out, `${id}.spec.json`), JSON.stringify(outcome.spec, null, 2));
         if (outcome.block) {
           const printed = printedLabels(outcome.block.diagram);
           const have = new Set(printed.map(norm));
           row.missingLabels = c.labels.filter((l) => !have.has(norm(l)));
           for (const language of ['en', 'zh'] as const) {
             const svg = diagramSvg(outcome.block.diagram, { widthPx: outcome.block.widthPx, heightPx: outcome.block.heightPx, language, scale: 2, answers: 'show' });
-            writeFileSync(path.join(out, 'svg', `${c.id}.${language}.svg`), svg);
+            writeFileSync(path.join(out, 'svg', `${id}.${language}.svg`), svg);
           }
-          writeFileSync(path.join(out, `${c.id}.block.json`), JSON.stringify(outcome.block, null, 2));
+          writeFileSync(path.join(out, `${id}.block.json`), JSON.stringify(outcome.block, null, 2));
         }
       }
       rows.push(row);
       console.log(JSON.stringify(row));
+      // Saved after every case, so a crash later in the run keeps what was paid for.
+      writeFileSync(path.join(out, 'summary.json'), JSON.stringify({ at: new Date().toISOString(), total: Math.round(total * 100) / 100, rows }, null, 2));
     }
     writeFileSync(path.join(out, 'summary.json'), JSON.stringify({ at: new Date().toISOString(), total: Math.round(total * 100) / 100, rows }, null, 2));
     console.log(`TOTAL credits ${total.toFixed(2)}`);
