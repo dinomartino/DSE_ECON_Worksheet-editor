@@ -23,6 +23,10 @@ a version heading is edited afterwards.
   from the question ("doubles the import quota", "abolishes the quota"), and refuses a key that
   depends on how steep the curves are.
   <!-- zh: **擬題工作室能以題目自己的標示繪畫進口配額圖。** 需求、本地供應、國際價格及有配額的供應（在國際價格處屈折，配額部分為水平，拖動供應或國際價格時仍保持此形狀），配額下的價格、四個數量、「進口配額」括號及配額租金，如 HKDSE 2016 至 2022 年 Paper 1。它亦能只畫供應與需求之間的配額括號（2016、2019 年）、以兩條屈折供應曲線表示配額增加或削減（2017 年），以及配額不變下需求上升（2021 年 Paper 2）。若題目是一組陳述（如「本地產量將會下降」），它會按題目所述的改變（如「把進口配額增加一倍」、「取消配額」）計出前後兩個狀態，並拒絕取決於曲線斜率的答案。 -->
+- **A trade figure that asks what trade will do now shows the world price line.** When the question
+  names a world price line (such as TT′) but the figure must not show the answer, the line is drawn
+  beside the frontier at the world price's slope, without the consumption possibility frontier.
+  <!-- zh: **詢問貿易後會怎樣的貿易圖現在會畫出國際價格線。** 若題目提及國際價格線（如 TT′）但圖不可顯示答案，該線會以國際價格的斜率畫在生產可能曲線旁，而不畫出消費可能曲線。 -->
 - **The Question studio draws trade with production possibility frontiers, from the question's own
   numbers.** One or two countries' frontiers, straight or bowed out, with the numbers on the axes;
   the world price, the production point with trade (complete specialisation on a straight frontier,

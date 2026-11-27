@@ -352,7 +352,7 @@ export function tradeKey(scene: Pick<SpecScene, 'ask'>, nums: TradeNumbers, mcq:
   const n = nums.countries[0];
   const value = !n?.c ? null : ask === 'exports' ? n.exports : ask === 'imports' ? n.imports : n.gain;
   if (value === null || value === undefined) {
-    issues.push({ level: 'error', code: 'scene.ask', text: `The question asks for ${ask}, but the first country has no consumption point with trade: give consume (and amount).` });
+    issues.push({ level: 'error', code: 'scene.ask', text: `The question asks for ${ask}, but the first country has no consumption point with trade: set its trade true and give consume (and amount) as the question says, even when the printed figure shows only the PPF; then list given ["PPF"] (and the parts it prints) so the rest is the answer layer.` });
     return { issues, solved: null };
   }
   const good = ask === 'gainFromTrade' ? 'Y' : (ask === 'exports') === (n.exportsGood === 'x') ? 'X' : 'Y';

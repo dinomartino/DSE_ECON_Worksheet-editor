@@ -236,3 +236,23 @@ describe('routing, stored keys, old specs', () => {
     expect(reply.spec.scene?.trade).toEqual(DSE2019);
   });
 });
+
+describe('a world price line with no trade drawn (k-0589 live run: DSE2017 TT\')', () => {
+  it('TT\' is drawn outside the frontier at the world price slope, with no CPF or production point', async () => {
+    const { compileScene } = await import('./scene');
+    const { emptyScene, emptySpec } = await import('./schema');
+    const built = compileScene({
+      ...emptySpec('scene'),
+      placement: 'question',
+      scene: { ...emptyScene(), type: 'ppfTrade', labels: [{ part: 'TOT', label: "TT'" }], trade: { tot: 1, totLine: true, grow: 0, xGood: { en: '', zh: '' }, yGood: { en: '', zh: '' }, countries: [{ name: '', shape: 'concave', x: 10, y: 10, noTradeX: 0, noTradeCost: 2, trade: false, consume: 'none', amount: 0, brackets: false, gain: false }] } },
+    });
+    const d = built.diagram!;
+    const tt = d.curves.find((c) => c.id === built.curveIds.get('TOT'))!;
+    expect(tt).toBeTruthy();
+    expect(built.curveIds.has('CPF')).toBe(false);
+    const [p, q] = tt.points;
+    // Slope −1 in goods units on equal axes, and every point of it outside the quarter circle.
+    expect((q.y - p.y) / (q.x - p.x)).toBeCloseTo(-1, 6);
+    for (const pt of tt.points) expect(Math.hypot(pt.x, pt.y)).toBeGreaterThan(0.86 + 0.02);
+  });
+});

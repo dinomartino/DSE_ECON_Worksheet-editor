@@ -111,6 +111,30 @@ export function draftTrade(scene: SpecScene, name: (part: string) => BiText | un
       curves.push(tot);
       roles.TOT = { curve: tot, role: 'graph' };
     }
+  } else if (has('TOT') && nums.countries[0]) {
+    // No trade drawn (the question asks what trade will do: DSE2017's TT'): the world price's slope just outside the
+    // first frontier, clear of it, so the line gives no production point away.
+    const n0 = nums.countries[0];
+    const [A, B] = [ux(n0.X), uy(n0.Y)];
+    const slope = (trade.tot * uy(1)) / ux(1);
+    const len = Math.hypot(1, slope);
+    const normal: Pair = [slope / len, 1 / len];
+    const dir: Pair = [1 / len, -slope / len];
+    const support = n0.spec.shape === 'concave' ? Math.hypot(A * normal[0], B * normal[1]) : Math.max(A * normal[0], B * normal[1]);
+    const mid: Pair = [normal[0] * (support + 0.07), normal[1] * (support + 0.07)];
+    const inPlot = (half: number): Pair[] | null => {
+      const e: Pair[] = [
+        [mid[0] - dir[0] * half, mid[1] - dir[1] * half],
+        [mid[0] + dir[0] * half, mid[1] + dir[1] * half],
+      ];
+      return e.every(([x, y]) => x >= 0.02 && x <= 0.95 && y >= 0.02 && y <= 0.95) ? e : null;
+    };
+    const ends = inPlot(0.2) ?? inPlot(0.12);
+    if (ends) {
+      const tot = curve(ends, name('TOT'), { stroke: 'dashed', weight: 0.8 });
+      curves.push(tot);
+      roles.TOT = { curve: tot, role: 'graph' };
+    }
   }
 
   // Numbers on the axes: each intercept a tick of its own (no drop line), so a figure the student completes can hide the CPF's.
