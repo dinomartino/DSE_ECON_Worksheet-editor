@@ -734,6 +734,18 @@ export interface Diagram {
   /** Printed at the origin. Papers almost always show a "0" there. */
   showOrigin?: boolean;
   /**
+   * `none`: no axes, arrows, axis titles or "0", and a thin margin all round: a figure drawn
+   * wholly from lines and labels, such as a Lorenz curve's square box (k-0584, HKDSE 2020
+   * P1 Q22: the box, its grid and its numbers are the figure's own lines and labels, so two
+   * panels fit one diagram). A build that does not know it draws the axes as usual.
+   */
+  axes?: 'none';
+  /**
+   * The plot's height over its width (absent = 3/4, `DIAGRAM_PLOT_ASPECT`). A Lorenz figure
+   * sets the shape its square boxes need. A build that does not know it draws 4:3.
+   */
+  plotAspect?: number;
+  /**
    * Which template this started from, kept only so the editor can show it and offer a
    * reset. It never affects rendering — the geometry above is the single source of truth.
    */
