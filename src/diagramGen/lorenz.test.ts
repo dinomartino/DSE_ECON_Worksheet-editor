@@ -20,6 +20,14 @@ describe('the HKDSE Lorenz cases', () => {
     expect(e.compiled.diagram?.axes).toBe('none');
   });
 
+  it('reads "Compared with Economy Y, Economy X …" as a claim about X, and skips what it cannot read', () => {
+    const c = LORENZ_CASES[0];
+    const mcq = { ...c.mcq, options: ['Compared with Economy X, Economy Y has a more even income distribution.', 'Compared with Economy Y, Economy X has a more even income distribution.', 'Economy X does not have a less even distribution than Economy Y.', 'Economy Y has a smaller Gini coefficient than Economy X.'], answer: 0 };
+    const e = evaluateSpec(c.spec, { sides: ['en', 'zh'], key: c.key, mcq });
+    expect(e.issues.map((i) => i.code)).toEqual(['lorenz.twoKeys']);
+    expect(e.solved?.option).toBe(0);
+  });
+
   it('works the key out when the options compare economies or curves', () => {
     expect(run(LORENZ_CASES[0]).solved?.option).toBe(1);
     expect(run(LORENZ_CASES[1]).solved?.option).toBe(3);

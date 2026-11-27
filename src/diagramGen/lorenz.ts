@@ -270,17 +270,29 @@ export function checkLorenz(spec: DiagramSpec, mcq: { stem: string; statements: 
   // The keyed comparison: "Economy X has a more even income distribution than Economy Y".
   // A box's lettered curves compare too: "curve B shows a more even distribution than curve A".
   for (const p of lz.panels) for (const c of p.curves) if (c.label) drawn.set(`curve ${c.label}`, LORENZ_K[c.inequality]);
+  /**
+   * One option's claim, true or false on the drawing, or null when it is not read. The subject
+   * is the economy (or curve) before "more even"; "than Y" or a leading "Compared with Y," names
+   * the other (the review: "Compared with Economy Y, Economy X …" is a claim about X). A
+   * negation, or any other shape, is not read.
+   */
   const solveOption = (option: string): boolean | null => {
-    const curvesNamed = [...option.matchAll(/\b(?:Lorenz )?curve ([A-Z])\b|曲線\s*([A-Z])/gi)].map((m) => `curve ${(m[1] ?? m[2]).toUpperCase()}`);
-    const ents = curvesNamed.length >= 2 ? curvesNamed : entitiesIn(option);
-    if (ents.length < 1 || !drawn.has(ents[0])) return null;
-    const more = MORE_EVEN.test(option);
-    const less = LESS_EVEN.test(option);
-    if (more === less) return null;
-    const other = ents[1] ?? (curvesNamed.length >= 2 ? undefined : named.find((e) => e !== ents[0]));
-    if (!other || !drawn.has(other)) return null;
-    const a = drawn.get(ents[0])!;
-    const b = drawn.get(other)!;
+    if (/\bnot\b|n't\b|\bno\b/i.test(option)) return null;
+    const more = MORE_EVEN.exec(option);
+    const less = LESS_EVEN.exec(option);
+    if (Boolean(more) === Boolean(less)) return null;
+    const at = (more ?? less)!.index;
+    const refs = (text: string) => [...[...text.matchAll(/\b(?:Lorenz )?curve ([A-Z])\b/gi)].map((m) => ({ i: m.index ?? 0, e: `curve ${m[1].toUpperCase()}` })), ...[...text.matchAll(ENTITY)].map((m) => ({ i: m.index ?? 0, e: `${m[1]} ${m[2]}` }))].sort((a, b) => a.i - b.i);
+    const all = refs(option);
+    const compared = /^\s*compared (?:with|to) ([^,]+),/i.exec(option);
+    const than = /\bthan (?:that of |those of |the )?([^,.;]+)/i.exec(option.slice(at));
+    const before = all.filter((r) => r.i < at && !(compared && r.i < compared[0].length));
+    if (before.length !== 1) return null;
+    const subject = before[0].e;
+    const otherRef = (than && refs(than[1])[0]?.e) ?? (compared && refs(compared[1])[0]?.e) ?? (named.length === 2 ? named.find((e) => e !== subject) : undefined);
+    if (!otherRef || otherRef === subject || !drawn.has(subject) || !drawn.has(otherRef)) return null;
+    const a = drawn.get(subject)!;
+    const b = drawn.get(otherRef)!;
     if (a === b) return false;
     return more ? a < b : a > b;
   };

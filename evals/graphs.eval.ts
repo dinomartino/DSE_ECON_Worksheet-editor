@@ -76,7 +76,7 @@ describe.skipIf(!process.env.EVAL_MENTOR_TOKEN)('graph set, live (k-0577)', () =
       let charged = 0;
       let calls = 0;
       const replies: string[] = [];
-      const tokens = { input: 0, output: 0, thinking: 0 };
+      const tokens = { input: 0, output: 0, thinking: 0, cached: 0 };
       const client: AiClient = {
         listModels: (s) => base.listModels(s),
         complete: async (req) => {
@@ -87,13 +87,14 @@ describe.skipIf(!process.env.EVAL_MENTOR_TOKEN)('graph set, live (k-0577)', () =
           tokens.input += res.usage?.input ?? 0;
           tokens.output += res.usage?.output ?? 0;
           tokens.thinking += res.usage?.thinking ?? 0;
+          tokens.cached += res.usage?.cached ?? 0;
           return res;
         },
       };
       const started = Date.now();
       const outcome = await generateDiagram(inputOf(c), { client, preset }, new AbortController().signal);
       total += charged;
-      const id = repeat > 1 ? `${c.id}#${c.run}` : c.id;
+      const id = repeat > 1 ? `${c.id}-r${c.run}` : c.id;
       const row: Record<string, unknown> = { id, type: c.type, family: c.family, charged: Math.round(charged * 100) / 100, calls, tokens, ms: Date.now() - started };
       if (calls > 1 && replies[0]) {
         const first = evaluateReply(replies[0], inputOf(c));
@@ -124,6 +125,8 @@ describe.skipIf(!process.env.EVAL_MENTOR_TOKEN)('graph set, live (k-0577)', () =
       }
       rows.push(row);
       console.log(JSON.stringify(row));
+      // Saved after every case, so a crash later in the run keeps what was paid for.
+      writeFileSync(path.join(out, 'summary.json'), JSON.stringify({ at: new Date().toISOString(), total: Math.round(total * 100) / 100, rows }, null, 2));
     }
     writeFileSync(path.join(out, 'summary.json'), JSON.stringify({ at: new Date().toISOString(), total: Math.round(total * 100) / 100, rows }, null, 2));
     console.log(`TOTAL credits ${total.toFixed(2)}`);
