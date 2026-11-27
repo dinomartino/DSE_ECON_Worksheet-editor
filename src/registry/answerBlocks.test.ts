@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   createAnswerDiagram,
   createImageBlock,
-  createParagraphBlock,
   createTableBlock,
   createWorksheet,
 } from '@/model/factories';
