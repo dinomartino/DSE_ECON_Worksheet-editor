@@ -5,6 +5,7 @@ import type { SceneBuilt } from './scene';
 import type { SceneDef } from './sceneCatalogue';
 import { sceneDefOf } from './stageCatalogue';
 import { plainOf } from './text';
+import { importQuotaWords } from './importQuota';
 import { tradeKey, tradeWords } from './trade';
 import type { DiagramIssue, DiagramSpec, SceneAsk, SolvedKey, SpecScene } from './types';
 
@@ -389,8 +390,9 @@ const WORDS: Array<{ re: RegExp; ok: (s: SpecScene) => boolean; says: string }> 
   { re: /\bsubsid(?:y|ies|ise|ize)\b|津貼|補貼|資助/i, ok: (s) => s.type === 'unitSubsidy' || s.type === 'subsidyChange' || s.type === 'externality', says: 'a subsidy (scene unitSubsidy, or subsidyChange when it is raised from s1 to s2)' },
   { re: /price ceiling|maximum price|rent control|最高價格|價格上限|租金管制/i, ok: (s) => s.type === 'priceCeiling' || s.type === 'ceilingDemandRise', says: 'a price ceiling (scene priceCeiling; stage for a second state)' },
   { re: /price floor|minimum price|minimum wage|最低價格|價格下限|最低工資/i, ok: (s) => s.type === 'priceFloor', says: 'a price floor or minimum wage (scene priceFloor; stage for a second state)' },
-  { re: /\btariff|關稅/i, ok: (s) => s.type === 'tariff', says: 'a tariff (scene tariff)' },
-  { re: /(?<!import )\bquota\b|(?<!進口)配額/i, ok: (s) => s.type === 'quota' || s.type === 'tariff', says: 'a quota (scene quota)' },
+  // k-0589: an import quota figure may compare the two policies; importQuotaWords checks it names the quota.
+  { re: /\btariff|關稅/i, ok: (s) => s.type === 'tariff' || s.type === 'importQuota', says: 'a tariff (scene tariff)' },
+  { re: /(?<!import )\bquota\b|(?<!進口)配額/i, ok: (s) => s.type === 'quota' || s.type === 'tariff' || s.type === 'importQuota', says: 'a quota (scene quota)' },
   { re: /external costs?|negative externalit|界外成本|負面界外效應/i, ok: (s) => s.type === 'externality' && s.externality.startsWith('negative'), says: 'an external cost (scene externality, a negative one)' },
   { re: /external benefits?|positive externalit|界外利益|界外效益|正面界外效應/i, ok: (s) => s.type === 'externality' && s.externality.startsWith('positive'), says: 'an external benefit (scene externality, a positive one)' },
 ];
@@ -413,7 +415,7 @@ export function checkSceneWords(spec: DiagramSpec, stem: string, key: string): D
   for (const w of WORDS) {
     if (w.re.test(clean(stem)) && !w.ok(scene)) issues.push({ level: 'error', code: 'scene.policy', text: `The question has ${w.says}, but the figure is scene ${scene.type}${scene.type === 'externality' ? ` (${scene.externality})` : ''}.` });
   }
-  issues.push(...monopolyWords(scene, clean(stem)), ...tradeWords(scene, stem));
+  issues.push(...monopolyWords(scene, clean(stem)), ...tradeWords(scene, stem), ...importQuotaWords(scene, stem));
   if (scene.type !== 'ppfTrade' && /production\s+possibilit|consumption\s+possibilit|\bPPF\b|\bPPC\b|\bCPF\b|生產可能|消費可能/i.test(stem))
     issues.push({ level: 'look', code: 'scene.policy', text: `The question is about production possibilities, but the figure is scene ${scene.type}. PPF / CPF trade is scene ppfTrade; a single PPC is kind "curves".` });
   for (const what of ['demand', 'supply'] as const) {

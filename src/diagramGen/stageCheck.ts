@@ -16,12 +16,16 @@ import type { DiagramIssue, DiagramSpec, SolvedKey } from './types';
  * S2" must match the stage and which part carries which label.
  */
 
-type Measure = 'quantity' | 'price' | 'cs' | 'ps' | 'tss' | 'dwl' | 'shortage' | 'surplus' | 'efficient';
+type Measure = 'quantity' | 'price' | 'cs' | 'ps' | 'tss' | 'dwl' | 'shortage' | 'surplus' | 'efficient' | 'imports' | 'domestic' | 'rent';
 type Change = 'up' | 'down' | 'same' | 'gone' | 'shortageToSurplus' | 'surplusToShortage';
 
 const SUBJECTS: Array<{ m: Measure; re: RegExp }> = [
   // k-0589: a monopoly's efficient (competitive) output, never its own output.
   { m: 'efficient', re: /(?:efficient|socially\s+(?:optimal|efficient)|competitive|allocatively\s+efficient)\s+(?:level\s+of\s+)?(?:output|quantity)|有效率的?(?:產量|產出)|社會最佳產量/i },
+  // k-0589: an import quota's imports, domestic producers' output and the quota rent (never the quota itself).
+  { m: 'rent', re: /quota\s+rents?|(?:revenue|income|profits?|gains?)\s+of\s+(?:the\s+)?(?:quota|licen[cs]e)\s+holders|配額租金/i },
+  { m: 'imports', re: /\b(?:volume|quantity|amount|number)\s+of\s+imports\b|\bquantity\s+imported\b|\bimports\b(?!\s+quota)|進口量|進口數量/i },
+  { m: 'domestic', re: /\b(?:domestic|local)\s+(?:output|production|supply|quantity\s+supplied)|quantity\s+(?:supplied|produced)\s+by\s+(?:the\s+)?(?:domestic|local)\s+(?:producers|firms|suppliers)|(?:domestic|local)\s+(?:producers|firms)['’]?\s+(?:output|production|quantity\s+supplied)|本地(?:產量|生產量|供應量|生產者的(?:產量|供應量))/i },
   { m: 'cs', re: /consumers?['’]?\s+surplus|消費者盈餘/i },
   { m: 'ps', re: /producers?['’]?\s+surplus|生產者盈餘/i },
   { m: 'tss', re: /(?:total\s+)?social\s+surplus|total\s+surplus|總社會盈餘|社會盈餘/i },
@@ -29,7 +33,7 @@ const SUBJECTS: Array<{ m: Measure; re: RegExp }> = [
   { m: 'shortage', re: /excess\s+demand|shortage|超額需求|短缺/i },
   { m: 'surplus', re: /excess\s+supply|unemployment|(?<!consumers?['’]?\s|producers?['’]?\s|social\s|total\s)\bsurplus\b|超額供應|(?<!盈)過剩|失業/i },
   { m: 'quantity', re: /quantity\s+(?:transacted|traded|sold|exchanged|bought)|(?:level\s+of\s+)?employment|output|成交量|交易量|銷售量|就業/i },
-  { m: 'price', re: /(?:market|equilibrium|monopoly)\s+price|\bprice\s+(?:paid|of|charged)|\bwage\s+rate|成交價|市場價格|壟斷價格|售價/i },
+  { m: 'price', re: /(?:market|equilibrium|monopoly|domestic|local)\s+price|\bprice\s+(?:paid|of|charged)|\bwage\s+rate|成交價|市場價格|壟斷價格|本地價格|售價/i },
 ];
 
 const CHANGES: Array<{ c: Change; re: RegExp }> = [
@@ -57,7 +61,9 @@ export function readClaim(sentence: string): { m: Measure; c: Change; at?: strin
   if (change === 'shortageToSurplus' || change === 'surplusToShortage') return { m: 'shortage', c: change };
   const subjects = SUBJECTS.filter((x) => x.re.test(text)).map((x) => x.m);
   // "the total social surplus" also matches "surplus": keep the most specific.
-  const specific = subjects.filter((m) => !(m === 'surplus' && subjects.some((o) => o === 'cs' || o === 'ps' || o === 'tss')) && !(m === 'quantity' && subjects.includes('efficient')));
+  const specific = subjects.filter(
+    (m) => !(m === 'surplus' && subjects.some((o) => o === 'cs' || o === 'ps' || o === 'tss')) && !(m === 'quantity' && subjects.some((o) => o === 'efficient' || o === 'domestic' || o === 'imports')),
+  );
   if (specific.length !== 1 || changes.filter((x) => x.c !== change).some((x) => x.c === 'up' || x.c === 'down')) return null;
   return { m: specific[0], c: change };
 }
@@ -153,8 +159,12 @@ const same = (a: number[], b: number[]) => a.length === b.length && a.every((x) 
  */
 export function checkStageStatements(spec: DiagramSpec, built: SceneBuilt, mcq: { stem: string; statements: readonly string[]; options: readonly string[]; answer: number }): { issues: DiagramIssue[]; solved: SolvedKey | null } {
   const issues: DiagramIssue[] = [];
-  const facts = built.stage;
-  if (!facts || !built.diagram) return { issues, solved: null };
+  const drawnFacts = built.stage;
+  if (!drawnFacts || !built.diagram) return { issues, solved: null };
+  // A one-state figure whose question names the change (k-0589: "if the government doubles the import quota"): that reading.
+  const stemText = [mcq.stem, ...mcq.statements].join('\n');
+  const picked = drawnFacts.changes?.find((c) => c.when.test(stemText));
+  const facts = picked ? { ...drawnFacts, before: picked.before, after: picked.after, variants: picked.variants } : drawnFacts;
   const { before, after } = facts;
   const tickOf = (label: string): number | null => {
     const key = tickKey(label);
@@ -165,8 +175,11 @@ export function checkStageStatements(spec: DiagramSpec, built: SceneBuilt, mcq: 
     }
     return null;
   };
+  const trade = before.imports !== undefined && after.imports !== undefined;
   const describe = () =>
-    `On the figure: quantity traded ${cmp(before.quantity, after.quantity)}, price ${cmp(before.price, after.price)}, consumer surplus ${cmp(before.cs, after.cs)}, producer surplus ${cmp(before.ps, after.ps)}, total social surplus ${cmp(before.tss, after.tss)}, deadweight loss ${cmp(before.dwl, after.dwl)}; before: ${gapWords(before)}, after: ${gapWords(after)}.`;
+    `On the figure${picked ? ` (${picked.what}, as the question says)` : ''}: quantity traded ${cmp(before.quantity, after.quantity)}, price ${cmp(before.price, after.price)}, consumer surplus ${cmp(before.cs, after.cs)}, producer surplus ${cmp(before.ps, after.ps)}, total social surplus ${cmp(before.tss, after.tss)}, deadweight loss ${cmp(before.dwl, after.dwl)}${
+      trade ? `, imports ${cmp(before.imports!, after.imports!)}, domestic output ${cmp(before.domestic ?? 0, after.domestic ?? 0)}, quota rent ${cmp(before.rent ?? 0, after.rent ?? 0)}.` : `; before: ${gapWords(before)}, after: ${gapWords(after)}.`
+    }`;
   const letter = (i: number) => 'ABCD'[i];
   const scene = spec.scene!;
   const plan = stagePlan(scene);
@@ -178,7 +191,7 @@ export function checkStageStatements(spec: DiagramSpec, built: SceneBuilt, mcq: 
     if (own === null || claim.at) return own;
     return variants.every((v) => truth(claim, v.before, v.after, tickOf) === own) ? own : 'depends';
   };
-  const stageText = plan && !('error' in plan) ? `stage ${plan.stage}, binds ${plan.binds}` : `stage ${scene.stage ?? 'none'}`;
+  const stageText = plan && !('error' in plan) ? `stage ${plan.stage}, binds ${plan.binds}` : picked ? picked.what : `stage ${scene.stage ?? 'none'}`;
 
   const listed = mcq.options.map(optionStatements);
   if (mcq.statements.length && listed.some(Boolean)) {
@@ -257,11 +270,12 @@ export function checkStageWords(spec: DiagramSpec, built: SceneBuilt, stem: stri
   const issues: DiagramIssue[] = [];
   const error = (code: string, text: string) => issues.push({ level: 'error', code, text });
   const control = scene.type === 'priceCeiling' || scene.type === 'ceilingDemandRise' ? 'ceiling' : scene.type === 'priceFloor' ? 'floor' : scene.type === 'quota' ? 'quota' : null;
-  if (!control) return [];
+  // k-0589: a monopoly's and an import quota's own changes are read in their modules; their "from … to …" order here.
+  if (!control && scene.type !== 'monopoly' && scene.type !== 'importQuota') return [];
   const stage = scene.type === 'ceilingDemandRise' ? 'demandRise' : (scene.stage ?? 'none');
   // The control itself changed: "lowers the price ceiling", "reduction in quota", "調低最高價格".
-  for (const sentence of stem.split(/(?<=[.。?？;；])\s*/)) {
-    if (!CONTROL_WORDS[control].test(sentence)) continue;
+  for (const sentence of control ? stem.split(/(?<=[.。?？;；])\s*/) : []) {
+    if (!control || !CONTROL_WORDS[control].test(sentence)) continue;
     const near = new RegExp(String.raw`(?:${LOWER.source}|${RAISE.source})[^.。,，]{0,24}?(?:${CONTROL_WORDS[control].source})|(?:${CONTROL_WORDS[control].source})[^.。,，]{0,12}?(?:is|are|be|was)\s+(?:${LOWER.source}|${RAISE.source})`, 'i').exec(sentence);
     const changes = /\bchang\w*\s+(?:the\s+)?(?:price\s+(?:ceiling|floor)|minimum\s+wage|quota)[^.。]{0,30}from\b|(?:改變|調整)[^。]{0,10}(?:由|從)/i.test(sentence);
     if (!near && !changes) continue;

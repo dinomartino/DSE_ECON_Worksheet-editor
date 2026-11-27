@@ -2,9 +2,11 @@ import type { Diagram, DiagramAnchorRef, DiagramArea, DiagramAreaEdge, DiagramAr
 import { anchorReferences } from '@/model/diagramAnchors';
 import { areaPolygon } from '@/model/diagramAreas';
 import { axes, cross, curve, derived, finish, newId, point, priceLine, shiftArrow, shiftOf, span, type Pair } from '@/model/diagramTemplateKit';
-import { AX, at, band, level, MIN_GAP, on, phraseOf, resolveIn, scratchOf, tickPoint, TOP, underFromAxis, type Band, type Draft, type StageFacts, type StateFacts } from './sceneKit';
+import { AX, at, band, level, lineAt, MIN_GAP, on, phraseOf, resolveIn, scratchOf, tickPoint, TOP, underFromAxis, type Band, type Draft, type StageFacts, type StateFacts } from './sceneKit';
 import type { BiText } from '@/model/types';
 import { shiftArrowPlace, type Compiled } from './compile';
+import { importQuotaError } from './importQuota';
+import { draftImportQuota, QUOTA_LAYOUTS } from './importQuotaDraft';
 import { monopolyError } from './monopoly';
 import { draftMonopoly, MONO_LAYOUTS } from './monopolyDraft';
 import { tradeNumbers, type TradeNumbers } from './trade';
@@ -61,22 +63,6 @@ const LAYOUTS: Layout[] = [0.42, 0.5, 0.34].flatMap((x) => [0.46, 0.4, 0.52, 0.3
 
 const NO_NAME: BiText = { en: [], zh: [] };
 const PATTERNS: DiagramAreaPattern[] = ['diagonal', 'reverse', 'horizontal', 'vertical', 'cross', 'dots'];
-
-/** A straight line of slope `m` through E, kept inside the plot (y from `floor` to `top`, x from 0 to 0.9). A falling line stops above the x-axis, so its name clears it. */
-function lineAt(E: Pair, m: number, top = TOP, floor = m < 0 ? 0.12 : 0.04, right = 0.9): Pair[] {
-  const [ex, ey] = E;
-  const yAt = (x: number) => ey + m * (x - ex);
-  const xAt = (y: number) => ex + (y - ey) / m;
-  const ends: Pair[] = [];
-  for (const xEnd of [0, right]) {
-    let px = xEnd;
-    let py = yAt(px);
-    if (py > top) [px, py] = [xAt(top), top];
-    if (py < floor) [px, py] = [xAt(floor), floor];
-    ends.push([px, py]);
-  }
-  return ends.sort((a, b) => a[0] - b[0]);
-}
 
 /** The vertical distance a shift needs so the ticks it makes stand apart (the steeper side sets it). */
 function shiftFor(base: number, d: number, s: number): number {
@@ -480,7 +466,8 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
     }
     case 'monopoly':
     case 'ppfTrade':
-      // Drawn by `monopolyDraft.ts` and `tradeDraft.ts` (k-0589): compileScene calls them.
+    case 'importQuota':
+      // Drawn by `monopolyDraft.ts`, `tradeDraft.ts` and `importQuotaDraft.ts` (k-0589): compileScene calls them.
       throw new Error(`${scene.type} has its own drafter`);
     case 'none':
       throw new Error('no scene');
@@ -921,7 +908,7 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     error('scene.stage', plan.error);
     return empty();
   }
-  const monoError = monopolyError(scene);
+  const monoError = monopolyError(scene) ?? importQuotaError(scene);
   if (monoError) {
     error('scene.stage', monoError);
     return empty();
@@ -968,7 +955,9 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
       ? MONO_LAYOUTS.map((l) => () => draftMonopoly(sceneNow, name, tick, l))
       : scene.type === 'ppfTrade'
         ? [() => draftTrade(sceneNow, name, tick)]
-        : LAYOUTS.map((l) => () => draft(sceneNow, name, tick, l));
+        : scene.type === 'importQuota'
+          ? QUOTA_LAYOUTS.map((l) => () => draftImportQuota(sceneNow, name, tick, l))
+          : LAYOUTS.map((l) => () => draft(sceneNow, name, tick, l));
   for (const attempt of tries) {
     try {
       const candidate = attempt();

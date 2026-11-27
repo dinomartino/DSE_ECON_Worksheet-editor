@@ -1,3 +1,4 @@
+import { IMPORT_QUOTA_MENU_DEF } from './importQuota';
 import { MONOPOLY_MENU_DEF } from './monopoly';
 import { TRADE_MENU_DEF } from './trade';
 import { WORDS } from './sceneKit';
@@ -353,7 +354,7 @@ export const SCENES: SceneDef[] = [
   },
   {
     type: 'quota',
-    when: 'a production or sales quota below the equilibrium quantity: supply becomes vertical at the quota; price, quantity, deadweight loss, changes in surplus (an IMPORT quota is the template import-quota)',
+    when: 'a production or sales quota below the equilibrium quantity: supply becomes vertical at the quota; price, quantity, deadweight loss, changes in surplus (an IMPORT quota is scene importQuota)',
     parts: [
       curve('D', 'D', 'demand', 'downward-sloping'),
       curve('S', 'S_0', 'supply without the quota', 'upward-sloping'),
@@ -474,6 +475,8 @@ export const SCENES: SceneDef[] = [
   MONOPOLY_MENU_DEF,
   // k-0589: PPF / CPF trade; its numbers pick the parts (`trade.ts:tradeDef`).
   TRADE_MENU_DEF,
+  // k-0589: an import quota; its stage and the lines it draws pick the parts (`importQuota.ts:importQuotaDef`).
+  IMPORT_QUOTA_MENU_DEF,
 ];
 
 export function sceneDef(type: SceneType): SceneDef | undefined {

@@ -71,6 +71,8 @@ export const SCENE_SAMPLES: SceneSample[] = [
   ...MONOPOLY_SAMPLES(),
   // k-0589: PPF / CPF trade, each like the Paper 2 figure it is named after.
   ...TRADE_SAMPLES(),
+  // k-0589: import quota, each like the figure it is named after.
+  ...QUOTA_SAMPLES(),
 ];
 
 function pts(pairs: Array<[string, string]>) {
@@ -249,6 +251,40 @@ function TRADE_SAMPLES(): SceneSample[] {
       id: 'ppf-sp-growth',
       type: 'Concave PPF AA’ with trade at 1X = 1Y, then technology moves it out to BB’ (answer, like DSESP P2 Q13)',
       spec: t(tradeOf({ tot: 1, grow: 1.3, xGood: { en: 'Clothing', zh: '衣服' }, yGood: { en: 'Food', zh: '食物' }, countries: [nation({ shape: 'concave', x: 30, y: 30, noTradeCost: 0.5, consume: 'sameX' })] })),
+    },
+  ];
+}
+
+/** Import quota scenes (k-0589), modelled on the questions the audit cites. */
+function QUOTA_SAMPLES(): SceneSample[] {
+  const iq = (extra: Partial<SpecScene>, placement: DiagramSpec['placement'] = 'question') => sceneSpec({ type: 'importQuota', ...extra }, placement);
+  return [
+    { id: 'iq-letters', type: 'Import quota: PS gain, DWL, quota rent, CS, PS lettered A–F', spec: lettered('importQuota') },
+    { id: 'iq-words', type: 'Import quota: the quota rent and the deadweight loss (answer)', spec: worded('importQuota', ['quotaRent', 'dwl']) },
+    {
+      id: 'iq-2022-kinked',
+      type: 'Domestic S_0, kinked S_1 at the world price, the import quota brace (like DSE2022 P1 Q44)',
+      spec: iq({ labels: lab([['S', 'S_0'], ['Sq', 'S_1'], ['quota', 'Import quota'], ['Qsw', ''], ['Qdw', '']]) }),
+    },
+    {
+      id: 'iq-2016-brace',
+      type: 'The brace form: S, D, the price P_0 and the import quota between them, Q_0 (like DSE2016 P1 Q42)',
+      spec: iq({ labels: lab([['Pw', ''], ['Sq', ''], ['Pq', 'P_0'], ['Qd', 'Q_0'], ['Qs', ''], ['quota', 'Import quota']]) }),
+    },
+    {
+      id: 'iq-2017-raised',
+      type: 'The quota raised: kinked S_1 to S_2 with D, no separate S or world price line (like DSE2017 P1 Q42)',
+      spec: iq({ stage: 'raised', labels: lab([['S', ''], ['Pw', ''], ['Pq', ''], ['Pq2', ''], ['Qd', ''], ['Qd2', '']]) }),
+    },
+    {
+      id: 'iq-2021-given',
+      type: 'Given D_0, S_0 and P_w; the answer: S with the quota (flat step Q_A), D_1, P_A, the quota rent (like DSE2021 P2 Q9(b))',
+      spec: iq({ stage: 'demandRise', given: ['D', 'S', 'Pw'], labels: lab([['D', 'D_0'], ['D2', 'D_1'], ['S', 'S_0'], ['Sq', 'S_q'], ['Pq', 'P_A'], ['Pq2', 'P_B'], ['step', 'Q_A'], ['Qd', ''], ['Qd2', '']]), areas: [words('quotaRent')] }),
+    },
+    {
+      id: 'iq-cut-rent',
+      type: 'The quota cut: the rent kept, gained and lost lettered (like CE2001 P1 Q9(b))',
+      spec: iq({ stage: 'lowered', areas: [words('rentKept', 'K', 'K'), words('rentHigh', 'G', 'G'), words('rentLeft', 'L', 'L'), words('rentRight', 'M', 'M')] }),
     },
   ];
 }

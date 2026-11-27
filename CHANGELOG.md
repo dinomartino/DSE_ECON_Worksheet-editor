@@ -13,6 +13,16 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question studio draws import quotas with the question's own labels.** Demand, domestic
+  supply, the world price and the supply with the quota (kinked at the world price, flat for the
+  quota, and it keeps that shape when you drag supply or the world price), the price with the
+  quota, the four quantities, the "Import quota" brace and the quota rent, as in HKDSE 2016–2022
+  Paper 1. It also draws the brace alone between supply and demand (2016, 2019), a quota raised or
+  cut with two kinked supplies (2017), and demand rising under the quota (2021 Paper 2). For a
+  question of statements ("domestic output will fall") it works out both states, reading the change
+  from the question ("doubles the import quota", "abolishes the quota"), and refuses a key that
+  depends on how steep the curves are.
+  <!-- zh: **擬題工作室能以題目自己的標示繪畫進口配額圖。** 需求、本地供應、國際價格及有配額的供應（在國際價格處屈折，配額部分為水平，拖動供應或國際價格時仍保持此形狀），配額下的價格、四個數量、「進口配額」括號及配額租金，如 HKDSE 2016 至 2022 年 Paper 1。它亦能只畫供應與需求之間的配額括號（2016、2019 年）、以兩條屈折供應曲線表示配額增加或削減（2017 年），以及配額不變下需求上升（2021 年 Paper 2）。若題目是一組陳述（如「本地產量將會下降」），它會按題目所述的改變（如「把進口配額增加一倍」、「取消配額」）計出前後兩個狀態，並拒絕取決於曲線斜率的答案。 -->
 - **The Question studio draws trade with production possibility frontiers, from the question's own
   numbers.** One or two countries' frontiers, straight or bowed out, with the numbers on the axes;
   the world price, the production point with trade (complete specialisation on a straight frontier,

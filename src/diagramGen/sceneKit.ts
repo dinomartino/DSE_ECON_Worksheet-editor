@@ -17,6 +17,22 @@ import type { CurveRole, SpecText } from './types';
 export const MIN_GAP = 0.06;
 export const TOP = 0.92;
 
+/** A straight line of slope `m` through E, kept inside the plot (y from `floor` to `top`, x from 0 to 0.9). A falling line stops above the x-axis, so its name clears it. */
+export function lineAt(E: [number, number], m: number, top = TOP, floor = m < 0 ? 0.12 : 0.04, right = 0.9): Array<[number, number]> {
+  const [ex, ey] = E;
+  const yAt = (x: number) => ey + m * (x - ex);
+  const xAt = (y: number) => ex + (y - ey) / m;
+  const ends: Array<[number, number]> = [];
+  for (const xEnd of [0, right]) {
+    let px = xEnd;
+    let py = yAt(px);
+    if (py > top) [px, py] = [xAt(top), top];
+    if (py < floor) [px, py] = [xAt(floor), floor];
+    ends.push([px, py]);
+  }
+  return ends.sort((a, b) => a[0] - b[0]);
+}
+
 export const level = (ref: DiagramAnchorRef | number): DiagramAreaEdge => ({ level: ref });
 export const on = (c: DiagramCurve): DiagramAreaEdge => ({ curve: c.id });
 export const at = (p: DiagramPointMark): DiagramAnchorRef => ({ point: p.id });
@@ -82,6 +98,10 @@ export interface StateFacts {
   surplus: number;
   /** A monopoly (k-0589): the efficient output, where D meets MC. */
   efficient?: number;
+  /** An import quota (k-0589): the quantity imported, domestic producers' output, the quota rent. */
+  imports?: number;
+  domestic?: number;
+  rent?: number;
 }
 export interface StageFacts {
   /** A two-state control (k-0587); absent for a monopoly (k-0589). */
@@ -90,6 +110,12 @@ export interface StageFacts {
   after: StateFacts;
   /** The same change with other slopes and sizes: a claim holds only when every one agrees. */
   variants?: Array<{ before: StateFacts; after: StateFacts }>;
+  /**
+   * k-0589: a one-state figure whose question names the change in words (an import quota figure
+   * and "if the government doubles the quota"): the first whose `when` matches the stem replaces
+   * before / after / variants.
+   */
+  changes?: Array<{ what: string; when: RegExp; before: StateFacts; after: StateFacts; variants: Array<{ before: StateFacts; after: StateFacts }> }>;
 }
 
 export interface Draft {
@@ -138,6 +164,7 @@ export const WORDS = {
   externalBenefit: w('External benefit', '界外利益'),
   tariffRevenue: w('Tariff revenue', '關稅收入'),
   psGain: w('Increase in producer surplus', '生產者盈餘增加'),
+  quotaRent: w('Quota rent', '配額租金'),
   csLoss: w('Decrease in consumer surplus', '消費者盈餘減少'),
 } as const;
 

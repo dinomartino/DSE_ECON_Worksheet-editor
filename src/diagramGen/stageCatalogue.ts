@@ -1,3 +1,4 @@
+import { importQuotaDef } from './importQuota';
 import { isMonopolyStage, monopolyDef } from './monopoly';
 import { tradeDef } from './trade';
 import { sceneDef, WORDS, type SceneDef, type ScenePartDef, type ScenePointDef, type SceneRegionDef } from './sceneCatalogue';
@@ -48,6 +49,8 @@ export function stagePlan(scene: Pick<SpecScene, 'type' | 'stage' | 'binds'>): S
   if (stage === 'none') return null;
   // A monopoly's stages are its own (k-0589, `monopoly.ts`); a control takes none of them.
   if (scene.type === 'monopoly') return null;
+  // An import quota's changes are its own too (k-0589, `importQuota.ts`).
+  if (scene.type === 'importQuota') return null;
   if (isMonopolyStage(stage)) return { error: `stage "${stage}" is for a monopoly scene; scene ${scene.type} takes stage "none" or a control stage.` };
   const control = CONTROL_OF[scene.type];
   if (!control) return { error: `stage "${stage}" is for a priceCeiling, priceFloor or quota scene; scene ${scene.type} takes stage "none".` };
@@ -282,6 +285,7 @@ const STAGE_WHAT: Record<StagePlan['stage'], string> = {
 export function sceneDefOf(scene: SpecScene): SceneDef | undefined {
   if (scene.type === 'monopoly') return monopolyDef(scene);
   if (scene.type === 'ppfTrade') return tradeDef(scene);
+  if (scene.type === 'importQuota') return importQuotaDef(scene);
   const plan = stagePlan(scene);
   if (plan && 'error' in plan) return sceneDef(scene.type);
   return plan ? stageDef(scene, plan) : sceneDef(scene.type);
@@ -323,4 +327,9 @@ export const STAGE_PAIRS: Array<[string, string]> = [
   ['Qm', 'Qm2'],
   ['Pc', 'Pc2'],
   ['Qc', 'Qc2'],
+  // k-0589: an import quota changed, or demand changing under it
+  ['Sq', 'Sq2'],
+  ['Pq', 'Pq2'],
+  ['Qs', 'Qs2'],
+  ['Qd', 'Qd2'],
 ];

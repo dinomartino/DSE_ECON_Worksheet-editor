@@ -316,7 +316,7 @@ export interface SpecLorenz {
  * works the answer out from the drawing. The catalogue (parts, regions, measures) is
  * `diagramGen/sceneCatalogue.ts`.
  */
-export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'taxChange', 'unitSubsidy', 'subsidyChange', 'priceCeiling', 'ceilingDemandRise', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff', 'monopoly', 'ppfTrade'] as const;
+export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'taxChange', 'unitSubsidy', 'subsidyChange', 'priceCeiling', 'ceilingDemandRise', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff', 'monopoly', 'ppfTrade', 'importQuota'] as const;
 export type SceneType = (typeof SCENE_TYPES)[number];
 
 /** goods: Price / Quantity; labour: Wage rate / Quantity of labour, ticks W instead of P. */
@@ -412,6 +412,9 @@ export const SCENE_ASKS = [
   'exports',
   'imports',
   'gainFromTrade',
+  // k-0589: import quota (the quota rent, with the quota; before a change)
+  'quotaRent',
+  'quotaRentBefore',
 ] as const;
 export type SceneAsk = (typeof SCENE_ASKS)[number];
 
@@ -455,7 +458,7 @@ export interface SpecScene {
   ask: SceneAsk;
   /** Draw the shortage / surplus bracket at a price control (a model answer; never when the question asks for it). */
   gap: boolean;
-  /** k-0587: a second state (priceCeiling, priceFloor, quota); absent in a spec saved before = 'none'. */
+  /** k-0587: a second state (priceCeiling, priceFloor, quota; k-0589 also importQuota: lowered, raised, demandRise, demandFall); absent in a spec saved before = 'none'. */
   stage?: SceneStage;
   /** k-0587: the states the control binds in (with a stage); absent = 'both'. */
   binds?: SceneBinds;
