@@ -3,8 +3,12 @@ import { defineMessages } from '@/i18n/catalogue';
 export const STRUCTURED_PANEL_MESSAGES = defineMessages({
   removeGraph: { en: 'Remove graph space', zh: '移除作圖空間' },
   addGraph: { en: 'Add graph space', zh: '加入作圖空間' },
-  removeDiagram: { en: 'Remove model diagram', zh: '移除參考圖表' },
   addDiagram: { en: 'Add model diagram', zh: '加入參考圖表' },
+  /** The answer's own blocks under its text (u-0c5q). */
+  answerBlocks: { en: 'More in the answer', zh: '答案的其他內容' },
+  answerBlocksHint: { en: 'text, tables, pictures, diagrams', zh: '文字、表格、圖片、圖表' },
+  /** One more paragraph of the answer, typed in the panel. */
+  answerParagraph: { en: 'Answer text', zh: '答案文字' },
   showOnPage: { en: 'Show on the page', zh: '在頁面上顯示' },
   typeOnPage: { en: 'type on the page', zh: '直接在頁面上輸入' },
   stem: { en: 'Question text', zh: '題幹' },

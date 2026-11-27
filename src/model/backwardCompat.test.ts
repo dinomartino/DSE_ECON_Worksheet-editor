@@ -25,6 +25,8 @@ import optionalCorpus from '@/test/corpus/v2-optional-sections.json';
 import v3Corpus from '@/test/corpus/v3-stakeholder.json';
 import v3ChartCorpus from '@/test/corpus/v3-chart.json';
 import v4GridCorpus from '@/test/corpus/v4-figure-grid.json';
+import v4AnswerCorpus from '@/test/corpus/v4-answer-blocks.json';
+import { answerBlocksOf } from '@/model/answerBlocks';
 import bankPaperCorpus from '@/test/corpus/bank-v0.6.0-paper.json';
 import bankBankCorpus from '@/test/corpus/bank-v0.6.0-bank.json';
 import { migrate, serializeWorksheet, CURRENT_SCHEMA_VERSION, isNewerThanBuild } from '@/model/migrations';
@@ -824,6 +826,82 @@ describe('the v4 figure grid corpus: diagrams (1)-(4) in a stem, a picture cell,
     } as typeof worksheet;
     // 2, not 1: the import-quota option diagram is a v2 derived curve (§ ANSWER_LAYER_VERSION).
     expect(serializeWorksheet(without).schemaVersion).toBe(2);
+  });
+});
+
+describe('the v4 answer blocks corpus: tables, pictures, diagrams and text inside model answers', () => {
+  // `v4-answer-blocks.json`: frozen, written once by `scripts/emit-v4-answer-blocks-corpus.test.ts`.
+  // v4 is written when a model answer holds more than its text and one diagram (u-0c5q); every
+  // release (0.10.x and older) opens it read-only, the answers' text still showing.
+  const open = () => migrate(structuredClone(v4AnswerCorpus));
+  const questions = () => open().questions as StructuredQuestion[];
+
+  it('opens editable here, with nothing unrecognised, and is marked newer than every build before it', () => {
+    const worksheet = open();
+    expect(v4AnswerCorpus.schemaVersion).toBe(4);
+    expect(worksheet.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(isNewerThanBuild(worksheet)).toBe(false);
+    // A release reads `schemaVersion > 3` as newer: read-only.
+    expect(v4AnswerCorpus.schemaVersion).toBeGreaterThan(3);
+    expect(worksheet.__unknown).toBeUndefined();
+    expect(countText(worksheet)).toBe(countText(v4AnswerCorpus));
+  });
+
+  it('keeps every answer block, in order, and every answer text where older builds read it', () => {
+    const [essay, parted] = questions();
+    expect(answerBlocksOf(essay).map((b) => b.kind)).toEqual(['table', 'image']);
+    expect(essay.answer?.en[0].text).toBe('Firm A earns more:');
+    const [a, b, c] = parted.parts;
+    expect(answerBlocksOf(a).map((x) => x.kind)).toEqual(['paragraph', 'table', 'diagram', 'diagram']);
+    expect(a.answer?.zh[0].text).toBe('供應下降。');
+    expect(answerBlocksOf(b.subParts![0]).map((x) => x.kind)).toEqual(['figureGrid']);
+    // The old shape stays the old shape: text and one model diagram.
+    expect(c.answerDiagram?.kind).toBe('diagram');
+    expect(c.answerBlocks).toBeUndefined();
+  });
+
+  it('prints the answers on the teacher copy and nothing of them on the student copy', () => {
+    const worksheet = open();
+    for (const language of ['en', 'zh', 'bilingual'] as const) {
+      const teacher = JSON.stringify(renderWorksheet(worksheet, { language, version: 'teacher' }).items);
+      const student = JSON.stringify(renderWorksheet(worksheet, { language, version: 'student' }).items);
+      const word = language === 'zh' ? '總收入（元）' : 'Total revenue ($)';
+      expect(teacher).toContain(word);
+      expect(student).not.toContain(word);
+      expect(student).not.toContain('"teacherOnly":true');
+    }
+  });
+
+  it('stores the figure grid inside an answer with the picture builds before v4 show', () => {
+    const stored = JSON.parse(stringifyWorksheet(open()));
+    const grid = stored.questions[1].parts[1].subParts[0].answerBlocks[0];
+    expect(grid.kind).toBe('figureGrid');
+    expect(String(grid.src)).toMatch(/^data:image\/png;base64,/);
+  });
+
+  it('round-trips byte for byte, still written at 4', () => {
+    const raw = readFileSync('src/test/corpus/v4-answer-blocks.json', 'utf8');
+    const saved = stringifyWorksheet(parseWorksheet(raw));
+    expect(saved).toBe(raw.trimEnd());
+    expect(JSON.parse(saved).schemaVersion).toBe(4);
+  });
+
+  it('drops back to the old version once every answer is text and one diagram again', () => {
+    const worksheet = open();
+    const plainAnswers = {
+      ...worksheet,
+      questions: (worksheet.questions as StructuredQuestion[]).map((question) => ({
+        ...question,
+        answerBlocks: undefined,
+        parts: question.parts.map((part) => ({
+          ...part,
+          answerBlocks: undefined,
+          subParts: part.subParts?.map((sub) => ({ ...sub, answerBlocks: undefined })),
+        })),
+      })),
+    } as typeof worksheet;
+    // 2: the essay's own answer text is v2 (§ ANSWER_LAYER_VERSION).
+    expect(serializeWorksheet(plainAnswers).schemaVersion).toBe(2);
   });
 });
 

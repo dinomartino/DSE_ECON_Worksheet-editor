@@ -2384,11 +2384,18 @@ type needs only a definition.
 - **Answers and notes are typed on the key too**: its rows carry the paper's targets
   (`partAnswer`, `subPartAnswer`, `mcqExplanation`, `mcqRationale`, `mcqProvenance`), so
   there is one copy of every answer. Inert in export like every target.
-- **A leaf's model answer diagram is a teacher-only figure** (`answerDiagram`, a whole
-  `DiagramBlock`): after the answer text, before the scheme; found by block id like a stem
-  diagram. In the Marks column layout (HKEAA) it follows the scheme instead, captioned
-  "Figure n" / "圖n", the points under "Indicate in Figure n:"; n counts the key's answer
-  figures in print order, derived per render (`KeySectionContext.nextFigure`). So the answer key carries pictures: its IR runs the same PNG pre-pass
+- **A model answer holds blocks after its text** (u-0c5q; `src/model/answerBlocks.ts`): the
+  old single model diagram (`answerDiagram`, a whole `DiagramBlock`) first, then
+  `answerBlocks` — paragraphs, tables, pictures, diagrams in the teacher's order — all
+  teacher-only (every node, the blank lines between blocks included), after the answer text,
+  before the scheme; found by block id like a stem's, because `questionBlockLists` holds
+  them. `answer` stays the opening text, so the AI writer and the answer-sheet import write
+  text only and never touch the blocks. In the key a row carries them as `AnswerKeyRow.blocks`.
+  In the Marks column layout (HKEAA) the scheme comes first, under "Indicate in Figure n:"
+  (the first figure's n), then the blocks, each diagram captioned "Figure n" / "圖n"; n
+  counts the key's answer figures in print order, derived per render
+  (`KeySectionContext.nextFigure`). In the Detailed table a paragraph is one more Answer row
+  and anything else ends the table, printed full width under it. So the answer key carries pictures: its IR runs the same PNG pre-pass
   (`renderNodeDiagramImages`) and refuses to export if one fails; without one the key is
   byte-identical.
 - **A key can span documents, chosen at export** (`renderCombinedAnswerKey`). A mock is
@@ -3904,6 +3911,15 @@ intact but unreachable.
   re-saves byte for byte and draws them the same) and recorded opening this build's
   `v4-flow-figures.json` (read-only, all 114 words kept, every word drawn but the key's):
   `src/model/flowCompat.test.ts`.
+  Also v4 (u-0c5q, still before any release wrote 4): a model answer holding more than its
+  text and one diagram (`answerBlocks`; `hasAnswerBlocks`): every build before it reads
+  `answer` and `answerDiagram` only, so it opens such a paper read-only with the answers'
+  text still showing (proven in a real 0.10.1 by `scripts/answer-blocks-verify.mjs --old`);
+  its frozen corpus is `v4-answer-blocks.json` (`scripts/emit-v4-answer-blocks-corpus.test.ts`).
+  An answer of text and one diagram keeps the old shape (`withAnswerBlocks`, and
+  `serializeWorksheet` for one built around it), so it never raises the mark;
+  `src/test/legacyAnswer/` holds what the build before answer blocks printed for an
+  old-shape paper, and this build must print it byte for byte.
   **A new block kind needs a picture for older builds**: 0.10.x and older draw any block kind
   they do not know as an image (reading `src`, `altText`, `widthPx`, `heightPx`), and a block
   without those stopped the page from loading. So a stored grid carries a small "made in a

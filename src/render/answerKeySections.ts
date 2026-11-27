@@ -3,12 +3,13 @@ import { DEFAULT_LIST_INDENTS, toUpperLetter } from '@/model/numbering';
 import { DEFAULT_CELL_PADDING } from '@/model/table';
 import { bi, isBiTextEmpty, plain, provenanceLabel } from '@/model/text';
 import type { BiText, ContentBlock, LanguageMode, LqKeyLayout, McKeyLayout } from '@/model/types';
-import { hasAnswerLayer } from '@/model/diagramAnswers';
 import {
-  diagramNodeFor,
   pushGap,
+  renderContentBlocks,
   trailLabel,
+  withAnswerLayers,
   type ColumnsNode,
+  type NodeStyle,
   type EditSegment,
   type EditTarget,
   type RenderNode,
@@ -660,7 +661,7 @@ function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectio
     const prompts = layout.showStems && row.label !== undefined ? stemNodes(row.prompt, answerIndent) : [];
     const hasAnswer =
       (row.answer !== undefined && !isBiTextEmpty(row.answer)) ||
-      row.diagram !== undefined ||
+      (row.blocks?.length ?? 0) > 0 ||
       schemeNodes.length > 0;
     const last = index === scheme.rows.length - 1;
     if (row.label !== undefined) {
@@ -695,31 +696,41 @@ function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectio
         node.kind === 'text' ? inColumn(node) : node,
       ));
     }
-    const diagram = answerDiagramNode(row);
-    // HKEAA (the Marks column): the points under "Indicate in Figure n:", then the figure
-    // captioned "Figure n". Elsewhere the diagram precedes the scheme, uncaptioned.
-    if (diagram && column) {
-      const figure = context.nextFigure?.() ?? 1;
+    const blockNodes = answerBlockNodes(row, answerIndent, 'Marking Scheme', language);
+    const inColumnText = (node: RenderNode): RenderNode => (node.kind === 'text' ? inColumn(node) : node);
+    // HKEAA (the Marks column): the points under "Indicate in Figure n:" (the answer's first
+    // figure), then the answer's blocks, each diagram captioned "Figure n". Elsewhere the
+    // blocks precede the scheme, uncaptioned.
+    const figureCount = blockNodes.filter((node) => node.kind === 'diagram').length;
+    if (figureCount > 0 && column) {
+      const figures = Array.from({ length: figureCount }, () => context.nextFigure?.() ?? 1);
       if (schemeNodes.length > 0) {
         nodes.push(
           inColumn({
             kind: 'text',
             style: 'Marking Scheme',
-            text: KEY_LAYOUT_WORDING.indicateIn(figure),
+            text: KEY_LAYOUT_WORDING.indicateIn(figures[0]),
             indent: answerIndent,
             keepNext: true,
           }),
           ...schemeNodes.map(inColumn),
         );
       }
-      nodes.push(
-        { kind: 'text', style: 'Body', text: KEY_LAYOUT_WORDING.figure(figure), keepNext: true, format: { align: 'center' } },
-        diagram,
-      );
+      let figure = 0;
+      for (const node of blockNodes) {
+        if (node.kind === 'diagram') {
+          nodes.push(
+            { kind: 'text', style: 'Body', text: KEY_LAYOUT_WORDING.figure(figures[figure++]), keepNext: true, format: { align: 'center' } },
+            node,
+          );
+        } else {
+          nodes.push(inColumnText(node));
+        }
+      }
       return;
     }
     // Not teacher-only: the whole key is the teacher's, answer layer included.
-    if (diagram) nodes.push(diagram);
+    nodes.push(...blockNodes.map(inColumnText));
     nodes.push(...schemeNodes.map(inColumn));
   });
   if (total) {
@@ -784,11 +795,23 @@ function ecBlock(
   ];
 }
 
-/** A row's model answer diagram, its answer layer drawn (the whole key shows answers). */
-function answerDiagramNode(row: AnswerKeyRow): RenderNode | undefined {
-  if (!row.diagram) return undefined;
-  const node = diagramNodeFor(row.diagram, {});
-  return hasAnswerLayer(row.diagram.diagram) ? { ...node, answers: true } : node;
+/**
+ * A row's answer blocks as the key prints them (u-0c5q): in order, at the answer's column, a
+ * paragraph in `style`, every diagram with its answer layer drawn (the whole key shows
+ * answers). Not teacher-only: the whole key is the teacher's. A lone model diagram is the
+ * one node it always was.
+ */
+function answerBlockNodes(
+  row: Pick<AnswerKeyRow, 'blocks'>,
+  indent: number,
+  style: NodeStyle,
+  language: LanguageMode,
+): RenderNode[] {
+  const blocks = row.blocks ?? [];
+  if (blocks.length === 0) return [];
+  const nodes: RenderNode[] = [];
+  renderContentBlocks(nodes, blocks, style, { indent, language });
+  return withAnswerLayers(nodes, { language, version: 'teacher' });
 }
 
 /** The bullet's hang: the point's text column sits this far right of the bullet. */
@@ -876,7 +899,7 @@ function renderAnswers(nodes: RenderNode[], scheme: KeyScheme, context: KeySecti
   rows.forEach(({ row, indent, bullets }, index) => {
     const prompts = layout.showStems && row.label !== undefined ? stemNodes(row.prompt, indent) : [];
     const answered = row.answer !== undefined && !isBiTextEmpty(row.answer);
-    const hasAnswer = answered || row.diagram !== undefined || bullets.length > 0;
+    const hasAnswer = answered || (row.blocks?.length ?? 0) > 0 || bullets.length > 0;
     const last = index === rows.length - 1;
     if (row.label !== undefined) {
       nodes.push({
@@ -902,8 +925,7 @@ function renderAnswers(nodes: RenderNode[], scheme: KeyScheme, context: KeySecti
         ...(row.answerEdit ? { edit: row.answerEdit } : {}),
       });
     }
-    const diagram = answerDiagramNode(row);
-    if (diagram) nodes.push(diagram);
+    nodes.push(...answerBlockNodes(row, indent, 'Body', language));
     nodes.push(...bullets);
   });
   if (total) {
@@ -1068,17 +1090,32 @@ function renderSchemeTable(nodes: RenderNode[], scheme: KeyScheme, context: KeyS
         keepNext: hasPoints,
       });
     }
-    // A label no row has carried yet gets its own, when no point will carry it first —
-    // unless it only heads its sub-parts ("3(b)" before "3(b)(i)"), which carry it.
-    const diagram = answerDiagramNode(entry);
+    // The answer's blocks, in order (u-0c5q): a paragraph is one more Answer row; anything
+    // else (a model diagram, a table, a picture) ends the table and prints full width under
+    // it, the table going on below. A label no row has carried yet rides on the row before
+    // such a figure, or on its own row when no point will carry it first — unless it only
+    // heads its sub-parts ("3(b)" before "3(b)(i)"), which carry it.
+    const answerBlocks = entry.blocks ?? [];
     const headsSubParts = entry.marks === undefined && scheme.rows[index + 1]?.depth === 2;
-    if (pending !== '' && (!hasPoints || diagram) && (diagram || !headsSubParts)) {
+    if (answerBlocks.length === 0 && pending !== '' && !hasPoints && !headsSubParts) {
       const head = take();
       row(head.question, { text: empty }, marks(), empty, { opensPart: head.opensPart, keepNext: hasPoints });
     }
-    if (diagram) {
+    for (const block of answerBlocks) {
+      if (block.kind === 'paragraph') {
+        const head = take();
+        row(head.question, { text: block.text, edit: { kind: 'blockText', blockId: block.id } }, marks(), empty, {
+          opensPart: head.opensPart,
+          keepNext: hasPoints,
+        });
+        continue;
+      }
+      if (pending !== '') {
+        const head = take();
+        row(head.question, { text: empty }, marks(), empty, { opensPart: head.opensPart, keepNext: hasPoints });
+      }
       flush(true);
-      nodes.push(diagram);
+      nodes.push(...answerBlockNodes({ blocks: [block] }, 0, 'Marking Scheme', language));
     }
     paragraphs.forEach((paragraph, routeIndex) => {
       const head = take();

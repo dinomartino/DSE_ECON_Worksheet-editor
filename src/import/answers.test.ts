@@ -286,6 +286,8 @@ describe('matchAnswers', () => {
     expect(schemeLines(q2.parts[1].subParts?.[0].scheme)).toEqual([['The fixed cost rises.', 1]]);
     expect(q2.parts[1].subParts?.[1].scheme?.routes[0].groups[0].max).toBe(2);
     expect(q2.parts[1].scheme).toBeUndefined();
+    // Answers still arrive as text (and schemes): answer blocks (u-0c5q) are the teacher's own.
+    expect(JSON.stringify(built)).not.toContain('answerBlocks');
   });
 
   it('aligns a sheet with no headings to the paper by restart and kind', () => {

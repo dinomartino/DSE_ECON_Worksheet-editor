@@ -42,7 +42,6 @@ import {
   findTableBlock,
   insideSourceBody,
   isAlignOnly,
-  isAnswerDiagram,
   isFormattable,
   sourceCountAround,
   targetLayoutElementId,
@@ -6509,7 +6508,7 @@ export function Preview({
      * a source or figure row still inserts — `insertBlockAfter` resolves a child to
      * its row's own position — and a cell inserts below its whole table.
      */
-    // A model answer diagram is a field, not a list entry: nothing lands after it.
+    // A model answer's blocks are a list too (u-0c5q): what lands after one is part of the answer.
     const insertAfterId =
       payload.kind === "question"
         ? undefined
@@ -6517,9 +6516,7 @@ export function Preview({
           ? "blockId" in payload.target
             ? payload.target.blockId
             : undefined
-          : isAnswerDiagram(worksheet, payload.blockId)
-            ? undefined
-            : payload.blockId;
+          : payload.blockId;
     if (insertAfterId) {
       groups.push({
         label: payload.kind === "cell" ? m.insertBelowTable : m.insertBelow,
