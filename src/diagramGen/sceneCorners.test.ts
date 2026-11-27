@@ -3,7 +3,7 @@ import { blockOf, evaluateSpec } from './run';
 import { letterRoom } from './pointLabels';
 import { Q21_KEY, Q21_MCQ, Q21_POINTS, q21Scene } from './q21.fixture';
 import { Q22_KEY, Q22_MCQ, Q22_POINTS, q22Scene } from './q22.fixture';
-import { cornerAreasIn, cornerLettersIn, optionCorners, checkSceneLook } from './sceneCheck';
+import { cornerAreasIn, cornerLettersIn, namedCorners, optionCorners, checkSceneLook } from './sceneCheck';
 import { SCENES } from './sceneCatalogue';
 import { compileScene } from './scene';
 import { emptySpec } from './schema';
@@ -218,5 +218,29 @@ describe('a figure drawn from curves against its corner letters', () => {
     const issue = e.issues.find((i) => i.code === 'figure.cornerMissing');
     expect(issue?.text).toMatch(/\bb is not on the figure/);
     expect(issue?.text).toMatch(/ceilingDemandRise/);
+  });
+});
+
+describe('English after "area" is not corner letters (the independent review)', () => {
+  it('reads only areas the options name, or that share letters with them, or that are named twice', () => {
+    const mcq = { stem: 'Refer to the diagram.', statements: [], options: ['Area abc.', 'Area acf.', 'Area bcf.', 'Area abf.'] };
+    expect(namedCorners(mcq, 'Area abc is the loss; the area gained by consumers is not, nor the area left of S.').areas).toEqual(['abc', 'acf', 'bcf', 'abf']);
+    expect(namedCorners(Q22_MCQ, Q22_KEY).areas).toEqual(expect.arrayContaining(['fgmj', 'efj', 'egm']));
+  });
+
+  it('does not fail a plain-curves figure whose explanation says "the area gained by consumers"', () => {
+    const spec = emptySpec('curves');
+    spec.xAxis = { en: 'Quantity', zh: '數量' };
+    spec.yAxis = { en: 'Price', zh: '價格' };
+    Object.assign(spec, {
+      curves: [
+        { id: 'D', role: 'demand', slope: 'normal', place: 'mid', label: 'D', shape: 'none', rise: 'rising' },
+        { id: 'S', role: 'supply', slope: 'normal', place: 'mid', label: 'S', shape: 'none', rise: 'rising' },
+      ],
+      points: [{ a: 'D', b: 'S', name: '', xTick: 'Q_0', yTick: 'P_0', dot: false }],
+    });
+    const mcq = { stem: 'Refer to the diagram. What is the equilibrium quantity?', statements: [], options: ['Q_0', 'P_0', 'zero', 'none of these'], answer: 0 };
+    const e = evaluateSpec(spec, { sides: ['en', 'zh'], key: 'D meets S at Q_0. The area gained by consumers and the area left of S are not asked.', mcq });
+    expect(e.issues.map((i) => i.code)).not.toContain('figure.cornerMissing');
   });
 });
