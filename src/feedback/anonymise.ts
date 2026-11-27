@@ -363,7 +363,7 @@ export const KEPT_KEYS: ReadonlySet<string> = new Set([
   'kind', 'type', 'align', 'along', 'borders', 'captionPlacement', 'change', 'density', 'display', 'dropTo', 'fill', 'fit',
   'instructionMarker', 'labelAt', 'labelPlacement', 'labelSide', 'leader', 'links', 'lqLayout', 'mcLayout',
   'optionAlign', 'optionLayout', 'orientation', 'paper', 'pattern', 'preset', 'questionSourceFormat', 'shading', 'shape', 'sharedAs', 'slot',
-  'statementAlign', 'stroke', 'style', 'tableSide', 'titleAt', 'titlePlacement', 'vAlign', 'vertAlign', 'fraction', 'width',
+  'statementAlign', 'stroke', 'style', 'tableSide', 'titleAt', 'axes', 'titlePlacement', 'vAlign', 'vertAlign', 'fraction', 'width',
   // Formatting.
   'color', 'latin', 'eastAsia',
 ]);

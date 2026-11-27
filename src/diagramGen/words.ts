@@ -3,6 +3,7 @@ import { curveCrossing } from '@/model/diagramAreas';
 import { DEMAND_LIKE, SUPPLY_LIKE, tickKey } from './compile';
 import { compileScene } from './scene';
 import { sceneWords } from './sceneCheck';
+import { lorenzWords } from './lorenz';
 import { plainOf } from './text';
 import type { DiagramSpec, SpecCurve, SpecPoint } from './types';
 
@@ -58,6 +59,7 @@ export function figureWords(spec: DiagramSpec, diagram: Diagram): string {
     const built = compileScene(spec);
     return built.diagram ? sceneWords(spec, built, diagram) : '';
   }
+  if (spec.kind === 'lorenz') return lorenzWords(spec);
   if (spec.kind !== 'curves') return '';
   const lines: string[] = [];
   const x = spec.xAxis.en || spec.xAxis.zh;

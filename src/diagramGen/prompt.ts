@@ -34,6 +34,8 @@ export const SCENE_TEMPLATES: ReadonlySet<string> = new Set([
   'externality-overproduction',
   'tariff',
   'tariff-welfare',
+  // k-0584: kind "lorenz" draws the question's own boxes and labels.
+  'lorenz',
 ]);
 
 /** Every template but the blank, the panel-only figures and those a scene replaces, as "id: name". Derived, so it never drifts. */
@@ -79,7 +81,8 @@ DECIDE
 - kind "scene": a typed market diagram the editor draws exactly (below): consumer and producer surplus, a per-unit tax, a per-unit subsidy, a price ceiling, a price floor or minimum wage, a quota, an externality, a cost rise and total social surplus, a tariff. ALWAYS use a scene for these, and for every question about areas (surplus, deadweight loss, tax revenue, burdens, benefits); never compose them from curves.
 - kind "curves": axes and straight lines you compose (below). Use it for demand and supply shifts, elasticity and revenue, fixed supply, AD-AS, the PPC and plain graphs: anything no scene draws.
 - kind "chart": a bar or line chart of figures from the question (a table as a graph).
-- kind "template": one of the editor's ready-made diagrams, by id, when neither a scene nor kind "curves" can draw it (an import quota, monopoly, money market, Lorenz curve, PPF with trade). Its labels are fixed: use it only when the question names no label the template lacks. Set title/xAxis/yAxis only to rename them, else leave them "".
+- kind "lorenz": Lorenz curves (below). ALWAYS for a Lorenz curve or income distribution figure.
+- kind "template": one of the editor's ready-made diagrams, by id, when neither a scene nor kind "curves" can draw it (an import quota, monopoly, money market, PPF with trade). Its labels are fixed: use it only when the question names no label the template lacks. Set title/xAxis/yAxis only to rename them, else leave them "".
 
 KIND "scene"
 - scene: {type, market, externality, demand, supply, size, labels, areas, points, ask, gap}. The editor draws the curves, the shift, the price line or quota, the ticks and the regions from the type: you only choose.
@@ -94,6 +97,9 @@ KIND "scene"
 
 SCENES
 ${'${SCENES}'}
+
+KIND "lorenz"
+- lorenz: {panels, equality, grid, axes}. panels: one box, or two side by side when the question compares economies ("Economy X and Economy Y": one box each, title "Lorenz curve of Economy X" / "X 經濟體的洛倫茲曲線"). A box's curves: {label, name, inequality, style}; one curve (label "") or two lettered "A", "B" as the question names them (before/after a policy), with name {en, zh} for the key beside the box ("pre-tax income"). inequality: slight | moderate | high | extreme (further from the line of equality = less even, larger Gini); two curves of a box differ. style: solid | dashed. equality: draw the line of equality (HKDSE often leaves it out). grid: the 20% grid with 0–100 numbers. axes: percent ("% of income") | cumulative ("Cumulative percentage of income"). Every economy or curve the question names is on the figure; the key's comparison must be true of it. For any other kind, lorenz.panels is [].
 
 KIND "curves"
 - curves: {id, role, slope, place, label, shape, rise}. role: demand | supply | ad | sras | lras | vertical (fixed supply) | horizontal (perfectly elastic) | frontier (PPC) | graph (a plain line against two named axes, below). slope: normal | steep (inelastic) | flat (elastic). place (vertical, horizontal, frontier only): low | mid | high. shape and rise: "none" and "rising" except on a graph.

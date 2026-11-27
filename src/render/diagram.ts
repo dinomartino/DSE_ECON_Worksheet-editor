@@ -1593,6 +1593,18 @@ function titleRoomFor(count: number, scale: number): number {
  */
 const PLOT_ASPECT = DIAGRAM_PLOT_ASPECT;
 
+/** The plot's aspect: the diagram's own (a Lorenz figure's square boxes, k-0584), else 4:3. */
+function plotAspectFor(diagram: Diagram): number {
+  const a = diagram.plotAspect;
+  return typeof a === 'number' && Number.isFinite(a) && a > 0.2 && a < 2 ? a : PLOT_ASPECT;
+}
+
+/** A figure with no axes (`axes: 'none'`, k-0584) keeps a thin margin all round, as a crop does. */
+const BARE_MARGIN = 8;
+function bareFrame(diagram: Diagram): DiagramCrop | undefined {
+  return diagram.axes === 'none' ? { left: BARE_MARGIN, top: BARE_MARGIN, right: BARE_MARGIN, bottom: BARE_MARGIN } : undefined;
+}
+
 /**
  * The size a diagram needs, measured from what it draws: the plot keeps its 4:3 and
  * each side grows by the room its text needs. The printed size follows the labels
@@ -1620,12 +1632,13 @@ export function diagramSize(
   // and the height follows from the plot's aspect plus their top and bottom. Language
   // deliberately stops mattering here — a chosen frame must not resize itself when the
   // paper is switched to bilingual.
-  if (diagram.crop) {
-    const { left, top, right, bottom } = diagram.crop;
+  const framed = diagram.crop ?? bareFrame(diagram);
+  if (framed) {
+    const { left, top, right, bottom } = framed;
     const croppedPlotWidth = Math.max(1, widthPx - (left + right));
     return {
       widthPx,
-      heightPx: Math.round(croppedPlotWidth * PLOT_ASPECT + top + bottom),
+      heightPx: Math.round(croppedPlotWidth * plotAspectFor(diagram) + top + bottom),
     };
   }
   const width = titleWidthFloor(diagram, widthPx, language);
@@ -1633,7 +1646,7 @@ export function diagramSize(
   const room = axisSpanRoom(diagram, language);
   const left = padFor(PAD.left, room.y, 1, width - PAD.right);
   const plotWidth = width - (left + PAD.right);
-  const plotHeight = Math.max(1, plotWidth) * PLOT_ASPECT;
+  const plotHeight = Math.max(1, plotWidth) * plotAspectFor(diagram);
   const bottom = Math.max(PAD.bottom, ...room.x.map((r) => r.fixed + r.offset * plotHeight));
 
   // Both axis titles print outside the plot, and a bilingual pair stacks two lines.
@@ -3600,7 +3613,7 @@ export function diagramPlot(diagram: Diagram, options: DiagramSvgOptions): Proje
     extraTop,
     rightRoom,
     below ? room : 0,
-    diagram.crop,
+    diagram.crop ?? bareFrame(diagram),
     axisSpanRoom(diagram, options.language),
   );
 }
@@ -3647,7 +3660,7 @@ export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string 
   const corner = { x: plot.left, y: plot.bottom };
   const xEnd = { x: plot.right + overshoot, y: plot.bottom };
   const yEnd = { x: plot.left, y: plot.top - overshoot };
-  const axes =
+  const axes = diagram.axes === 'none' ? '' :
     `<path d="M ${n(corner.x)} ${n(corner.y)} L ${n(xEnd.x)} ${n(xEnd.y)}" ${axisStroke}/>` +
     arrowheadPath(corner, xEnd, head) +
     `<path d="M ${n(corner.x)} ${n(corner.y)} L ${n(yEnd.x)} ${n(yEnd.y)}" ${axisStroke}/>` +
@@ -3687,7 +3700,7 @@ export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string 
   });
 
   const origin =
-    diagram.showOrigin === false
+    diagram.showOrigin === false || diagram.axes === 'none'
       ? ''
       : textAt([[{ text: '0' }]], plot.left - 7 * scale, plot.bottom + 7 * scale, {
           anchor: 'end',
@@ -3852,7 +3865,7 @@ function fitLabels(
   }
 
   // What a curve name must keep clear of, besides other names.
-  if (diagram.showOrigin !== false) {
+  if (diagram.showOrigin !== false && diagram.axes !== 'none') {
     labels.push({
       kind: 'origin',
       id: 'origin',

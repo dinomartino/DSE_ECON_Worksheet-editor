@@ -4,6 +4,7 @@ import { DATA_CHART_WIDTH_PX, DEFAULT_DIAGRAM_SIZE, newId } from '@/model/factor
 import { defaultDiagramAltText } from '@/model/diagramTemplates';
 import { bi } from '@/model/text';
 import type { DiagramBlock, LanguageMode } from '@/model/types';
+import type { Diagram } from '@/model/diagram';
 import type { Side } from '@/model/textSlots';
 import { diagramSize } from '@/render/diagram';
 import { compileSpec, type Compiled } from './compile';
@@ -15,6 +16,7 @@ import { solveKey } from './solve';
 import type { DiagramGenDeps, DiagramGenInput, DiagramGenOutcome, DiagramIssue, DiagramSpec, SolvedKey } from './types';
 import { checkDiagram, checkStem } from './validate';
 import { checkLayout } from './layoutCheck';
+import { checkLorenz, lorenzWidth } from './lorenz';
 import type { SceneBuilt } from './scene';
 import { checkCornerLettersDrawn, checkSceneCorners, checkSceneKey, checkSceneLook, checkSceneWords, cornerLettersIn } from './sceneCheck';
 
@@ -68,7 +70,7 @@ export function evaluateSpec(spec: DiagramSpec, input: Pick<DiagramGenInput, 'si
   // The figure as it prints, at its width (u-ewel): nothing cut off, every name by its curve.
   const diagram = evaluated.compiled.diagram;
   if (diagram && !errors(evaluated.issues)) {
-    evaluated.issues.push(...checkLayout(diagram, input.widthPx ?? (diagram.chart ? DATA_CHART_WIDTH_PX : DEFAULT_DIAGRAM_SIZE.widthPx), input.sides));
+    evaluated.issues.push(...checkLayout(diagram, input.widthPx ?? naturalWidth(spec, diagram), input.sides));
   }
   return evaluated;
 }
@@ -76,6 +78,18 @@ export function evaluateSpec(spec: DiagramSpec, input: Pick<DiagramGenInput, 'si
 function evaluateDrawing(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq'> & { question?: string }, parseIssues: DiagramIssue[]): Evaluated {
   const compiled = compileSpec(spec);
   if (spec.kind === 'scene') return evaluateScene(spec, compiled as SceneBuilt, input, parseIssues);
+  if (spec.kind === 'lorenz') {
+    // Lorenz curves (k-0584): drawn by code, so only the question's words against the figure.
+    const issues = [...parseIssues, ...compiled.issues];
+    let solved: SolvedKey | null = null;
+    if (compiled.diagram && spec.placement === 'question') {
+      const checked = checkLorenz(spec, input.mcq, input.key);
+      issues.push(...checked.issues);
+      solved = checked.solved;
+    }
+    if (!compiled.diagram && !errors(issues)) issues.push({ level: 'error', code: 'diagram.empty', text: 'Nothing could be drawn from that diagram.' });
+    return { spec, compiled, issues, solved, questionChange: '' };
+  }
   const issues = [...parseIssues, ...compiled.issues, ...checkDiagram(spec, compiled, input.sides, input.key)];
   let solved: SolvedKey | null = null;
   if (compiled.diagram && input.mcq && spec.placement === 'question') {
@@ -152,12 +166,19 @@ export function languageOf(sides: readonly Side[]): LanguageMode {
   return sides.includes('zh') ? 'zh' : 'en';
 }
 
+/** The width a figure prints at when its place sets none: a data chart's, two Lorenz boxes', else the default. */
+function naturalWidth(spec: DiagramSpec, diagram: Diagram): number {
+  if (diagram.chart) return DATA_CHART_WIDTH_PX;
+  if (spec.kind === 'lorenz') return lorenzWidth(spec);
+  return DEFAULT_DIAGRAM_SIZE.widthPx;
+}
+
 /** The figure as a block, measured for the paper's language. */
 export function blockOf(evaluated: Evaluated, sides: readonly Side[], widthPx?: number): DiagramBlock | null {
   const diagram = evaluated.compiled.diagram;
   if (!diagram) return null;
-  const width = widthPx ?? (diagram.chart ? DATA_CHART_WIDTH_PX : DEFAULT_DIAGRAM_SIZE.widthPx);
   const { spec } = evaluated;
+  const width = widthPx ?? naturalWidth(spec, diagram);
   const altText =
     phrase(spec.title) ?? (spec.kind === 'template' ? defaultDiagramAltText(spec.template) : diagram.chart ? bi('Chart', '圖表') : bi('Diagram', '圖示'));
   return {
