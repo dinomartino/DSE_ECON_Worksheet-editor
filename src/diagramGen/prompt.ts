@@ -42,7 +42,16 @@ export const SCENE_TEMPLATES: ReadonlySet<string> = new Set([
   'money-supply-shift',
   'money-demand-shift',
   'money-rate-change',
+  // k-0587 (audit k-0583 task B): two-state control scenes (stage, binds) draw these with the question's own labels and letters.
+  'shortage-change',
+  'ceiling-lowered',
+  'ceiling-demand-falls',
+  'quota-enlarged',
+  'quota-demand-increase',
 ]);
+
+/** Scenes kept for specs saved before, never offered: a newer form draws them (k-0587: ceilingDemandRise = priceCeiling, stage demandRise, binds after). */
+const RETIRED_SCENES: ReadonlySet<string> = new Set(['ceilingDemandRise']);
 
 /** Every template but the blank, the panel-only figures and those a scene replaces, as "id: name". Derived, so it never drifts. */
 export function templateMenu(): string {
@@ -58,7 +67,7 @@ export function templateMenu(): string {
  * Derived from `sceneCatalogue.ts`, so it never drifts.
  */
 export function sceneMenu(): string {
-  return SCENES.map((def) => {
+  return SCENES.filter((def) => !RETIRED_SCENES.has(def.type)).map((def) => {
     const parts = def.parts.map((p) => `${p.id}${p.label ? ` ${p.label}` : ''}${p.labour ? `/${p.labour}` : ''}: ${p.what}`).join('; ');
     const regions = def.regions.map((r) => `${r.id} (${r.what})`).join('; ');
     const areas = Object.entries(def.measures)
@@ -68,7 +77,8 @@ export function sceneMenu(): string {
     const ticks = Object.entries(def.ticks).map(([id, ps]) => `${id} = ${ps!.join('..')}`).join('; ');
     const curves = new Set(def.parts.filter((p) => p.kind === 'curve').map((p) => p.id));
     const points = def.points.map((p) => `${p.id} (${p.on} ${curves.has(p.at) || p.at === 'other' ? '×' : 'at'} ${p.at})`).join(', ');
-    return [`- ${def.type}: ${def.when}.`, `  parts: ${parts}.`, `  regions: ${regions}.`, areas ? `  areas: ${areas}.` : '', `  ticks: ${ticks}.`, `  points: ${points}.`].filter(Boolean).join('\n');
+    const two = def.type === 'priceCeiling' || def.type === 'priceFloor' || def.type === 'quota' ? ' Two states: stage (below).' : '';
+    return [`- ${def.type}: ${def.when}.${two}`, `  parts: ${parts}.`, `  regions: ${regions}.`, areas ? `  areas: ${areas}.` : '', `  ticks: ${ticks}.`, `  points: ${points}.`].filter(Boolean).join('\n');
   }).join('\n');
 }
 
@@ -84,7 +94,7 @@ DECIDE
 - kind "none": the question needs no figure (a pure definition, a calculation with no graph). Say why in "reason".
 - placement "question": the figure is printed with the question and the students read it (an MCQ's diagram, a data stimulus). Draw only what the question gives. Never draw what the student is asked to work out.
 - placement "answer": the question asks the student to draw ("with the aid of a diagram", "illustrate"). Draw the model answer the marking scheme rewards: every point it says to indicate, labelled as it names them.
-- kind "scene": a typed market diagram the editor draws exactly (below): consumer and producer surplus, a per-unit tax, a per-unit subsidy, a per-unit tax or subsidy raised, a price ceiling, a price floor or minimum wage, a quota, an externality, a cost rise and total social surplus, a tariff. ALWAYS use a scene for these, and for every question about areas (surplus, deadweight loss, tax revenue, burdens, benefits); never compose them from curves.
+- kind "scene": a typed market diagram the editor draws exactly (below): consumer and producer surplus, a per-unit tax, a per-unit subsidy, a per-unit tax or subsidy raised, a price ceiling, a price floor or minimum wage, a quota (one state, or two states: the control lowered or raised, or demand or supply shifting under it), an externality, a cost rise and total social surplus, a tariff. ALWAYS use a scene when one draws the figure, and for every question about areas (surplus, deadweight loss, tax revenue, burdens, benefits). A control figure no scene draws (a vertical supply with a fixed price, three or more control prices, a quota with a supply shift) is kind "curves" with levels.
 - kind "curves": axes and straight lines you compose (below). Use it for demand and supply shifts, a movement along a curve, elasticity and revenue, fixed supply, AD-AS, the money market, an import quota at a world price, the PPC and plain graphs such as tax schedules: anything no scene draws (recipes below).
 - kind "chart": a bar, line or pie chart of figures from the question (a table as a graph, shares of a whole). chart: {type bar | line | pie, categories, series, yTitle, xTitle}; a pie has one series, its values the shares and the categories the slices' names.
 - kind "flow": boxes joined by arrows (below): a value-added chain of firms with $ on the arrows (GDP, value added), the circular flow of income, the production stages (primary, secondary, tertiary). Never template "flow".
@@ -92,18 +102,28 @@ DECIDE
 - kind "template": one of the editor's ready-made diagrams, by id, when neither a scene nor kind "curves" can draw it (an import quota drawn as a kinked supply, monopoly, PPF with trade). Never a data template (flow, pie, charts): those draw another question's content. Its labels are fixed: use it only when the question names no label the template lacks. Set title/xAxis/yAxis only to rename them, else leave them "".
 
 KIND "scene"
-- scene: {type, market, externality, demand, supply, size, labels, areas, points, ask, gap}. The editor draws the curves, the shift, the price line or quota, the ticks and the regions from the type: you only choose.
+- scene: {type, market, externality, demand, supply, size, labels, areas, points, ask, gap, stage, binds}. The editor draws the curves, the shift, the price line or quota, the ticks and the regions from the type: you only choose.
 - market: goods | labour (wage rate and labour: a minimum wage). externality (type externality only): negativeProduction (MSC above MPC) | positiveProduction (MSC below MPC) | negativeConsumption (MSB below MPB) | positiveConsumption (MSB above MPB); else "none".
 - demand, supply: normal | steep (inelastic) | flat (elastic), as the question says. size: small | normal | large (the tax, subsidy, external effect or control).
 - labels: [{part, label}]: the label the question and its key use for each part, exactly ({"part":"Pb","label":"P_1"}): a short symbol (S_2), never words in brackets ("S_2 (with tax t_2)": the stem says what a curve is). A part not listed keeps its default below; "" prints no tick. Every label the stem, the options or the key name must be on a part.
 - areas: [{region, label}]: the regions that carry a letter, label {"en":"A","zh":"A"} (or "a"). An MCQ about areas letters EVERY region its options name, one letter per region, never two letters on one area and never words that say what an area is (no "DWL" on the figure the student reads). A model answer may give an area from "areas" (it covers its regions) with label {"en":"","zh":""}: the editor prints its standard words.
 - points: [{point, label}]: lettered corners, when the question names areas by their corners ("area efj", "fgmj") or names a point ("point e"). Put each letter the stem, the options AND the explanation use on the scene point where the explanation's geometry puts it ("D×S1" = where D meets S1; "S0 at Qt1" = on S0 directly below or above that crossing), one letter per point, and no letter the question does not use. Then areas is [] (no region letters) and the keyed option's corners must be exactly the corners of what "ask" names. Example (tax raised from t1 to t2, key "the deadweight loss increases by area fgmj", explanation "with t1 it is efj; with t2 egm"): taxChange, ask dwlChange, points e0 e, e1 f, e2 g, s0AtQt1 j, s0AtQt2 m.
 - ask: what the question asks, one of the scene's areas, regions or ticks (below), or "none". The editor works the answer out from your letters and labels: it must be the keyed option.
-- gap: true draws the shortage or surplus bracket at a price control (a model answer only).
+- gap: true draws the shortage or surplus bracket at a price control (a model answer only); with two states, one bracket per state the control binds in.
+- stage, binds: "none", "both" except for the two-state control figures below.
 - A question about areas is answered by the letters: work out which regions make up what it asks (e.g. a tax's deadweight loss = dwlBuyers + dwlSellers), letter them as the keyed option says, and letter the other regions the options name.
 
 SCENES
 ${'${SCENES}'}
+
+TWO STATES (priceCeiling, priceFloor, quota)
+- stage: what changes while the control is in force. lowered | raised: the control itself moves (a ceiling or floor price lowered or raised; a quota cut = lowered, enlarged = raised): two control lines, Pc1 before and Pc2 after. demandRise | demandFall | supplyRise | supplyFall: the control stays and D shifts to D2 (or S to S2). "none" = the one-state scene above.
+- binds: the states the control is effective in: both | before | after | neither. A ceiling binds below the equilibrium price, a floor above it, a quota left of the equilibrium quantity. "lowers the price ceiling from P1 (above equilibrium) to P2 (below)" = lowered, after; a floor changed from P1 to P2 with both below equilibrium = neither; a ceiling at the old equilibrium price, binding once demand rises (HKDSE 2023 Q21) = demandRise, after; a ceiling between the old and the new equilibrium price as supply rises (2026 Q16) = supplyRise, before. The editor places each line from it; a quota changed binds both.
+- parts: D, S; D2 or S2 for a shift (D is then the demand before: label it D_1 or D_0 as the question does); quota: S (no quota), S1 and for a quota change S2 (the kinked supplies). Pc1, Pc2: the control lines (labour: wages). P0, Q0: the equilibrium before (none when Pc1 sits on it); Pn, Qn: the equilibrium after a shift. Qd1, Qs1: demanded and supplied at Pc1 before; Qd2, Qs2: at the control after (Pc2, or Pc1 after the shift; the curve that did not shift keeps its 1). Quota: Qq1, Qq2 (the quotas), Pq1, Pq2 (the prices with them, on demand).
+- regions: dwlKept (the loss in both states), dwlAdded (only after), dwlRemoved (only before), those the change has. areas: dwlBefore, dwlAfter, dwlChange (= dwl after). ticks: quantityBefore, quantityAfter, priceBefore, priceAfter, shortageBefore, shortage (after), surplusBefore, surplus (after), quantityDemanded, quantitySupplied (after).
+- points: e0 (D × S), en (the equilibrium after); <curve>At<part>: d, s, d2, s2 with a control line or a quantity tick (dAtPc1 = where D meets Pc1, d2AtQ0 = on D2 above Q0, sAtQq2 = on S at the second quota).
+- A question of statements about the change ("the producer surplus will decrease") has ask "none": the editor works out each statement from both states, and the keyed one must hold for any slopes.
+- Label the parts as the stem names them: "from P1 to P2" puts P_1 on Pc1 and P_2 on Pc2; "from S1 to S2" S_1 on S and S_2 on S2.
 
 KIND "flow"
 - flow: {layout, nodes, arrows, key}. nodes: {id, label, col, row, boxed}: col 0, 1, 2… left to right; row orders a column top to bottom. boxed false = bare words (a note such as "increase in inventory $50" under the box it comes from).

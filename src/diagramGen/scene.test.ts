@@ -221,11 +221,14 @@ describe('the reply and the prompt', () => {
 
   it('the prompt lists every scene, part and region, and stays one fixed text', () => {
     const text = systemPrompt();
-    for (const def of SCENES) {
+    // ceilingDemandRise (round 3) is retired from the menu: priceCeiling with a stage draws it (k-0587).
+    for (const def of SCENES.filter((d) => d.type !== 'ceilingDemandRise')) {
       expect(text).toContain(`- ${def.type}:`);
       for (const p of def.parts) expect(text).toContain(p.id);
       for (const r of def.regions) expect(text).toContain(`${r.id} (`);
     }
+    expect(text).not.toContain('- ceilingDemandRise:');
+    expect(text).toContain('TWO STATES');
     expect(systemPrompt()).toBe(text);
   });
 

@@ -5,7 +5,8 @@ import { axes, cross, curve, derived, finish, newId, point, priceLine, shiftArro
 import type { BiText } from '@/model/types';
 import { shiftArrowPlace, type Compiled } from './compile';
 import { placePointLabels } from './pointLabels';
-import { defaultLabel, regionsOf, sceneDef, type SceneDef, type ScenePointDef } from './sceneCatalogue';
+import { defaultLabel, regionsOf, type SceneDef, type ScenePointDef } from './sceneCatalogue';
+import { grows, isPlan, sceneDefOf, stageParts, stagePlan, stageRegionIds, type StagePlan } from './stageCatalogue';
 import { phrase, plainOf, symbol } from './text';
 import type { CurveRole, DiagramIssue, DiagramSpec, Slope, SpecScene, SpecText } from './types';
 
@@ -30,6 +31,8 @@ export interface SceneBuilt extends Compiled {
   pointPlaces: Map<string, { x: number; y: number }>;
   /** Every region of the scene → its outline (resolved), drawn or not. */
   regionPolygons: Map<string, Array<{ x: number; y: number }>>;
+  /** A two-state control (k-0587): both states' market, for the statement check. */
+  stage?: StageFacts;
 }
 
 const DEMAND_SLOPE: Record<Slope, number> = { normal: -1, steep: -2.2, flat: -0.42 };
@@ -144,12 +147,40 @@ interface Draft {
   marks: Record<string, DiagramPointMark>;
   /** Stand-ins a catalogue point may name: the externality's `other` and `private` curves. */
   alias?: Record<string, string>;
+  /** A two-state control (k-0587): the market in each state, worked out from the geometry. */
+  stage?: StageFacts;
+}
+
+/** One state of a two-state control scene, in unit space: what a student compares. */
+export interface StateFacts {
+  /** The control is effective. */
+  binds: boolean;
+  quantity: number;
+  /** The price buyers pay (and sellers receive). */
+  price: number;
+  cs: number;
+  ps: number;
+  tss: number;
+  dwl: number;
+  shortage: number;
+  surplus: number;
+}
+export interface StageFacts {
+  plan: StagePlan;
+  before: StateFacts;
+  after: StateFacts;
 }
 
 const GAP_WORDS = {
   shortage: { en: 'Shortage', zh: '短缺' },
   surplus: { en: 'Surplus', zh: '過剩' },
   unemployment: { en: 'Unemployment', zh: '失業' },
+};
+/** A two-state figure's brackets, when both states have one (k-0587). */
+const GAP_WORDS_TWO = {
+  shortage: [{ en: 'Original shortage', zh: '原先的短缺' }, { en: 'New shortage', zh: '新的短缺' }],
+  surplus: [{ en: 'Original surplus', zh: '原先的過剩' }, { en: 'New surplus', zh: '新的過剩' }],
+  unemployment: [{ en: 'Original unemployment', zh: '原先的失業' }, { en: 'New unemployment', zh: '新的失業' }],
 };
 
 const AX = {
@@ -163,6 +194,15 @@ const AX = {
 
 /** Draws one scene; `name(part)` is the part's printed label (undefined = none), `tick(part)` the same for ticks (null = drop line, no label). */
 function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tick: (part: string) => BiText | null | undefined, layout: Layout): Draft {
+  const plan = stagePlan(scene);
+  if (isPlan(plan)) {
+    // Spaced for every labelled quantity first; when that cannot fit, drawn anyway (the layout check then calls it crowded).
+    try {
+      return draftStage(scene, plan, name, tick, layout, true);
+    } catch {
+      return draftStage(scene, plan, name, tick, layout, false);
+    }
+  }
   const { E, k } = layout;
   const lineThrough = (m: number, top?: number, floor?: number) => lineAt(E, m, top, floor);
   const dm = DEMAND_SLOPE[scene.demand] ?? -1;
@@ -536,6 +576,390 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
   }
 }
 
+/** A straight line of slope `m` through E, from x0 to x1, kept between y `lo` and `hi`. */
+function clipLine(E: Pair, m: number, x0: number, x1: number, lo: number, hi: number): Pair[] {
+  const [ex, ey] = E;
+  const yAt = (x: number) => ey + m * (x - ex);
+  const xAt = (y: number) => ex + (y - ey) / m;
+  const ends: Pair[] = [];
+  for (const xEnd of [x0, x1]) {
+    let px = xEnd;
+    let py = yAt(px);
+    if (py > hi) [px, py] = [xAt(hi), hi];
+    if (py < lo) [px, py] = [xAt(lo), lo];
+    ends.push([px, py]);
+  }
+  if (ends[1][0] - ends[0][0] < 0.1) throw new Error('line off the plot');
+  return ends.sort((a, b) => a[0] - b[0]);
+}
+
+/** A linear curve as numbers: y at x, x at y. */
+export interface Lin {
+  m: number;
+  at: Pair;
+}
+const yOf = (l: Lin, x: number) => l.at[1] + l.m * (x - l.at[0]);
+const xOf = (l: Lin, y: number) => l.at[0] + (y - l.at[1]) / l.m;
+export const meetOf = (a: Lin, b: Lin): Pair => {
+  const xm = (b.at[1] - a.at[1] + a.m * a.at[0] - b.m * b.at[0]) / (a.m - b.m);
+  return [xm, yOf(a, xm)];
+};
+/** ∫ from 0 to q of (top − bottom), both linear. */
+const between = (top: Lin, bottom: Lin, q0: number, q1: number) => {
+  const f = (x: number) => yOf(top, x) - yOf(bottom, x);
+  return ((f(q0) + f(q1)) / 2) * (q1 - q0);
+};
+
+/** One state's market, from its curves and its control (a price line, or a quota). */
+export function stateFacts(plan: StagePlan, d: Lin, s: Lin, control: number): StateFacts {
+  const [xe, ye] = meetOf(d, s);
+  const eps = 1e-6;
+  let binds = false;
+  let quantity = xe;
+  let price = ye;
+  let shortage = 0;
+  let surplus = 0;
+  if (plan.control === 'ceiling' && control < ye - eps) {
+    binds = true;
+    price = control;
+    quantity = xOf(s, control);
+    shortage = xOf(d, control) - quantity;
+  } else if (plan.control === 'floor' && control > ye + eps) {
+    binds = true;
+    price = control;
+    quantity = xOf(d, control);
+    surplus = xOf(s, control) - quantity;
+  } else if (plan.control === 'quota' && control < xe - eps) {
+    binds = true;
+    quantity = control;
+    price = yOf(d, control);
+  }
+  const zero: Lin = { m: 0, at: [0, price] };
+  const cs = between(d, zero, 0, quantity);
+  const ps = between(zero, s, 0, quantity);
+  const tss = cs + ps;
+  const dwl = between(d, s, quantity, xe);
+  return { binds, quantity, price, cs, ps, tss, dwl, shortage, surplus };
+}
+
+/**
+ * Where between the two equilibrium prices a control that binds only before sits (HKDSE 2026
+ * P1 Q16): the fraction of the gap that keeps the quantities the question labels furthest apart.
+ */
+function betweenAt(ticks: Array<(y: number) => number>, lo: number, hi: number, fractions = [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]): number {
+  if (ticks.length < 2) return 0.5;
+  let best = 0.5;
+  let bestGap = -1;
+  for (const f of fractions) {
+    const yy = lo + (hi - lo) * f;
+    const xs = ticks.map((t) => t(yy)).sort((a, b) => a - b);
+    const gap = Math.min(...xs.slice(1).map((v, i) => v - xs[i]));
+    if (gap > bestGap + 1e-6) [best, bestGap] = [f, gap];
+  }
+  return best;
+}
+
+/**
+ * A two-state control (k-0587): one figure, a price ceiling, floor or quota with a second state:
+ * the control moved (two lines) or a curve shifted under it. The lines go where the plan says
+ * the control binds; the deadweight-loss regions are the kept, added and removed parts.
+ */
+function draftStage(scene: SpecScene, plan: StagePlan, name: (part: string) => BiText | undefined, tick: (part: string) => BiText | null | undefined, layout: Layout, spaced: boolean): Draft {
+  const { E, k } = layout;
+  const dm = DEMAND_SLOPE[scene.demand] ?? -1;
+  const sm = SUPPLY_SLOPE[scene.supply] ?? 1;
+  const labour = scene.market === 'labour';
+  const { parts: partDefs } = stageParts(plan);
+  const has = (id: string) => partDefs.some((p) => p.id === id);
+  const { control, shift } = plan;
+  const ad = Math.abs(dm);
+  // A horizontal shift, each quantity step it makes kept apart (round 3's ceilingDemandRise sizing).
+  let h = 0;
+  if (shift) {
+    // Round 3's sizing for a ceiling at the old price (HKDSE 2023 Q21 looks as it did); elsewhere the
+    // shift only keeps the ticks a question labels apart, which the layout search checks.
+    h = plan.place === 'old' && plan.stage === 'demandRise' ? Math.min(0.34, (TOP - 0.04 - E[1]) / ad, Math.max(0.2 * k + 0.04, (MIN_GAP * 1.2 * (sm + ad)) / Math.min(sm, ad))) : Math.min(0.3, 0.26 * k + 0.06);
+    // Demand after must still meet a quota left of Q₀ under the top of the plot.
+    const lead = control === 'quota' && plan.place === 'beyond' ? Math.max((QUOTA[scene.size] ?? 0.18) * k * 0.7, 0.07) : 0;
+    if (plan.stage === 'demandRise') h = Math.min(h, (TOP - 0.04 - E[1]) / ad - lead);
+    if (h < 0.06) throw new Error('no room for the shift');
+  }
+  const dx = shift === null ? 0 : plan.stage === 'demandRise' || plan.stage === 'supplyRise' ? h : -h;
+  // Each curve kept inside the plot so its shifted copy is too.
+  const dLine = clipLine(E, dm, shift === 'demand' && dx < 0 ? h : 0, shift === 'demand' && dx > 0 ? 0.9 - h : 0.9, 0.12, TOP);
+  const sLine = clipLine(E, sm, shift === 'supply' && dx < 0 ? h : 0, shift === 'supply' && dx > 0 ? 0.9 - h : 0.9, 0, TOP);
+  const d = curve(dLine, name('D'));
+  const s = curve(sLine, name('S'));
+  const d2 = shift === 'demand' ? shiftOf(d, dx, 0, name('D2')) : null;
+  const s2 = shift === 'supply' ? shiftOf(s, dx, 0, name('S2')) : null;
+  const D: Lin = { m: dm, at: E };
+  const S: Lin = { m: sm, at: E };
+  const D2: Lin = d2 ? { m: dm, at: [E[0] + dx, E[1]] } : D;
+  const S2: Lin = s2 ? { m: sm, at: [E[0] + dx, E[1]] } : S;
+  const E2 = meetOf(D2, S2);
+  const curves: DiagramCurve[] = [d, ...(d2 ? [d2] : []), s, ...(s2 ? [s2] : [])];
+  const roles: Draft['curveRoles'] = { D: { curve: d, role: 'demand' }, S: { curve: s, role: 'supply' } };
+  if (d2) roles.D2 = { curve: d2, role: 'demand' };
+  if (s2) roles.S2 = { curve: s2, role: 'supply' };
+  const levels: Draft['levels'] = {};
+  const marks: Record<string, DiagramPointMark> = {};
+  const points: DiagramPointMark[] = [];
+  const all = () => [...curves, ...points];
+  const lettering = scene.areas.length > 0 || (scene.points ?? []).length > 0;
+
+  // The control in each state: a price (ceiling, floor) or a quantity (quota).
+  let c1: number;
+  let c2: number;
+  if (control !== 'quota') {
+    const sign = control === 'ceiling' ? -1 : 1;
+    // The layout search tries several sizes; ticks only the question labels must stand apart (layoutOk).
+    // Two control lines: the quantities a question labels on the steeper curve need the larger step.
+    const labelled = (ids: string[]) => ids.some((id) => Boolean(tick(id)));
+    const need = shift === null && spaced ? 0.056 * Math.max(labelled(['Qs1', 'Qs2']) ? sm : 0, labelled(['Qd1', 'Qd2']) ? ad : 0) : 0;
+    // Two binding lines with brackets: room for the upper bracket's words between them.
+    const room = shift === null && scene.gap && plan.binds === 'both' && spaced ? 0.12 : 0;
+    const c = Math.max((CONTROL[scene.size] ?? 0.2) * k * (shift === null ? 0.6 : 0.8), 0.05, need, room);
+    const P0 = E[1];
+    if (shift === null) {
+      const near = (bind: boolean, far: boolean) => P0 + (bind ? sign : -sign) * (far ? 2 * c : c);
+      if (plan.binds === 'both') [c1, c2] = plan.tighten ? [near(true, false), near(true, true)] : [near(true, true), near(true, false)];
+      else if (plan.binds === 'neither') [c1, c2] = plan.tighten ? [near(false, true), near(false, false)] : [near(false, false), near(false, true)];
+      else [c1, c2] = plan.binds === 'after' ? [near(false, false), near(true, false)] : [near(true, false), near(false, false)];
+    } else {
+      const Pn = E2[1];
+      // The quantities the question labels, as functions of the control's price.
+      const tickAt: Record<string, (yy: number) => number> = { Q0: () => E[0], Qn: () => E2[0], Qd1: (yy) => xOf(D, yy), Qs1: (yy) => xOf(S, yy), Qd2: (yy) => xOf(D2, yy), Qs2: (yy) => xOf(S2, yy) };
+      const betweenTicks = Object.entries(tickAt)
+        .filter(([id]) => has(id) && Boolean(tick(id)))
+        .map(([, f]) => f);
+      const lo = Math.min(P0, Pn);
+      const hi = Math.max(P0, Pn);
+      const y =
+        plan.place === 'old' ? P0 : plan.place === 'between' ? lo + (hi - lo) * betweenAt(betweenTicks, lo, hi) : plan.place === 'beyond' ? (sign < 0 ? lo - c : hi + c) : sign < 0 ? hi + c : lo - c;
+      c1 = c2 = y;
+    }
+    for (const yy of [c1, c2]) if (yy < 0.08 || yy > 0.86) throw new Error('control off the plot');
+  } else {
+    const q = Math.max((QUOTA[scene.size] ?? 0.18) * k * 0.7, 0.07);
+    const Q0 = E[0];
+    if (shift === null) [c1, c2] = plan.tighten ? [Q0 - q, Q0 - 2 * q] : [Q0 - 2 * q, Q0 - q];
+    else {
+      const Qn = E2[0];
+      const lo = Math.min(Q0, Qn);
+      const hi = Math.max(Q0, Qn);
+      const quotaTicks = [tick('Qq1') ? (xx: number) => xx : null, tick('Qn') ? () => Qn : null, has('Q0') && tick('Q0') ? () => Q0 : null].filter((f): f is (xx: number) => number => Boolean(f));
+      const x = plan.place === 'old' ? Q0 : plan.place === 'between' ? lo + (hi - lo) * betweenAt(quotaTicks, lo, hi, [0.5, 0.4, 0.6, 0.35, 0.65]) /* the loss before (quota to Q₀) keeps some width */ : lo - q;
+      c1 = c2 = x;
+    }
+    // Each quota must meet every demand curve (a steep one starts right of the y-axis).
+    const dStart = Math.max(...[dLine, ...(d2 ? [dLine.map(([px, py]) => [px + dx, py] as Pair)] : [])].map((l) => l[0][0]));
+    for (const xx of [c1, c2]) if (xx < Math.max(0.1, dStart + 0.01)) throw new Error('quota off the plot');
+  }
+
+  // Control lines (dashed, as HKDSE prints two price lines) and kinked quota supplies.
+  let l1: DiagramCurve | null = null;
+  let l2: DiagramCurve | null = null;
+  if (control !== 'quota') {
+    // Across the plot for two lines; to just past the last crossing for one line under a shift.
+    const rightOf = (yy: number) => Math.max(...[D, S, D2, S2].map((l) => xOf(l, yy)));
+    const right = shift === null ? 0.9 : Math.min(0.9, rightOf(c1) + 0.12);
+    const mk = (yy: number, part: string) => derived({ kind: 'level', y: yy, from: 0, to: right }, [], name(part) ?? NO_NAME, { labelAt: 'start', weight: 0.8, stroke: 'dashed' });
+    l1 = mk(c1, 'Pc1');
+    curves.push(l1);
+    roles.Pc1 = { curve: l1, role: 'horizontal' };
+    levels.Pc1 = { vertical: false, at: c1 };
+    if (shift === null) {
+      l2 = mk(c2, 'Pc2');
+      curves.push(l2);
+      roles.Pc2 = { curve: l2, role: 'horizontal' };
+      levels.Pc2 = { vertical: false, at: c2 };
+    }
+  } else {
+    const kinked = (qx: number, part: string) => {
+      const [[x0, y0], [x1, y1]] = sLine;
+      const sy = y0 + ((qx - x0) * (y1 - y0)) / (x1 - x0);
+      return curve([[x0, y0], [qx, sy], [qx, TOP]], name(part));
+    };
+    const q1 = kinked(c1, 'S1');
+    curves.push(q1);
+    roles.S1 = { curve: q1, role: 'supply' };
+    levels.Qq1 = { vertical: true, at: c1 };
+    if (shift === null) {
+      const q2 = kinked(c2, 'S2');
+      curves.push(q2);
+      roles.S2 = { curve: q2, role: 'supply' };
+      levels.Qq2 = { vertical: true, at: c2 };
+    }
+  }
+
+  // The equilibria.
+  const atOld = plan.place === 'old';
+  const e0 = tickPoint(cross(d, s), all(), control === 'quota' && atOld ? { x: tick('Qq1'), y: tick('P0') } : { x: tick('Q0'), y: has('P0') ? tick('P0') : undefined });
+  points.push(e0);
+  marks.Q0 = e0;
+  if (has('P0')) marks.P0 = e0;
+  if (control === 'quota' && atOld) marks.Qq1 = e0;
+  let en: DiagramPointMark | null = null;
+  if (d2 || s2) {
+    en = tickPoint(cross(d2 ?? d, s2 ?? s), all(), { x: tick('Qn'), y: tick('Pn') });
+    points.push(en);
+    marks.Qn = en;
+    marks.Pn = en;
+  }
+  // Where each curve meets a control: the quantities a student reads.
+  const reading = (c: DiagramCurve, line: DiagramCurve, part: string) => {
+    const p = tickPoint(cross(c, line), all(), { x: tick(part) });
+    points.push(p);
+    marks[part] = p;
+    return p;
+  };
+  const qp: Record<string, DiagramPointMark> = {};
+  if (control !== 'quota') {
+    if (has('Qd1')) qp.Qd1 = reading(d, l1!, 'Qd1');
+    if (has('Qs1')) qp.Qs1 = reading(s, l1!, 'Qs1');
+    if (shift === null) {
+      qp.Qd2 = reading(d, l2!, 'Qd2');
+      qp.Qs2 = reading(s, l2!, 'Qs2');
+    } else if (shift === 'demand') qp.Qd2 = reading(d2!, l1!, 'Qd2');
+    else qp.Qs2 = reading(s2!, l1!, 'Qs2');
+    if (atOld) {
+      qp.Qd1 = e0;
+      qp.Qs1 = e0;
+    }
+  } else {
+    // The price with each quota, on demand directly above it.
+    if (!atOld) {
+      const p1 = tickPoint({ on: d.id, x: { x: c1, y: 0 } }, all(), { x: tick('Qq1'), y: tick('Pq1') });
+      points.push(p1);
+      marks.Qq1 = p1;
+      marks.Pq1 = p1;
+      qp.Qq1 = p1;
+    } else qp.Qq1 = e0;
+    if (shift === null) {
+      const p2 = tickPoint({ on: d.id, x: { x: c2, y: 0 } }, all(), { x: tick('Qq2'), y: tick('Pq2') });
+      points.push(p2);
+      marks.Qq2 = p2;
+      marks.Pq2 = p2;
+      qp.Qq2 = p2;
+    } else if (plan.b2) {
+      const p2 = tickPoint({ on: d2!.id, x: { x: c1, y: 0 } }, all(), { x: plan.stage === 'demandRise' ? null : undefined, y: tick('Pq2') });
+      points.push(p2);
+      marks.Pq2 = p2;
+      qp.Pq2 = p2;
+    }
+  }
+
+  // Each state's market: curves, the point its quantity is read at, its equilibrium.
+  const traded = (state: 1 | 2): DiagramPointMark => {
+    const b = state === 1 ? plan.b1 : plan.b2;
+    if (!b) return state === 1 ? e0 : (en ?? e0);
+    if (control === 'quota') return state === 1 || shift === null ? qp[state === 1 ? 'Qq1' : 'Qq2'] : qp.Qq1;
+    const sup = state === 1 ? qp.Qs1 : (qp.Qs2 ?? qp.Qs1);
+    const dem = state === 1 ? qp.Qd1 : (qp.Qd2 ?? qp.Qd1);
+    return control === 'ceiling' ? sup : dem;
+  };
+  const top1 = d;
+  const top2 = d2 ?? d;
+  const bot1 = s;
+  const bot2 = s2 ?? s;
+  const eq1 = e0;
+  const eq2 = en ?? e0;
+  const t1 = traded(1);
+  const t2 = traded(2);
+
+  // Under a ceiling the loss's left side runs from the quantity traded on S up to demand: a dashed line there when areas are lettered.
+  if (control === 'ceiling' && lettering) {
+    for (const [b, t] of [
+      [plan.b1, t1],
+      [plan.b2, t2],
+    ] as const) {
+      if (!b) continue;
+      const tops = [top1, top2].map((c) => {
+        try {
+          return { c, y: resolveIn(scratchOf([...all(), t]), { on: c.id, x: at(t) }).y };
+        } catch {
+          return null;
+        }
+      });
+      const best = tops.filter((v): v is { c: DiagramCurve; y: number } => Boolean(v)).sort((a, b2) => b2.y - a.y)[0];
+      if (!best || best.y < t.at.y + 0.02) continue;
+      if (curves.some((c) => c.derive?.kind === 'vertical' && Math.abs((c.points[0]?.x ?? -1) - t.at.x) < 1e-6)) continue;
+      curves.push(derived({ kind: 'vertical', x: at(t), from: t.at.y, to: best.y }, [...all(), t], undefined, { stroke: 'dashed', weight: 0.8 }));
+    }
+  }
+
+  // The deadweight-loss regions: kept, added, removed.
+  const regions: Record<string, Band> = {};
+  const ids = stageRegionIds(plan);
+  if (ids.length === 1) {
+    const [top, bot, t, e] = ids[0] === 'dwlRemoved' ? [top1, bot1, t1, eq1] : [top2, bot2, t2, eq2];
+    regions[ids[0]] = band([on(top), on(bot)], at(t), at(e));
+  } else if (ids.length === 2) {
+    const grow = grows(plan);
+    if (shift === null) {
+      // One market, two controls: the looser one's loss is inside the tighter one's.
+      const [tight, loose] = plan.tighten ? [t2, t1] : [t1, t2];
+      regions.dwlKept = band([on(d), on(s)], at(loose), at(e0));
+      regions[grow ? 'dwlAdded' : 'dwlRemoved'] = band([on(d), on(s)], at(tight), at(loose));
+    } else if (shift === 'demand') {
+      // The quantity traded stays (on S, or at the quota); the new demand moves the loss's far corner.
+      const t = t1;
+      if (grow) {
+        regions.dwlKept = band([on(d), on(s)], at(t), at(e0));
+        regions.dwlAdded = band([on(s), on(d2!)], at(t), at(en!), on(d));
+      } else {
+        regions.dwlKept = band([on(d2!), on(s)], at(t), at(en!));
+        regions.dwlRemoved = band([on(s), on(d)], at(t), at(e0), on(d2!));
+      }
+    } else {
+      // A floor and a supply shift: the quantity traded stays on D.
+      const t = t1;
+      if (grow) {
+        regions.dwlKept = band([on(d), on(s)], at(t), at(e0));
+        regions.dwlAdded = band([on(d), on(s2!)], at(t), at(en!), on(s));
+      } else {
+        regions.dwlKept = band([on(d), on(s2!)], at(t), at(en!));
+        regions.dwlRemoved = band([on(d), on(s)], at(t), at(e0), on(s2!));
+      }
+    }
+  }
+
+  // The shortage or surplus brackets (a model answer): one per state the control binds in.
+  const spans: DiagramSpan[] = [];
+  if (scene.gap && control !== 'quota') {
+    const kind = control === 'ceiling' ? 'shortage' : labour ? 'unemployment' : 'surplus';
+    const states = ([1, 2] as const).filter((i) => (i === 1 ? plan.b1 : plan.b2));
+    const base = control === 'ceiling' ? -0.05 : 0.04;
+    states.forEach((i, n) => {
+      const sup = i === 1 ? qp.Qs1 : (qp.Qs2 ?? qp.Qs1);
+      const dem = i === 1 ? qp.Qd1 : (qp.Qd2 ?? qp.Qd1);
+      const [from, to] = control === 'ceiling' ? [sup, dem] : [dem, sup];
+      const words = states.length === 2 ? GAP_WORDS_TWO[kind][n] : GAP_WORDS[kind];
+      // Two brackets on one line (a curve shift): the second sits further off it.
+      const sameLine = states.length === 2 && shift !== null && n === 1;
+      spans.push(span(at(from), at(to), 'bracket', { offset: sameLine ? base * 2.6 : base, label: phraseOf(words) }));
+    });
+  }
+
+  const before = stateFacts(plan, D, S, c1);
+  const after = stateFacts(plan, D2, S2, c2);
+  const arrows: DiagramArrow[] = [];
+  return {
+    curves,
+    points,
+    arrows,
+    ...(d2 || s2 ? { shifts: [{ source: d2 ? d : s, copy: (d2 ?? s2)!, by: { x: dx, y: 0 } }] } : {}),
+    spans,
+    x: phraseOf(labour ? AX.labour : AX.quantity),
+    y: phraseOf(labour ? AX.wage : AX.price),
+    regions,
+    curveRoles: roles,
+    levels,
+    marks,
+    stage: { plan, before, after },
+  };
+}
+
 function phraseOf(t: SpecText): BiText {
   return phrase(t) ?? { en: [], zh: [] };
 }
@@ -578,9 +1002,14 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     regionPolygons: new Map(),
   });
   const scene = spec.scene;
-  const def = scene ? sceneDef(scene.type) : undefined;
+  const def = scene ? sceneDefOf(scene) : undefined;
   if (!scene || !def) {
     error('scene.type', `"${scene?.type ?? ''}" is not a scene type: use one of the scene list, or kind "curves".`);
+    return empty();
+  }
+  const plan = stagePlan(scene);
+  if (plan && 'error' in plan) {
+    error('scene.stage', plan.error);
     return empty();
   }
   for (const l of scene.labels) {
@@ -615,10 +1044,10 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
   }
   if (!built && fallback) {
     built = fallback;
-    issues.push({ level: 'look', code: 'scene.layout', text: `Scene ${def.type} with demand ${scene.demand} and supply ${scene.supply} is crowded: some ticks or regions are close.` });
+    issues.push({ level: 'look', code: 'scene.layout', text: `Scene ${def.type}${plan ? ` (stage ${plan.stage}, binds ${plan.binds})` : ''} with demand ${scene.demand} and supply ${scene.supply} is crowded: some ticks or regions are close.` });
   }
   if (!built) {
-    error('scene.build', `Scene ${def.type} could not be drawn with these choices (demand ${scene.demand}, supply ${scene.supply}, size ${scene.size}).`);
+    error('scene.build', `Scene ${def.type} could not be drawn with these choices (${plan ? `stage ${plan.stage}, binds ${plan.binds}, ` : ''}demand ${scene.demand}, supply ${scene.supply}, size ${scene.size}).`);
     return empty();
   }
 
@@ -780,7 +1209,7 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     if (poly) regionPolygons.set(id, poly);
   }
 
-  return { diagram, issues, curveIds, roles, levels, regionAreas, regionLabels, partLabels: labels, pointLabels, pointPlaces, regionPolygons };
+  return { diagram, issues, curveIds, roles, levels, regionAreas, regionLabels, partLabels: labels, pointLabels, pointPlaces, regionPolygons, ...(built.stage ? { stage: built.stage } : {}) };
 }
 
 /** Ticks on the plot and apart, every region with area: the layout a teacher can read. */

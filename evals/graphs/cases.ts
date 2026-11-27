@@ -16,6 +16,8 @@ export interface GraphCase {
   type: string;
   family: 'E' | 'SD' | 'other';
   stem: string;
+  /** Numbered statements (1), (2) … of a statement question (k-0587); absent = none. */
+  statements?: string[];
   options: [string, string, string, string];
   answer: 0 | 1 | 2 | 3;
   explanation: string;
@@ -275,6 +277,122 @@ const AUDIT_CASES: GraphCase[] = [
   },
 ];
 
+
+/**
+ * Audit k-0583 task B (k-0587): two-state control figures, one case per HKDSE form the audit
+ * cites (a ceiling lowered across equilibrium, a floor changed, both floors ineffective, a ceiling
+ * with a supply shift, a quota enlarged, demand rising under a quota, a ceiling lowered while
+ * binding, a minimum wage with a labour-supply fall). Invented in the HKDSE manner, our words,
+ * the figure type and labels following the named question; keys are ours.
+ */
+const STAGE_CASES: GraphCase[] = [
+  {
+    id: 'b-ceiling-lowered',
+    type: 'Price ceiling lowered from above to below equilibrium, statements (like DSE2021 P1 Q17, 2015 P1 Q19)',
+    family: 'E',
+    stem: 'The diagram below shows the demand and supply of rice in Country K. The government cuts the maximum price of rice from P_1 to P_2. Which of the following will happen?',
+    options: ['Producer surplus will fall.', 'Consumer surplus will rise.', 'The quantity of rice traded will rise.', 'The excess supply of rice will disappear.'],
+    answer: 0,
+    explanation:
+      'P_1 lies above the equilibrium price, so the first ceiling has no effect: the market trades at the equilibrium. P_2 lies below it, so sellers supply less and receive a lower price: producer surplus falls (A). Consumer surplus may rise or fall, since buyers pay less on the units still bought but lose the units no longer sold (B is not necessarily true). The quantity traded falls (C is wrong). At P_1 there was no excess supply, since the market cleared (D is wrong).',
+    figure: 'Price and Quantity. D and S cross in the middle. Two dashed horizontal lines: P_1 above the equilibrium, P_2 below it. No quantity ticks. Key: A.',
+    want: 'priceCeiling stage lowered binds after: dashed P_1 above E, dashed P_2 below E, D and S straight, no Q ticks, no letters',
+    labels: ['D', 'S', 'P_1', 'P_2'],
+  },
+  {
+    id: 'b-floor-changed',
+    type: 'Price floor changed from below to above equilibrium (like DSE2020 P1 Q20)',
+    family: 'E',
+    stem: 'Refer to the diagram of the market for milk below. The government changes the minimum price of milk from P_1 to P_2. As a result,',
+    options: ['the deadweight loss will increase.', 'producer surplus will certainly increase.', 'the quantity of milk traded will stay at Q_1.', 'an excess demand for milk will become an excess supply.'],
+    answer: 0,
+    explanation:
+      'P_1 is below the equilibrium price, so it does not bind and there is no deadweight loss. P_2 is above it: the quantity traded falls to the quantity demanded at P_2, below the efficient quantity, so a deadweight loss appears (A). Producers sell less at a higher price, so producer surplus may rise or fall (B). Before the change the market traded the equilibrium quantity, not Q_1 (C). At P_1 there was no excess demand, since the floor did not bind (D).',
+    figure: 'Price and Quantity. D and S. Dotted horizontal lines at P_1 (below the equilibrium) and P_2 (above it). Q_1 where S meets P_1. Key: A.',
+    want: 'priceFloor stage raised binds after: P_1 below E, P_2 above E, dashed/dotted lines, Q_1 under S at P_1',
+    labels: ['D', 'S', 'P_1', 'P_2', 'Q_1'],
+  },
+  {
+    id: 'b-floor-both-below',
+    type: 'Price floor changed, both prices below equilibrium, statements (like DSE2023 P1 Q17)',
+    family: 'E',
+    stem: 'The diagram shows the market for a good. The government changes its price floor from P_1 to P_2. Which of the following statements is/are correct?',
+    options: ['(4) only', '(1) and (4) only', '(2) and (3) only', '(1), (2) and (3) only'],
+    answer: 0,
+    explanation:
+      'Both P_1 and P_2 lie below the equilibrium price, so neither floor binds: the market stays at the equilibrium. The quantity traded does not change (1 is wrong), there is no deadweight loss before or after (2 is wrong), producer surplus does not change (3 is wrong), and total social surplus remains unchanged (4 is right).',
+    statements: ['The quantity traded will fall.', 'The deadweight loss will rise.', 'Producer surplus will rise.', 'Total social surplus will remain unchanged.'],
+    figure: 'Price and Quantity. D and S cross well above two dashed horizontal lines P_1 and P_2 (P_2 lower). Key: A.',
+    want: 'priceFloor stage lowered binds neither: both dashed lines below E, P_1 above P_2, no ticks',
+    labels: ['D', 'S', 'P_1', 'P_2'],
+  },
+  {
+    id: 'b-ceiling-supply-rise',
+    type: 'Price ceiling and a supply increase, Q1–Q4 (like DSE2026 P1 Q16)',
+    family: 'E',
+    stem: 'The diagram below shows the market for Good W. The government sets a price ceiling at P_1. A new technology then shifts supply from S_1 to S_2. What is the quantity of Good W traded after the shift?',
+    options: ['Q_1', 'Q_2', 'Q_3', 'Q_4'],
+    answer: 2,
+    explanation:
+      'With S_1 the equilibrium price is above P_1, so the ceiling binds. After supply rises to S_2, the new equilibrium price is below P_1, so the ceiling no longer binds and the market trades at the new equilibrium, Q_3 (C). Q_1 is the old equilibrium quantity, Q_2 the quantity demanded at P_1, and Q_4 the quantity supplied on S_2 at P_1.',
+    figure: 'Price and Quantity. D_1 downward; S_1 and S_2 upward, S_2 right of S_1 with an arrow. Dashed P_1 between the old and the new equilibrium price. Dashed drops: Q_1 at D_1×S_1, Q_2 at D_1 on P_1, Q_3 at D_1×S_2, Q_4 at S_2 on P_1. Key: C.',
+    want: 'priceCeiling stage supplyRise binds before: P_1 between the equilibria, Q_1 < Q_2 < Q_3 < Q_4 in order at those four points, shift arrow',
+    labels: ['D_1', 'S_1', 'S_2', 'P_1', 'Q_1', 'Q_2', 'Q_3', 'Q_4'],
+  },
+  {
+    id: 'b-quota-enlarged',
+    type: 'Quota enlarged: fall in DWL by corner letters (like DSE2015 P2 Q3, made an MCQ)',
+    family: 'E',
+    stem: 'The diagram shows the market for taxi licences in City Z, where the number of licences is limited by a quota. The government raises the quota from Q_1 to Q_2. Which of the following is correct?',
+    options: ['The deadweight loss falls by area WXYZ.', 'The deadweight loss rises by area WXYZ.', 'The deadweight loss falls to zero.', 'The deadweight loss does not change.'],
+    answer: 0,
+    explanation:
+      'With the quota at Q_1, the units between Q_1 and the equilibrium quantity are not produced although buyers value them (along D) more than they cost (along S). Raising the quota to Q_2 lets the units between Q_1 and Q_2 be produced, so the deadweight loss falls by area WXYZ, between D and S from Q_1 to Q_2 (A). Some loss remains because Q_2 is still below the equilibrium quantity (C is wrong).',
+    figure: 'Price and Quantity. D, S_0 (no quota), S_1 kinked upright at Q_1, S_2 kinked upright at Q_2. W on D above Q_1, X on D above Q_2, Y on S at Q_2, Z on S at Q_1. Key: A.',
+    want: 'quota stage raised binds both: kinked S_1 at Q_1 and S_2 at Q_2 (both left of E); W, X on D, Y, Z on S at the two quotas',
+    labels: ['D', 'Q_1', 'Q_2', 'W', 'X', 'Y', 'Z'],
+  },
+  {
+    id: 'b-quota-demand-rise',
+    type: 'Demand rises under a quota: lettered DWL regions (like DSE2024 P2 Q3, made an MCQ)',
+    family: 'E',
+    stem: 'The diagram shows a market under a production quota. Demand rises from D_0 to D_1 while the quota stays. Which area shows the deadweight loss after the rise?',
+    options: ['A', 'B', 'A + B', 'none: the quota keeps the market efficient'],
+    answer: 2,
+    explanation:
+      'Before the rise the deadweight loss is area A, between D_0 and S from the quota to the old equilibrium quantity. After demand rises to D_1 the quota still holds output at the same level, but the efficient quantity rises, so the loss grows by area B, between D_1 and the higher of D_0 and S. The deadweight loss after the rise is A + B (C).',
+    figure: 'Price and Quantity. D_0 and D_1 (right of D_0), S_0, kinked S_1 upright at the quota Q_1 left of both equilibria. Region A = the loss with D_0, region B = the extra loss with D_1. Key: C.',
+    want: 'quota stage demandRise binds both: A = dwlKept, B = dwlAdded; kinked S_1 at Q_1; shift arrow D_0 → D_1',
+    labels: ['D_0', 'D_1', 'A', 'B'],
+  },
+  {
+    id: 'b-ceiling-lowered-dwl',
+    type: 'Binding ceiling lowered further: rise in DWL by region letters (like DSE2012 P2 Q5, made an MCQ)',
+    family: 'E',
+    stem: 'The diagram shows the market for flats under rent control. The government lowers the maximum rent from P_1 to P_2. By how much does the deadweight loss change?',
+    options: ['It rises by area B.', 'It rises by area A + B.', 'It falls by area B.', 'It falls by area A.'],
+    answer: 0,
+    explanation:
+      'Both P_1 and P_2 are below the equilibrium rent, so both bind and the quantity traded is read off supply. At P_1 the deadweight loss is area A, between D and S from the quantity at P_1 to the equilibrium quantity. At P_2 even fewer flats are let, so the loss also covers area B, between D and S from the quantity at P_2 to the quantity at P_1: it rises by area B (A). A + B is the new loss, not the change.',
+    figure: 'Price and Quantity. D and S; dashed P_1 and lower P_2, both below the equilibrium. Region A = the loss at P_1, region B = the extra loss at P_2. Key: A.',
+    want: 'priceCeiling stage lowered binds both: A = dwlKept, B = dwlAdded, dashed lines with drops at the quantities supplied',
+    labels: ['D', 'S', 'P_1', 'P_2', 'A', 'B'],
+  },
+  {
+    id: 'b-min-wage-supply-fall',
+    type: 'Minimum wage, labour supply falls (like DSE2013 P2 Q10, DSE2018 P2 Q10, made an MCQ)',
+    family: 'E',
+    stem: 'The diagram shows the labour market of cleaners, with a minimum wage W_m. Many cleaners then leave the city, so labour supply falls from S_1 to S_2. Which of the following is correct?',
+    options: ['Unemployment of cleaners disappears.', 'Unemployment of cleaners rises.', 'Employment of cleaners rises.', 'The deadweight loss rises.'],
+    answer: 0,
+    explanation:
+      'With S_1 the equilibrium wage is below W_m, so the minimum wage binds and there is unemployment. After supply falls to S_2 the equilibrium wage is above W_m, so the minimum wage no longer binds: the wage rises to the new equilibrium and unemployment disappears (A). Employment falls from the quantity demanded at W_m to the new equilibrium quantity (C is wrong), and with the minimum wage no longer binding there is no deadweight loss from it (D is wrong).',
+    figure: 'Wage rate and Quantity of labour. D; S_1 and S_2 (left of S_1, arrow). Dashed W_m between the old and the new equilibrium wage. Key: A.',
+    want: 'priceFloor market labour stage supplyFall binds before: W_m between the equilibria, axes Wage rate / Quantity of labour, shift arrow',
+    labels: ['D', 'S_1', 'S_2', 'W_m'],
+  },
+];
+
 export const GRAPH_CASES: GraphCase[] = [
   ...LORENZ_GRAPH_CASES,
   {
@@ -527,4 +645,5 @@ export const GRAPH_CASES: GraphCase[] = [
     labels: ['A', 'B', 'C'],
   },
   ...AUDIT_CASES,
+  ...STAGE_CASES,
 ];

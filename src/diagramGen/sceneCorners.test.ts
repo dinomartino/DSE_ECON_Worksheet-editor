@@ -217,7 +217,7 @@ describe('a figure drawn from curves against its corner letters', () => {
     const e = evaluateSpec(spec, { sides: ['en', 'zh'], key: Q21_KEY, mcq: Q21_MCQ });
     const issue = e.issues.find((i) => i.code === 'figure.cornerMissing');
     expect(issue?.text).toMatch(/\bb is not on the figure/);
-    expect(issue?.text).toMatch(/ceilingDemandRise/);
+    expect(issue?.text).toMatch(/stage demandRise, binds after/);
   });
 });
 

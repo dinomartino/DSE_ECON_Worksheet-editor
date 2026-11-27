@@ -15,6 +15,14 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question studio draws price controls in two states.** A price ceiling or floor lowered or
+  raised (two price lines, on either side of equilibrium), a quota enlarged or cut, and demand or
+  supply shifting while a ceiling, floor or quota stays, as in HKDSE 2021 Q17, 2020 Q20, 2026 Q16
+  and the Paper 2 quota questions. It works out where each line goes from whether the control is
+  effective before and after, shades or letters the deadweight loss added or removed, and draws the
+  old and the new shortage. For a question of statements ("the producer surplus will decrease") it
+  checks the key against both states, and refuses a key that depends on how steep the curves are.
+  <!-- zh: **擬題工作室能繪畫兩個狀態的價格管制。** 調低或調高價格上限或下限（兩條價格線，可在均衡價格之上或之下）、增加或削減配額，以及在價格上限、下限或配額不變下需求或供應的轉變，如 HKDSE 2021 年第 17 題、2020 年第 20 題、2026 年第 16 題及 Paper 2 的配額題。它會按管制在前後是否有效決定每條線的位置，為增加或減少的效率損失加上陰影或字母，並標出原先及新的短缺。若題目是一組陳述（如「生產者盈餘將會減少」），它會以前後兩個狀態核對答案，並拒絕取決於曲線斜率的答案。 -->
 - **The Question studio draws more HKDSE figures, and no longer passes a figure that hides what the
   question asks.** It now draws the money market with the question's own labels (Ms and Md lines
   with lettered crossings, or one money-demand curve shifting with no supply line), two lettered

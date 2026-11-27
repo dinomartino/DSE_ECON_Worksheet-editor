@@ -323,6 +323,19 @@ export type SceneType = (typeof SCENE_TYPES)[number];
 export const SCENE_MARKETS = ['goods', 'labour'] as const;
 export type SceneMarket = (typeof SCENE_MARKETS)[number];
 
+/**
+ * A second state on one control figure (k-0587, audit k-0583 task B): what changes while a price
+ * ceiling, a price floor or a quota is in force. lowered / raised: the control itself moves (a
+ * ceiling or floor price, a quota's quantity), so two control lines are drawn. demandRise …
+ * supplyFall: the control stays and a curve shifts. 'none' = the one-state scene.
+ */
+export const SCENE_STAGES = ['none', 'lowered', 'raised', 'demandRise', 'demandFall', 'supplyRise', 'supplyFall'] as const;
+export type SceneStage = (typeof SCENE_STAGES)[number];
+
+/** Which of the two states the control is effective (binding) in; the editor places the lines from it. */
+export const SCENE_BINDS = ['both', 'before', 'after', 'neither'] as const;
+export type SceneBinds = (typeof SCENE_BINDS)[number];
+
 export const EXTERNALITIES = ['none', 'negativeProduction', 'positiveProduction', 'negativeConsumption', 'positiveConsumption'] as const;
 export type Externality = (typeof EXTERNALITIES)[number];
 
@@ -359,6 +372,9 @@ export const SCENE_ASKS = [
   'externalCost',
   'psGain',
   'dwlChange',
+  // k-0587: two-state control scenes
+  'dwlBefore',
+  'dwlAfter',
   // ticks
   'priceBefore',
   'priceAfter',
@@ -370,6 +386,9 @@ export const SCENE_ASKS = [
   'quantitySupplied',
   'shortage',
   'surplus',
+  // k-0587: the gap in the first state of a two-state control scene (shortage / surplus = the second)
+  'shortageBefore',
+  'surplusBefore',
   'marketQuantity',
   'efficientQuantity',
   'misallocation',
@@ -419,6 +438,10 @@ export interface SpecScene {
   ask: SceneAsk;
   /** Draw the shortage / surplus bracket at a price control (a model answer; never when the question asks for it). */
   gap: boolean;
+  /** k-0587: a second state (priceCeiling, priceFloor, quota); absent in a spec saved before = 'none'. */
+  stage?: SceneStage;
+  /** k-0587: the states the control binds in (with a stage); absent = 'both'. */
+  binds?: SceneBinds;
 }
 export type SpecKind = (typeof SPEC_KINDS)[number];
 

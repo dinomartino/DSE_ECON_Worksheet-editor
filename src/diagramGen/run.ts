@@ -21,6 +21,7 @@ import { checkFlow } from './flow';
 import { checkLorenz, lorenzWidth } from './lorenz';
 import type { SceneBuilt } from './scene';
 import { checkCornerLettersDrawn, checkSceneCorners, checkSceneKey, checkSceneLook, checkSceneWords, cornerLettersIn } from './sceneCheck';
+import { checkStageStatements, checkStageWords } from './stageCheck';
 
 /**
  * Question + key (+ a reference figure) → an editable diagram. Pure over injected deps,
@@ -134,14 +135,14 @@ function evaluateScene(spec: DiagramSpec, compiledIn: SceneBuilt, input: Pick<Di
   }
   const issues = [...parseIssues, ...compiled.issues];
   const stem = input.mcq ? [input.mcq.stem, ...input.mcq.statements].join('\n') : (input.question ?? '');
-  issues.push(...checkSceneWords(spec, stem, input.key), ...checkSceneLook(spec));
+  issues.push(...checkSceneWords(spec, stem, input.key), ...checkSceneLook(spec), ...checkStageWords(spec, compiled, stem));
   let solved: SolvedKey | null = null;
   if (compiled.diagram && input.mcq && spec.placement === 'question') {
     // A label no part of the scene can carry (a ceiling question's distractor Q₄): the scene cannot draw it, kind "curves" can.
     issues.push(
       ...checkLabels(input.mcq, compiled.diagram, { order: false }).map((i) =>
         i.code === 'label.missing'
-          ? { ...i, text: `${i.text} Scene ${spec.scene?.type} has only the parts listed for it: give the label to one of them (a price ceiling's Qx is a fourth quantity on D), and when none can carry it, draw it with kind "curves" instead (levels and points can mark every quantity and price).` }
+          ? { ...i, text: `${i.text} Scene ${spec.scene?.type} has only the parts listed for it: give the label to one of them (a price ceiling's Qx is a fourth quantity on D; a second control price or a shifted curve is a two-state scene: stage and binds), and when none can carry it, draw it with kind "curves" instead (levels and points can mark every quantity and price).` }
           : i,
       ),
     );
@@ -153,6 +154,12 @@ function evaluateScene(spec: DiagramSpec, compiledIn: SceneBuilt, input: Pick<Di
       const key = checkSceneKey(spec, compiled, input.mcq, corners.used);
       solved = key.solved;
       issues.push(...key.issues);
+    }
+    // Two states (k-0587): a statement question ("the producer surplus will decrease") is answered from both states' markets.
+    if (compiled.stage && spec.scene?.ask === 'none') {
+      const statements = checkStageStatements(spec, compiled, input.mcq);
+      issues.push(...statements.issues);
+      solved = statements.solved ?? solved;
     }
   }
   if (!compiled.diagram && !errors(issues)) issues.push({ level: 'error', code: 'diagram.empty', text: 'Nothing could be drawn from that diagram.' });

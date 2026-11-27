@@ -26,9 +26,10 @@ import { GRAPH_CASES, type GraphCase } from './graphs/cases';
 const letter = (i: number) => 'ABCD'[i] ?? '?';
 
 export function inputOf(c: GraphCase): DiagramGenInput {
-  const question = [c.stem, ...c.options.map((o, i) => `${letter(i)}. ${o}`)].join('\n');
+  const statements = c.statements ?? [];
+  const question = [c.stem, ...statements.map((t, i) => `(${i + 1}) ${t}`), ...c.options.map((o, i) => `${letter(i)}. ${o}`)].join('\n');
   const key = `Correct answer: ${letter(c.answer)}. ${c.options[c.answer]}\n${c.explanation}`;
-  return { question, key, sides: ['en', 'zh'], figure: c.figure, mcq: { stem: c.stem, statements: [], options: [...c.options], answer: c.answer } };
+  return { question, key, sides: ['en', 'zh'], figure: c.figure, mcq: { stem: c.stem, statements: [...statements], options: [...c.options], answer: c.answer } };
 }
 
 /** Every label printed on a figure (curve names, point names, ticks, areas, free labels), as plain text. */

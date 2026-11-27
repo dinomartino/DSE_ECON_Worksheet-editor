@@ -2,7 +2,8 @@ import type { Diagram } from '@/model/diagram';
 import { tickKey } from './compile';
 import { labelsIn } from './labels';
 import type { SceneBuilt } from './scene';
-import { sceneDef, type SceneDef } from './sceneCatalogue';
+import type { SceneDef } from './sceneCatalogue';
+import { sceneDefOf } from './stageCatalogue';
 import { plainOf } from './text';
 import type { DiagramIssue, DiagramSpec, SceneAsk, SolvedKey, SpecScene } from './types';
 
@@ -194,7 +195,7 @@ function cornersOf(built: SceneBuilt, regions: readonly string[]): string[] {
 export function checkSceneCorners(spec: DiagramSpec, built: SceneBuilt, mcq: McqWords, explanation: string): { issues: DiagramIssue[]; solved: SolvedKey | null; used: boolean } {
   const issues: DiagramIssue[] = [];
   const scene = spec.scene!;
-  const def = sceneDef(scene.type);
+  const def = sceneDefOf(scene);
   const corners = namedCorners(mcq, explanation);
   const named = corners.letters;
   const keyedCorners = optionCorners(mcq.options[mcq.answer] ?? '');
@@ -285,7 +286,7 @@ export function checkCornerLettersDrawn(diagram: Diagram, mcq: McqWords, explana
         {
           level: 'error',
           code: 'figure.cornerMissing',
-          text: `The question names areas or points by corner letters, but ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not on the figure. Use a scene that has the points (scene.points: a tax raised from t1 to t2 is taxChange, a ceiling made effective by a rise in demand is ceilingDemandRise), or name each point where the explanation puts it.`,
+          text: `The question names areas or points by corner letters, but ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not on the figure. Use a scene that has the points (scene.points: a tax raised from t1 to t2 is taxChange, a ceiling made effective by a rise in demand is priceCeiling with stage demandRise, binds after), or name each point where the explanation puts it.`,
         },
       ]
     : [];
@@ -302,7 +303,7 @@ export interface McqWords {
 export function checkSceneKey(spec: DiagramSpec, built: SceneBuilt, mcq: McqWords, cornersUsed = false): { issues: DiagramIssue[]; solved: SolvedKey | null } {
   const issues: DiagramIssue[] = [];
   const scene = spec.scene!;
-  const def = sceneDef(scene.type);
+  const def = sceneDefOf(scene);
   if (!def || scene.ask === 'none') return { issues, solved: null };
   // A question that names its areas by corners and no option by region letters: the corner check answered it.
   if (cornersUsed && isArea(def, scene.ask) && !mcq.options.some((o) => optionLetters(o))) return { issues, solved: null };
@@ -365,7 +366,7 @@ export function checkSceneKey(spec: DiagramSpec, built: SceneBuilt, mcq: McqWord
  */
 export function checkSceneLook(spec: DiagramSpec): DiagramIssue[] {
   const scene = spec.scene;
-  const def = scene ? sceneDef(scene.type) : undefined;
+  const def = scene ? sceneDefOf(scene) : undefined;
   if (!scene || !def) return [];
   const long = scene.labels.filter((l) => def.parts.find((p) => p.id === l.part)?.kind === 'curve' && (/[()（）]/.test(l.label) || l.label.replace(/[_{}\s]/g, '').length > 10));
   return long.length
@@ -382,8 +383,8 @@ const WORDS: Array<{ re: RegExp; ok: (s: SpecScene) => boolean; says: string }> 
     says: 'a per-unit tax (scene unitTax)',
   },
   { re: /\bsubsid(?:y|ies|ise|ize)\b|津貼|補貼|資助/i, ok: (s) => s.type === 'unitSubsidy' || s.type === 'subsidyChange' || s.type === 'externality', says: 'a subsidy (scene unitSubsidy, or subsidyChange when it is raised from s1 to s2)' },
-  { re: /price ceiling|maximum price|rent control|最高價格|價格上限|租金管制/i, ok: (s) => s.type === 'priceCeiling' || s.type === 'ceilingDemandRise', says: 'a price ceiling (scene priceCeiling, or ceilingDemandRise when demand rises to D2)' },
-  { re: /price floor|minimum price|minimum wage|最低價格|價格下限|最低工資/i, ok: (s) => s.type === 'priceFloor', says: 'a price floor or minimum wage (scene priceFloor)' },
+  { re: /price ceiling|maximum price|rent control|最高價格|價格上限|租金管制/i, ok: (s) => s.type === 'priceCeiling' || s.type === 'ceilingDemandRise', says: 'a price ceiling (scene priceCeiling; stage for a second state)' },
+  { re: /price floor|minimum price|minimum wage|最低價格|價格下限|最低工資/i, ok: (s) => s.type === 'priceFloor', says: 'a price floor or minimum wage (scene priceFloor; stage for a second state)' },
   { re: /\btariff|關稅/i, ok: (s) => s.type === 'tariff', says: 'a tariff (scene tariff)' },
   { re: /(?<!import )\bquota\b|(?<!進口)配額/i, ok: (s) => s.type === 'quota' || s.type === 'tariff', says: 'a quota (scene quota)' },
   { re: /external costs?|negative externalit|界外成本|負面界外效應/i, ok: (s) => s.type === 'externality' && s.externality.startsWith('negative'), says: 'an external cost (scene externality, a negative one)' },
@@ -423,7 +424,7 @@ const sym = (raw: string) => raw.replace(/_\{?([^}\s]*)\}?/g, '$1').trim();
 /** What a student reads off a scene: the lines, the ticks in order and where each sits, each lettered region's outline. Never the asked area's name. */
 export function sceneWords(spec: DiagramSpec, built: SceneBuilt, diagram: Diagram): string {
   const scene = spec.scene!;
-  const def = sceneDef(scene.type);
+  const def = sceneDefOf(scene);
   if (!def) return '';
   const label = (part: string) => sym(built.partLabels.get(part) ?? '') || `the unlabelled ${def.parts.find((p) => p.id === part)?.kind === 'xTick' ? 'quantity' : 'price'}`;
   const fill = (text: string) => text.replace(/\{([A-Za-z0-9]+)\}/g, (_, id: string) => label(id));
