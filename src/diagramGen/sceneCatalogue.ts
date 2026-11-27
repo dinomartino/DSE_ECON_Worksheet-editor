@@ -1,4 +1,5 @@
 import { MONOPOLY_MENU_DEF } from './monopoly';
+import { TRADE_MENU_DEF } from './trade';
 import { WORDS } from './sceneKit';
 import type { Externality, SceneAsk, SceneMarket, SceneType, SpecText } from './types';
 
@@ -14,7 +15,10 @@ import type { Externality, SceneAsk, SceneMarket, SceneType, SpecText } from './
 
 export interface ScenePartDef {
   id: string;
-  kind: 'curve' | 'yTick' | 'xTick';
+  /** k-0589: a lettered point (a PPF's E, P, C) or a bracket (exports, imports) on a trade figure. */
+  kind: 'curve' | 'yTick' | 'xTick' | 'point' | 'bracket';
+  /** k-0589: the curve or point a number on the axis belongs to (a figure the student completes gives them together). */
+  of?: string;
   /** The label printed when the model gives none, per market. */
   label: string;
   labour?: string;
@@ -468,6 +472,8 @@ export const SCENES: SceneDef[] = [
   },
   // k-0589 (audit k-0583 task C): the monopoly firm; its MC shape and stage pick the entry (`monopoly.ts:monopolyDef`).
   MONOPOLY_MENU_DEF,
+  // k-0589: PPF / CPF trade; its numbers pick the parts (`trade.ts:tradeDef`).
+  TRADE_MENU_DEF,
 ];
 
 export function sceneDef(type: SceneType): SceneDef | undefined {

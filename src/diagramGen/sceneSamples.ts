@@ -1,6 +1,6 @@
 import { emptyScene, emptySpec } from './schema';
 import { SCENES } from './sceneCatalogue';
-import type { DiagramSpec, Externality, SpecScene } from './types';
+import type { DiagramSpec, Externality, SpecScene, SpecTrade, SpecTradeCountry } from './types';
 
 /**
  * Every scene of the catalogue, drawn the two ways a question uses it (k-0577): an MCQ figure
@@ -69,6 +69,8 @@ export const SCENE_SAMPLES: SceneSample[] = [
   ...STAGE_SAMPLES(),
   // k-0589 (audit k-0583 task C): the monopoly firm, each like the Paper 2 figure it is named after.
   ...MONOPOLY_SAMPLES(),
+  // k-0589: PPF / CPF trade, each like the Paper 2 figure it is named after.
+  ...TRADE_SAMPLES(),
 ];
 
 function pts(pairs: Array<[string, string]>) {
@@ -184,6 +186,69 @@ function MONOPOLY_SAMPLES(): SceneSample[] {
       id: 'mono-mc-fall-letters',
       type: 'MC falls: the DWL kept, removed and added lettered A, B, C (an MCQ)',
       spec: sceneSpec({ type: 'monopoly', mc: 'flat', stage: 'mcFall', areas: [words('dwlKept', 'A', 'A'), words('dwlRemoved', 'B', 'B'), words('dwlAdded', 'C', 'C')] }),
+    },
+  ];
+}
+
+function nation(c: Partial<SpecTradeCountry> & Pick<SpecTradeCountry, 'x' | 'y'>): SpecTradeCountry {
+  return { name: '', shape: 'linear', noTradeX: 0, noTradeCost: 0, trade: true, consume: 'none', amount: 0, brackets: false, gain: false, ...c };
+}
+function tradeOf(t: Partial<SpecTrade> & Pick<SpecTrade, 'tot' | 'countries'>): SpecTrade {
+  return { totLine: false, grow: 0, xGood: { en: '', zh: '' }, yGood: { en: '', zh: '' }, ...t };
+}
+
+/** PPF / CPF trade scenes (k-0589), modelled on the Elective 2 questions the audit cites. */
+function TRADE_SAMPLES(): SceneSample[] {
+  const t = (trade: SpecTrade, extra: Partial<SpecScene> = {}, placement: DiagramSpec['placement'] = 'answer') => sceneSpec({ type: 'ppfTrade', trade, ...extra }, placement);
+  return [
+    {
+      id: 'ppf-2019-given',
+      type: 'Given PPF_A (20X or 30Y); the answer: C0 at (10, 15), P1, CPF_A at 1X = 2Y, C1 at (10, 20), the gain, exports and imports (like DSE2019 P2 Q14)',
+      spec: t(tradeOf({ tot: 2, countries: [nation({ x: 20, y: 30, noTradeX: 10, consume: 'sameX', brackets: true, gain: true })] }), { given: ['PPF'], labels: lab([['PPF', 'PPF_A'], ['CPF', 'CPF_A'], ['E', 'C_0'], ['P', 'P_1'], ['C', 'C_1'], ['X', 'X_A'], ['M', 'M_A']]) }, 'question'),
+    },
+    {
+      id: 'ppf-2013-growth',
+      type: 'Linear PPF (10X or 4Y) and CPF at 1X = 1Y, then labour doubles (answer, like DSE2013 P2 Q14)',
+      spec: t(tradeOf({ tot: 1, grow: 2, countries: [nation({ x: 10, y: 4 })] })),
+    },
+    {
+      id: 'ppf-2014-two',
+      type: 'Given PPF_A (10, 10) and PPF_B (8X or 16Y); the answer: A specialises in X, CPF_A at 1X = 1.5Y, consumption with 4X traded (like DSE2014 P2 Q14)',
+      spec: t(tradeOf({ tot: 1.5, countries: [nation({ name: 'A', x: 10, y: 10, consume: 'tradedX', amount: 4 }), nation({ name: 'B', x: 8, y: 16, trade: false })] }), { given: ['PPF', 'PPF2'] }, 'question'),
+    },
+    {
+      id: 'ppf-2018-two',
+      type: 'Two linear PPFs at 1X = 1Y: P_B, CPF_B, C_B with equal X and Y; CPF_A, A’s exports and imports (answer, like DSE2018 P2 Q15)',
+      spec: t(tradeOf({ tot: 1, countries: [nation({ name: 'A', x: 100, y: 80, consume: 'tradedX', amount: 30, brackets: true }), nation({ name: 'B', x: 30, y: 60, consume: 'equal' })] })),
+    },
+    {
+      id: 'ppf-pp-same-cpf',
+      type: 'Two linear PPFs, complete specialisation at 1X = 1Y: both CPFs on one line (answer, like DSEPP P2 Q16)',
+      spec: t(tradeOf({ tot: 1, countries: [nation({ name: 'A', x: 100, y: 50 }), nation({ name: 'B', x: 50, y: 100 })] })),
+    },
+    {
+      id: 'ppf-2016-concave',
+      type: 'Concave PPF, no-trade point E_a, the world price tangent: P_A, C_A with the same X, export and import brackets (answer, like DSE2016 P2 Q15)',
+      spec: t(tradeOf({ tot: 2.5, countries: [nation({ shape: 'concave', x: 20, y: 40, noTradeCost: 1, consume: 'sameX', brackets: true })] }), { labels: lab([['E', 'E_a'], ['P', 'P_A'], ['C', 'C_A']]) }),
+    },
+    {
+      id: 'ppf-2017-flatter',
+      type: 'Concave PPF, a flatter world price line TT’: P_T up-left of P_A, CPF parallel to TT’, imports of X (answer, like DSE2017 P2 Q15)',
+      spec: t(tradeOf({ tot: 0.8, totLine: true, countries: [nation({ shape: 'concave', x: 30, y: 30, noTradeCost: 2, consume: 'tradedX', amount: 8, brackets: true })] }), { labels: lab([['E', 'P_A'], ['P', 'P_T'], ['C', 'C_T'], ['TOT', "TT'"]]) }),
+    },
+    {
+      id: 'ppf-2025-two',
+      type: 'Given concave PPF_A with A_0 and linear PPF_B; the answer: P_A, CPF_A at slope 1, CPF_B, C_B with 10X traded, B’s exports and imports (like DSE2025 P2 Q13)',
+      spec: t(
+        tradeOf({ tot: 1, totLine: true, countries: [nation({ name: 'A', shape: 'concave', x: 30, y: 30, noTradeCost: 0.5 }), nation({ name: 'B', x: 20, y: 30, consume: 'tradedX', amount: 10, brackets: true })] }),
+        { given: ['PPF', 'E', 'PPF2', 'TOT'], labels: lab([['E', 'A_0']]) },
+        'question',
+      ),
+    },
+    {
+      id: 'ppf-sp-growth',
+      type: 'Concave PPF AA’ with trade at 1X = 1Y, then technology moves it out to BB’ (answer, like DSESP P2 Q13)',
+      spec: t(tradeOf({ tot: 1, grow: 1.3, xGood: { en: 'Clothing', zh: '衣服' }, yGood: { en: 'Food', zh: '食物' }, countries: [nation({ shape: 'concave', x: 30, y: 30, noTradeCost: 0.5, consume: 'sameX' })] })),
     },
   ];
 }

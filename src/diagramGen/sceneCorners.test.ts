@@ -97,7 +97,8 @@ function e2e() {
 }
 
 describe('every scene’s points', () => {
-  const types = SCENES.map((s) => s.type);
+  // A trade figure has no corner points and draws only from its numbers (k-0589: trade.test.ts).
+  const types = SCENES.map((s) => s.type).filter((t) => t !== 'ppfTrade');
   it.each(types)('%s: every catalogue point resolves on the default figure', (type) => {
     const spec = emptySpec('scene');
     const def = SCENES.find((s) => s.type === type)!;

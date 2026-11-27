@@ -3,6 +3,7 @@ import { resolveAnchor } from '@/model/diagramAnchors';
 import { point } from '@/model/diagramTemplateKit';
 import type { BiText } from '@/model/types';
 import type { StagePlan } from './stageCatalogue';
+import type { TradeNumbers } from './trade';
 import { phrase } from './text';
 import type { CurveRole, SpecText } from './types';
 
@@ -109,6 +110,12 @@ export interface Draft {
   alias?: Record<string, string>;
   /** A two-state figure (k-0587, k-0589): the market in each state, worked out from the geometry. */
   stage?: StageFacts;
+  /** k-0589: points the drafter lettered itself (a PPF's E, P, C): their letters are placed clear of the lines. */
+  named?: string[];
+  /** k-0589: what each axis's far edge stands for (a trade figure's goods units). */
+  axisMax?: { x: number; y: number };
+  /** k-0589: a trade figure's numbers. */
+  trade?: TradeNumbers;
 }
 
 const w = (en: string, zh: string): SpecText => ({ en, zh });

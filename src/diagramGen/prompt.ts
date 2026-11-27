@@ -57,6 +57,12 @@ export const SCENE_TEMPLATES: ReadonlySet<string> = new Set([
   'monopoly-mc-rises',
   'monopoly-same-output',
   'monopoly-lump-sum',
+  // k-0589: scene ppfTrade draws these with the question's own numbers, the CPF and points worked out.
+  'ppf-linear-trade',
+  'ppf-two-countries',
+  'ppf-concave-trade',
+  'ppf-shift',
+  'ppf-growth-trade',
 ]);
 
 /** Scenes kept for specs saved before, never offered: a newer form draws them (k-0587: ceilingDemandRise = priceCeiling, stage demandRise, binds after). */
@@ -86,7 +92,7 @@ export function sceneMenu(): string {
     const ticks = Object.entries(def.ticks).map(([id, ps]) => `${id} = ${ps!.join('..')}`).join('; ');
     const curves = new Set(def.parts.filter((p) => p.kind === 'curve').map((p) => p.id));
     const points = def.points.map((p) => `${p.id} (${p.on} ${curves.has(p.at) || p.at === 'other' ? '×' : 'at'} ${p.at})`).join(', ');
-    const two = def.type === 'priceCeiling' || def.type === 'priceFloor' || def.type === 'quota' ? ' Two states: stage (below).' : def.type === 'monopoly' ? ' MC shapes, changes and their parts: MONOPOLY (below).' : '';
+    const two = def.type === 'priceCeiling' || def.type === 'priceFloor' || def.type === 'quota' ? ' Two states: stage (below).' : def.type === 'monopoly' ? ' MC shapes, changes and their parts: MONOPOLY (below).' : def.type === 'ppfTrade' ? ' Its numbers and parts: TRADE (below).' : '';
     return [`- ${def.type}: ${def.when}.${two}`, `  parts: ${parts}.`, `  regions: ${regions}.`, areas ? `  areas: ${areas}.` : '', `  ticks: ${ticks}.`, `  points: ${points}.`].filter(Boolean).join('\n');
   }).join('\n');
 }
@@ -103,15 +109,15 @@ DECIDE
 - kind "none": the question needs no figure (a pure definition, a calculation with no graph). Say why in "reason".
 - placement "question": the figure is printed with the question and the students read it (an MCQ's diagram, a data stimulus). Draw only what the question gives. Never draw what the student is asked to work out.
 - placement "answer": the question asks the student to draw ("with the aid of a diagram", "illustrate"). Draw the model answer the marking scheme rewards: every point it says to indicate, labelled as it names them.
-- kind "scene": a typed market diagram the editor draws exactly (below): consumer and producer surplus, a per-unit tax, a per-unit subsidy, a per-unit tax or subsidy raised, a price ceiling, a price floor or minimum wage, a quota (one state, or two states: the control lowered or raised, or demand or supply shifting under it), an externality, a cost rise and total social surplus, a tariff, a monopoly firm (D, MR, MC; a change in MC or a lump-sum tax). ALWAYS use a scene when one draws the figure, and for every question about areas (surplus, deadweight loss, tax revenue, burdens, benefits). A control figure no scene draws (a vertical supply with a fixed price, three or more control prices, a quota with a supply shift) is kind "curves" with levels.
+- kind "scene": a typed market diagram the editor draws exactly (below): consumer and producer surplus, a per-unit tax, a per-unit subsidy, a per-unit tax or subsidy raised, a price ceiling, a price floor or minimum wage, a quota (one state, or two states: the control lowered or raised, or demand or supply shifting under it), an externality, a cost rise and total social surplus, a tariff, a monopoly firm (D, MR, MC; a change in MC or a lump-sum tax), PPF / CPF trade (one or two countries' PPFs with numbers, the world price, CPF, production and consumption points, export and import brackets, growth). ALWAYS use a scene when one draws the figure, and for every question about areas (surplus, deadweight loss, tax revenue, burdens, benefits). A control figure no scene draws (a vertical supply with a fixed price, three or more control prices, a quota with a supply shift) is kind "curves" with levels.
 - kind "curves": axes and straight lines you compose (below). Use it for demand and supply shifts, a movement along a curve, elasticity and revenue, fixed supply, AD-AS, the money market, an import quota at a world price, the PPC and plain graphs such as tax schedules: anything no scene draws (recipes below).
 - kind "chart": a bar, line or pie chart of figures from the question (a table as a graph, shares of a whole). chart: {type bar | line | pie, categories, series, yTitle, xTitle}; a pie has one series, its values the shares and the categories the slices' names.
 - kind "flow": boxes joined by arrows (below): a value-added chain of firms with $ on the arrows (GDP, value added), the circular flow of income, the production stages (primary, secondary, tertiary). Never template "flow".
 - kind "lorenz": Lorenz curves (below). ALWAYS for a Lorenz curve or income distribution figure.
-- kind "template": one of the editor's ready-made diagrams, by id, when neither a scene nor kind "curves" can draw it (an import quota drawn as a kinked supply, PPF with trade). Never a data template (flow, pie, charts): those draw another question's content. Its labels are fixed: use it only when the question names no label the template lacks. Set title/xAxis/yAxis only to rename them, else leave them "".
+- kind "template": one of the editor's ready-made diagrams, by id, when neither a scene nor kind "curves" can draw it (an import quota drawn as a kinked supply). Never a data template (flow, pie, charts): those draw another question's content. Its labels are fixed: use it only when the question names no label the template lacks. Set title/xAxis/yAxis only to rename them, else leave them "".
 
 KIND "scene"
-- scene: {type, market, externality, demand, supply, size, labels, areas, points, ask, gap, stage, binds, mc, given}. The editor draws the curves, the shift, the price line or quota, the ticks and the regions from the type: you only choose.
+- scene: {type, market, externality, demand, supply, size, labels, areas, points, ask, gap, stage, binds, mc, given, trade}. The editor draws the curves, the shift, the price line or quota, the ticks and the regions from the type: you only choose.
 - market: goods | labour (wage rate and labour: a minimum wage). externality (type externality only): negativeProduction (MSC above MPC) | positiveProduction (MSC below MPC) | negativeConsumption (MSB below MPB) | positiveConsumption (MSB above MPB); else "none".
 - demand, supply: normal | steep (inelastic) | flat (elastic), as the question says. size: small | normal | large (the tax, subsidy, external effect or control).
 - labels: [{part, label}]: the label the question and its key use for each part, exactly ({"part":"Pb","label":"P_1"}): a short symbol (S_2), never words in brackets ("S_2 (with tax t_2)": the stem says what a curve is). A part not listed keeps its default below; "" prints no tick. Every label the stem, the options or the key name must be on a part.
@@ -119,7 +125,7 @@ KIND "scene"
 - points: [{point, label}]: lettered corners, when the question names areas by their corners ("area efj", "fgmj") or names a point ("point e"). Put each letter the stem, the options AND the explanation use on the scene point where the explanation's geometry puts it ("D×S1" = where D meets S1; "S0 at Qt1" = on S0 directly below or above that crossing), one letter per point, and no letter the question does not use. Then areas is [] (no region letters) and the keyed option's corners must be exactly the corners of what "ask" names. Example (tax raised from t1 to t2, key "the deadweight loss increases by area fgmj", explanation "with t1 it is efj; with t2 egm"): taxChange, ask dwlChange, points e0 e, e1 f, e2 g, s0AtQt1 j, s0AtQt2 m.
 - ask: what the question asks, one of the scene's areas, regions or ticks (below), or "none". The editor works the answer out from your letters and labels: it must be the keyed option.
 - gap: true draws the shortage or surplus bracket at a price control (a model answer only); with two states, one bracket per state the control binds in.
-- stage, binds: "none", "both" except for the two-state control figures and the monopoly below. mc: "flat" except for a monopoly. given: [] except for a figure the student completes (below).
+- stage, binds: "none", "both" except for the two-state control figures and the monopoly below. mc: "flat" except for a monopoly. given: [] except for a figure the student completes (below). trade: tot 0 and countries [] except for type ppfTrade.
 - A question about areas is answered by the letters: work out which regions make up what it asks (e.g. a tax's deadweight loss = dwlBuyers + dwlSellers), letter them as the keyed option says, and letter the other regions the options name.
 
 SCENES
@@ -142,8 +148,15 @@ MONOPOLY (type monopoly)
 - regions, one state: cs, ps (the monopoly's surplus), dwl. With MC2: dwlKept (the loss in both states), dwlAdded (only after), dwlRemoved (only before), those the stage has. areas: dwlBefore, dwlAfter (= dwl), dwlChange. A model answer that shades the original and the new deadweight loss gives areas dwlBefore and dwlAfter in words (labels "" print the standard words, or "DWL_1", "DWL_2"): they may overlap; letters never do.
 - ticks: priceBefore, quantityBefore, priceAfter, quantityAfter, efficientQuantity (after), misallocation (the monopoly to the efficient output). A statement question ("the output will increase", "the deadweight loss will decrease") has ask "none": the editor works out each statement from both states, and the keyed one must hold for any slopes.
 
+TRADE (type ppfTrade, Elective 2)
+- trade: {tot, totLine, grow, xGood, yGood, countries}. Give only the question's numbers; the editor works out the rest: which good each country specialises in (straight PPF: completely, in the good whose opportunity cost is below the world price; concave: to where the PPF's slope equals the world price), the CPF through that point at the world price, the consumption point, exports, imports, the gain, and prints the numbers on the axes.
+- tot: the world price (terms of trade) as Y per 1 X: "1X = 2Y" is 2, "1Y = 0.5X" is 2. totLine: true draws a dotted world price line apart from the CPF (the question's AB, TT', "the dotted line"). grow: the first country's PPF after growth, both intercepts times this ("labour doubles" = 2; a technology advance in both goods, e.g. 1.3); 0 = none. xGood, yGood: the goods' names on the axes ({"en":"Clothing","zh":"衣服"}); "" = Good X / Good Y (X across, Y up).
+- countries: one or two, {name, shape, x, y, noTradeX, noTradeCost, trade, consume, amount, brackets, gain}. name: "A", "B" (subscripts PPF_A, CPF_A, P_A), "" for one country. shape: linear (constant opportunity cost) | concave. x, y: the PPF's intercepts ("20X or 30Y": x 20, y 30). The no-trade point: noTradeX (its X; on a straight PPF its Y follows), or on a concave PPF noTradeCost (the opportunity cost of X there, "E0 (1X = 1.5Y)": 1.5); 0 = none. trade: false = only the PPF (a country the question does not trade). consume: none | sameX (the same X as before trade) | equal (equal amounts of X and Y) | x (amount = the X it consumes, "always consumes 10X") | tradedX (amount = the X it exports or imports, "4X are traded"). brackets: the export and import brackets. gain: an arrow from the consumption point down to the PPF (the gain from trade at the same X).
+- parts (labels as the question names them): PPF, CPF, E (no-trade point), P (production with trade), C (consumption with trade), X (exports bracket), M (imports bracket), G (the gain arrow), TOT; the second country's end in 2 (PPF2, CPF2, E2, P2, C2, X2, M2); after growth PPFnew, CPFnew, Pnew. Numbers are parts too (PPFx, PPFy = the intercepts; CPFx, CPFy; Ex, Ey; Cx, Cy): label one "" to leave it off. Default names: PPF, CPF, E, P, C; with names PPF_A, P_A …; with growth PPF_0 → PPF_1.
+- ask: exports | imports | gainFromTrade (numbers of the first country, for an MCQ whose options are numbers) | none.
+
 A FIGURE THE STUDENT COMPLETES (Paper 2: "With the aid of Figure 3", "In Figure 2, indicate …")
-- given: the parts the printed figure gives, by part id (["D"], ["D","MR","MC"]); placement "question". Draw the whole model answer on it (every part, tick and area the marking scheme rewards): what given does not list is the answer layer, printed only in the marking scheme. given [] = one figure as before.
+- given: the parts the printed figure gives, by part id (["D"], ["D","MR","MC"], ["PPF","E","PPF2"]); a curve or point brings its own numbers; placement "question". Draw the whole model answer on it (every part, tick and area the marking scheme rewards): what given does not list is the answer layer, printed only in the marking scheme. given [] = one figure as before.
 
 KIND "flow"
 - flow: {layout, nodes, arrows, key}. nodes: {id, label, col, row, boxed}: col 0, 1, 2… left to right; row orders a column top to bottom. boxed false = bare words (a note such as "increase in inventory $50" under the box it comes from).

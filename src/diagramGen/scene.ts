@@ -7,6 +7,8 @@ import type { BiText } from '@/model/types';
 import { shiftArrowPlace, type Compiled } from './compile';
 import { monopolyError } from './monopoly';
 import { draftMonopoly, MONO_LAYOUTS } from './monopolyDraft';
+import { tradeNumbers, type TradeNumbers } from './trade';
+import { draftTrade } from './tradeDraft';
 import { placePointLabels } from './pointLabels';
 import { defaultLabel, regionsOf, type SceneDef, type ScenePointDef } from './sceneCatalogue';
 import { grows, isPlan, sceneDefOf, stageAliases, stageParts, stagePlan, stageRegionIds, type StagePlan } from './stageCatalogue';
@@ -38,6 +40,8 @@ export interface SceneBuilt extends Compiled {
   regionPolygons: Map<string, Array<{ x: number; y: number }>>;
   /** A two-state control (k-0587): both states' market, for the statement check. */
   stage?: StageFacts;
+  /** A trade figure (k-0589): its numbers, for the key and the words. */
+  trade?: TradeNumbers;
 }
 
 const DEMAND_SLOPE: Record<Slope, number> = { normal: -1, steep: -2.2, flat: -0.42 };
@@ -475,8 +479,9 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
       };
     }
     case 'monopoly':
-      // Drawn by `monopolyDraft.ts` (k-0589): compileScene calls it with its own layouts.
-      throw new Error('monopoly is drafted by draftMonopoly');
+    case 'ppfTrade':
+      // Drawn by `monopolyDraft.ts` and `tradeDraft.ts` (k-0589): compileScene calls them.
+      throw new Error(`${scene.type} has its own drafter`);
     case 'none':
       throw new Error('no scene');
   }
@@ -921,6 +926,14 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     error('scene.stage', monoError);
     return empty();
   }
+  if (scene.type === 'ppfTrade') {
+    const problems = scene.trade ? tradeNumbers(scene.trade).errors : ['A trade figure needs scene.trade: the world price and each country\'s PPF.'];
+    if ((scene.stage ?? 'none') !== 'none') problems.push(`A trade figure takes stage "none" (growth is trade.grow), not "${scene.stage}".`);
+    if (problems.length) {
+      for (const p of problems) error('scene.trade', p);
+      return empty();
+    }
+  }
   // A part this figure does not draw: a label on one that sits on another part moves there; an empty one is nothing to print (k-0587).
   const aliases = isPlan(plan) ? stageAliases(plan) : {};
   const sceneLabelsIn: typeof scene.labels = [];
@@ -950,7 +963,12 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
   let built: Draft | null = null;
   let fallback: Draft | null = null;
   const sceneNow = scene;
-  const tries: Array<() => Draft> = scene.type === 'monopoly' ? MONO_LAYOUTS.map((l) => () => draftMonopoly(sceneNow, name, tick, l)) : LAYOUTS.map((l) => () => draft(sceneNow, name, tick, l));
+  const tries: Array<() => Draft> =
+    scene.type === 'monopoly'
+      ? MONO_LAYOUTS.map((l) => () => draftMonopoly(sceneNow, name, tick, l))
+      : scene.type === 'ppfTrade'
+        ? [() => draftTrade(sceneNow, name, tick)]
+        : LAYOUTS.map((l) => () => draft(sceneNow, name, tick, l));
   for (const attempt of tries) {
     try {
       const candidate = attempt();
@@ -1128,6 +1146,8 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     const largest = (own.length ? own : sized).reduce((a, b) => (b.size > a.size ? b : a));
     if (plan.label) largest.area.label = plan.label;
   }
+  // A trade figure's axes read in the goods' units (k-0589).
+  if (built.axisMax) diagram = { ...diagram, x: { ...diagram.x, max: Math.round(built.axisMax.x * 1000) / 1000 }, y: { ...diagram.y, max: Math.round(built.axisMax.y * 1000) / 1000 } };
   // `finish` copied the areas: write the labels into the diagram's own.
   const planAreas = plans.flatMap((p) => p.areas);
   diagram = { ...diagram, areas: (diagram.areas ?? []).map((a) => planAreas.find((r) => r.id === a.id) ?? a) };
@@ -1137,10 +1157,14 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     const unknown = given.filter((g) => !def.parts.some((p) => p.id === g) && !def.regions.some((r) => r.id === g) && !def.measures[g as keyof SceneDef['measures']]);
     if (unknown.length) error('scene.given', `"given" names ${unknown.join(', ')}, which scene ${def.type} does not have. Its parts are ${def.parts.map((p) => p.id).join(', ')}.`);
     if (spec.placement !== 'question') error('scene.given', 'A figure the student completes ("given" listed) is printed with the question: set placement "question". The model answer is drawn on it as its answer layer.');
-    diagram = answerLayerOf(diagram, built, new Set(given), plans.filter((p) => !given.includes(p.id)).flatMap((p) => p.areas.map((a) => a.id)), lettered);
+    // A number on the axis goes with the curve or point it belongs to (a given PPF prints its intercepts).
+    const expanded = new Set(given);
+    for (const p of def.parts) if (p.of && expanded.has(p.of)) expanded.add(p.id);
+    diagram = answerLayerOf(diagram, built, expanded, plans.filter((p) => !given.includes(p.id)).flatMap((p) => p.areas.map((a) => a.id)), lettered);
   }
   // Each letter beside its own point, clear of every line, arrow, dot and label.
-  if (lettered.length) diagram = placePointLabels(diagram, new Set(letteredIds.values()));
+  const toPlace = new Set([...letteredIds.values(), ...(built.named ?? [])]);
+  if (toPlace.size) diagram = placePointLabels(diagram, toPlace);
 
   // Every region's outline, drawn or not: a corner-named area is checked against them.
   const regionPolygons = new Map<string, Array<{ x: number; y: number }>>();
@@ -1149,7 +1173,7 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     if (poly) regionPolygons.set(id, poly);
   }
 
-  return { diagram, issues, curveIds, roles, levels, regionAreas, regionLabels, partLabels: labels, pointLabels, pointPlaces, regionPolygons, ...(built.stage ? { stage: built.stage } : {}) };
+  return { diagram, issues, curveIds, roles, levels, regionAreas, regionLabels, partLabels: labels, pointLabels, pointPlaces, regionPolygons, ...(built.stage ? { stage: built.stage } : {}), ...(built.trade ? { trade: built.trade } : {}) };
 }
 
 /**

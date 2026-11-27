@@ -316,7 +316,7 @@ export interface SpecLorenz {
  * works the answer out from the drawing. The catalogue (parts, regions, measures) is
  * `diagramGen/sceneCatalogue.ts`.
  */
-export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'taxChange', 'unitSubsidy', 'subsidyChange', 'priceCeiling', 'ceilingDemandRise', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff', 'monopoly'] as const;
+export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'taxChange', 'unitSubsidy', 'subsidyChange', 'priceCeiling', 'ceilingDemandRise', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff', 'monopoly', 'ppfTrade'] as const;
 export type SceneType = (typeof SCENE_TYPES)[number];
 
 /** goods: Price / Quantity; labour: Wage rate / Quantity of labour, ticks W instead of P. */
@@ -408,6 +408,10 @@ export const SCENE_ASKS = [
   'importsBefore',
   'importsAfter',
   'domesticOutput',
+  // k-0589: PPF / CPF trade (numbers of the first country)
+  'exports',
+  'imports',
+  'gainFromTrade',
 ] as const;
 export type SceneAsk = (typeof SCENE_ASKS)[number];
 
@@ -464,6 +468,47 @@ export interface SpecScene {
    * marking scheme only). [] / absent = one layer, as before.
    */
   given?: string[];
+  /** k-0589, type ppfTrade only: the numbers of a PPF / CPF trade figure. */
+  trade?: SpecTrade;
+}
+
+/**
+ * One country of a PPF / CPF trade figure (k-0589). The model gives the question's numbers; the
+ * code works out production with trade, the CPF, consumption and the volumes (`trade.ts`).
+ */
+export const TRADE_CONSUME = ['none', 'sameX', 'equal', 'x', 'tradedX'] as const;
+export type TradeConsume = (typeof TRADE_CONSUME)[number];
+export interface SpecTradeCountry {
+  /** "A", "B" (subscripts on PPF_A, CPF_A, P_A …); "" for a figure of one country. */
+  name: string;
+  shape: 'linear' | 'concave';
+  /** The PPF's intercepts, in units of the goods: all X (x) or all Y (y). */
+  x: number;
+  y: number;
+  /** The no-trade point: its X (0 = none), or on a concave PPF its opportunity cost of X in Y (0 = by noTradeX). */
+  noTradeX: number;
+  noTradeCost: number;
+  /** Draw production with trade and the CPF. */
+  trade: boolean;
+  /** Consumption with trade: none | sameX (as before trade) | equal (X = Y) | x (amount of X) | tradedX (amount of X exported or imported). */
+  consume: TradeConsume;
+  amount: number;
+  /** Export and import brackets on the axes. */
+  brackets: boolean;
+  /** The gain from trade: an arrow from the consumption point down to the PPF. */
+  gain: boolean;
+}
+export interface SpecTrade {
+  /** The world price (terms of trade) as Y per 1 X: "1X = 2Y" is 2. */
+  tot: number;
+  /** A dotted world price line drawn apart from the CPF (the question's AB, TT'). */
+  totLine: boolean;
+  /** The first country's PPF after growth, both intercepts times this (2 = doubled resources); 0 or 1 = none. */
+  grow: number;
+  /** The goods' names, the axis titles; "" = Good X / Good Y. */
+  xGood: SpecText;
+  yGood: SpecText;
+  countries: SpecTradeCountry[];
 }
 export type SpecKind = (typeof SPEC_KINDS)[number];
 

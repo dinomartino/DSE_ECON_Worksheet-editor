@@ -13,6 +13,15 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question studio draws trade with production possibility frontiers, from the question's own
+  numbers.** One or two countries' frontiers, straight or bowed out, with the numbers on the axes;
+  the world price, the production point with trade (complete specialisation on a straight frontier,
+  where a bowed one is as steep as the world price), the consumption possibility frontier, the
+  consumption point, and brackets for exports and imports, as in HKDSE 2013–2025 Paper 2. It works
+  out which good each country exports and every number that follows from the question's, so a
+  frontier never has the wrong slope. A figure the student completes prints only what the question
+  gives, with the model answer in red for the marking scheme.
+  <!-- zh: **擬題工作室能按題目自己的數字繪畫生產可能曲線與貿易。** 一個或兩個國家的生產可能曲線（直線或向外凸），軸上標出數字；國際價格、貿易後的生產點（直線曲線完全專門化，向外凸的曲線在斜率等於國際價格之處）、消費可能曲線、消費點，以及出口量和進口量的括號，如 HKDSE 2013 至 2025 年 Paper 2。它會計出每個國家出口哪種物品及由題目數字推出的每個數值，曲線斜率不會出錯。若學生要在圖上作答，題目只印出題目提供的部分，模範答案則以紅色畫在同一圖上，供評卷參考使用。 -->
 - **The Question studio draws the monopoly firm with the question's own labels.** Demand, marginal
   revenue worked out from demand (same starting point, twice as steep, and it stays that way when
   you drag demand), and a marginal cost that is constant, rising, zero or U-shaped, with the

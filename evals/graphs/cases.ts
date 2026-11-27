@@ -325,6 +325,34 @@ const MONOPOLY_CASES: GraphCase[] = [
   },
 ];
 
+/** k-0589: PPF / CPF trade scenes, numbers worked out from the question's. */
+const TRADE_CASES: GraphCase[] = [
+  {
+    id: 'c-ppf-imports',
+    type: 'Linear PPF and CPF, imports read from the figure (like DSE2019 P2 Q14 as an MCQ)',
+    family: 'other',
+    stem: 'The diagram shows the production possibility frontier (PPF) of Country A, which can produce 20X or 30Y. The world price is 1X = 2Y. After trade, A consumes 10 units of X. How many units of Y does A import?',
+    options: ['5', '10', '15', '20'],
+    answer: 3,
+    explanation: 'A gives up 1.5Y for each X at home, less than the world price of 2Y, so it specialises completely in X and produces 20X. Its CPF runs from 20X to 40Y. Consuming 10X, it exports 10X and receives 20Y: it imports 20 units of Y (D).',
+    figure: 'Axes Good X and Good Y. PPF_A from 30 on the Y axis to 20 on the X axis. Show only the PPF and its numbers: the student works out the rest. Key: D.',
+    want: 'ppfTrade one country, linear 20X/30Y, tot 2; the figure printed shows only PPF_A with 20 and 30 (CPF, C may be an answer layer or absent)',
+    labels: ['PPF_A'],
+  },
+  {
+    id: 'c-ppf-concave-exports',
+    type: 'Concave PPF, world price flatter than the PPF at the no-trade point: which good is exported',
+    family: 'other',
+    stem: 'The diagram shows the concave PPF of Country K with its no-trade point E. The world price line TT\' is flatter than the PPF at E. After trade, Country K will',
+    options: ['export X and import Y.', 'export Y and import X.', 'produce at E and not trade.', 'produce more of both goods.'],
+    answer: 1,
+    explanation: 'At E the opportunity cost of X at home is higher than the world price, so K has a comparative advantage in Y. It moves along the PPF towards more Y, to where the PPF is as flat as TT\', and exports Y for imported X (B).',
+    figure: 'Axes Good X and Good Y. A concave PPF with the no-trade point E (opportunity cost 2Y per X) and a dotted world price line TT\' with slope 1 (flatter). Key: B.',
+    want: 'ppfTrade concave, noTradeCost 2, tot 1, totLine TT\'; P up-left of E; no brackets needed',
+    labels: ['E', "TT'"],
+  },
+];
+
 const STAGE_CASES: GraphCase[] = [
   {
     id: 'b-ceiling-lowered',
@@ -687,4 +715,5 @@ export const GRAPH_CASES: GraphCase[] = [
   ...AUDIT_CASES,
   ...STAGE_CASES,
   ...MONOPOLY_CASES,
+  ...TRADE_CASES,
 ];

@@ -28,7 +28,8 @@ function pointInPolygon(p: { x: number; y: number }, poly: Array<{ x: number; y:
 
 describe('every scene draws, for every slope and size (k-0577)', () => {
   const variants: Array<Partial<SpecScene>> = [];
-  for (const def of SCENES) {
+  // A trade figure has no slopes or sizes: it draws from its numbers (k-0589: trade.test.ts).
+  for (const def of SCENES.filter((d) => d.type !== 'ppfTrade')) {
     const kinds = def.type === 'externality' ? EXTERNALITIES.filter((e) => e !== 'none') : ['none' as const];
     for (const externality of kinds) for (const demand of SLOPES) for (const supply of SLOPES) for (const size of SIZES) variants.push({ type: def.type, externality, demand, supply, size });
   }

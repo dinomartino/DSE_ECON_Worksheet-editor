@@ -5,6 +5,7 @@ import type { SceneBuilt } from './scene';
 import type { SceneDef } from './sceneCatalogue';
 import { sceneDefOf } from './stageCatalogue';
 import { plainOf } from './text';
+import { tradeKey, tradeWords } from './trade';
 import type { DiagramIssue, DiagramSpec, SceneAsk, SolvedKey, SpecScene } from './types';
 
 /**
@@ -307,6 +308,8 @@ export function checkSceneKey(spec: DiagramSpec, built: SceneBuilt, mcq: McqWord
   if (!def || scene.ask === 'none') return { issues, solved: null };
   // A question that names its areas by corners and no option by region letters: the corner check answered it.
   if (cornersUsed && isArea(def, scene.ask) && !mcq.options.some((o) => optionLetters(o))) return { issues, solved: null };
+  // A trade figure's asks are numbers (k-0589).
+  if (scene.type === 'ppfTrade') return built.trade ? tradeKey(scene, built.trade, mcq) : { issues, solved: null };
   const error = (code: string, text: string) => issues.push({ level: 'error', code, text });
   const keyed = mcq.options[mcq.answer] ?? '';
 
@@ -410,10 +413,12 @@ export function checkSceneWords(spec: DiagramSpec, stem: string, key: string): D
   for (const w of WORDS) {
     if (w.re.test(clean(stem)) && !w.ok(scene)) issues.push({ level: 'error', code: 'scene.policy', text: `The question has ${w.says}, but the figure is scene ${scene.type}${scene.type === 'externality' ? ` (${scene.externality})` : ''}.` });
   }
-  issues.push(...monopolyWords(scene, clean(stem)));
+  issues.push(...monopolyWords(scene, clean(stem)), ...tradeWords(scene, stem));
+  if (scene.type !== 'ppfTrade' && /production\s+possibilit|consumption\s+possibilit|\bPPF\b|\bPPC\b|\bCPF\b|生產可能|消費可能/i.test(stem))
+    issues.push({ level: 'look', code: 'scene.policy', text: `The question is about production possibilities, but the figure is scene ${scene.type}. PPF / CPF trade is scene ppfTrade; a single PPC is kind "curves".` });
   for (const what of ['demand', 'supply'] as const) {
     // A monopoly's `supply` is its MC's slope, which the question rarely calls elastic.
-    if (scene.type === 'monopoly' && what === 'supply') continue;
+    if ((scene.type === 'monopoly' && what === 'supply') || scene.type === 'ppfTrade') continue;
     const slope = scene[what];
     if (INELASTIC(what).test(text) && slope !== 'steep') issues.push({ level: 'error', code: 'scene.elasticity', text: `The question says ${what} is inelastic: set ${what} "steep".` });
     else if (ELASTIC(what).test(text) && !INELASTIC(what).test(text) && slope !== 'flat') issues.push({ level: 'error', code: 'scene.elasticity', text: `The question says ${what} is elastic: set ${what} "flat".` });
@@ -480,6 +485,9 @@ export function sceneWords(spec: DiagramSpec, built: SceneBuilt, diagram: Diagra
     const shapes = regions.map((r) => fill(def.regions.find((k) => k.id === r)?.shape ?? r));
     lines.push(`Area ${l}: ${shapes.join(', together with ')}.`);
   }
+  // A trade figure's lettered points and brackets (k-0589).
+  for (const p of def.parts.filter((q) => q.kind === 'point' && built.partLabels.get(q.id))) lines.push(`Point ${label(p.id)}: ${fill(p.place)}.`);
+  for (const p of def.parts.filter((q) => q.kind === 'bracket')) lines.push(`A bracket ${fill(p.place)}.`);
   // Lettered corners (k-0577 round 2): where each sits, in the parts' printed names; the solver works out the areas.
   for (const [id, letter] of built.pointLabels) {
     const p = def.points.find((q) => q.id === id);

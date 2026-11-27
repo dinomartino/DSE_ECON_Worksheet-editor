@@ -1,4 +1,5 @@
 import { isMonopolyStage, monopolyDef } from './monopoly';
+import { tradeDef } from './trade';
 import { sceneDef, WORDS, type SceneDef, type ScenePartDef, type ScenePointDef, type SceneRegionDef } from './sceneCatalogue';
 import type { MonopolyStage, SceneAsk, SceneBinds, SceneStage, SpecScene, SpecText } from './types';
 
@@ -280,6 +281,7 @@ const STAGE_WHAT: Record<StagePlan['stage'], string> = {
 /** The catalogue entry for a scene: generated for a two-state control, the catalogue's own otherwise. */
 export function sceneDefOf(scene: SpecScene): SceneDef | undefined {
   if (scene.type === 'monopoly') return monopolyDef(scene);
+  if (scene.type === 'ppfTrade') return tradeDef(scene);
   const plan = stagePlan(scene);
   if (plan && 'error' in plan) return sceneDef(scene.type);
   return plan ? stageDef(scene, plan) : sceneDef(scene.type);

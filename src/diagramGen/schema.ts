@@ -19,10 +19,12 @@ import {
   SCENE_STAGES,
   SCENE_BINDS,
   MC_SHAPES,
+  TRADE_CONSUME,
   FLOW_ROUTES,
   type SpecFlow,
   LORENZ_INEQUALITY,
   type SpecLorenz,
+  type SpecTrade,
   type SpecScene,
   type DiagramIssue,
   type DiagramSpec,
@@ -134,6 +136,28 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
     binds: { type: 'string', enum: [...SCENE_BINDS] },
     mc: { type: 'string', enum: [...MC_SHAPES] },
     given: list(str),
+    trade: obj({
+      tot: { type: 'number' },
+      totLine: { type: 'boolean' },
+      grow: { type: 'number' },
+      xGood: TEXT,
+      yGood: TEXT,
+      countries: list(
+        obj({
+          name: str,
+          shape: { type: 'string', enum: ['linear', 'concave'] },
+          x: { type: 'number' },
+          y: { type: 'number' },
+          noTradeX: { type: 'number' },
+          noTradeCost: { type: 'number' },
+          trade: { type: 'boolean' },
+          consume: { type: 'string', enum: [...TRADE_CONSUME] },
+          amount: { type: 'number' },
+          brackets: { type: 'boolean' },
+          gain: { type: 'boolean' },
+        }),
+      ),
+    }),
   }),
   flow: obj({
     layout: { type: 'string', enum: ['columns', 'grid'] },
@@ -161,7 +185,11 @@ export const EDIT_SHAPE_HINT = DIAGRAM_SHAPE_HINT.replace('changeArrows, asks, c
 const EMPTY_TEXT: SpecText = { en: '', zh: '' };
 
 export function emptyScene(): SpecScene {
-  return { type: 'none', market: 'goods', externality: 'none', demand: 'normal', supply: 'normal', size: 'normal', labels: [], areas: [], points: [], ask: 'none', gap: false, stage: 'none', binds: 'both', mc: 'flat', given: [] };
+  return { type: 'none', market: 'goods', externality: 'none', demand: 'normal', supply: 'normal', size: 'normal', labels: [], areas: [], points: [], ask: 'none', gap: false, stage: 'none', binds: 'both', mc: 'flat', given: [], trade: emptyTrade() };
+}
+
+export function emptyTrade(): SpecTrade {
+  return { tot: 0, totLine: false, grow: 0, xGood: { ...EMPTY_TEXT }, yGood: { ...EMPTY_TEXT }, countries: [] };
 }
 
 export function emptyFlow(): SpecFlow {
@@ -360,6 +388,36 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
       binds: pick(c.binds, SCENE_BINDS, 'both', 'scene binds'),
       mc: pick(c.mc, MC_SHAPES, 'flat', 'scene mc'),
       given: arr(c.given).map((g) => s(g).trim()).filter(Boolean),
+      trade: tradeOf(c.trade),
+    };
+  }
+  function tradeOf(v: unknown): SpecTrade {
+    if (!isRecord(v)) return emptyTrade();
+    const n = (x: unknown) => {
+      const value = typeof x === 'number' ? x : Number(x);
+      return Number.isFinite(value) ? value : 0;
+    };
+    return {
+      tot: n(v.tot),
+      totLine: v.totLine === true,
+      grow: n(v.grow),
+      xGood: text(v.xGood),
+      yGood: text(v.yGood),
+      countries: arr(v.countries)
+        .filter(isRecord)
+        .map((c) => ({
+          name: s(c.name).trim(),
+          shape: pick(c.shape, ['linear', 'concave'] as const, 'linear', 'trade country shape'),
+          x: n(c.x),
+          y: n(c.y),
+          noTradeX: n(c.noTradeX),
+          noTradeCost: n(c.noTradeCost),
+          trade: c.trade !== false,
+          consume: pick(c.consume, TRADE_CONSUME, 'none', 'trade consume'),
+          amount: n(c.amount),
+          brackets: c.brackets === true,
+          gain: c.gain === true,
+        })),
     };
   }
   if (isRecord(raw.flow)) {
