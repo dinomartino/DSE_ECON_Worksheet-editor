@@ -23,6 +23,20 @@ a version heading is edited afterwards.
   same spot (two brackets, two points, two lines that look like one) or a stock example in place
   of the question's own data is fixed before you see it.
   <!-- zh: **擬題工作室能繪畫更多 HKDSE 圖表，亦不會再讓蓋住題目重點的圖表通過檢查。** 現在可按題目自己的標示繪畫貨幣市場（貨幣供應及貨幣需求線，交點以字母標示；或只有一條移動的貨幣需求曲線、沒有供應線）、同一曲線的兩個以字母標示的點、在世界價格以括號標示的進口配額、SRAS 移動至經濟回到 LRAS 的 AD–AS 圖、Y 與 Yf 之間的產出缺口括號、免稅額與上限各自改變的新舊稅制圖、圓形圖，以及每單位津貼由一個金額提高至另一金額並以角位字母標示的圖。若圖中兩樣東西畫在同一位置（兩個括號、兩個點、兩條看似一條的線），或以範例圖代替題目自己的數據，擬題工作室會在你看到前修正。 -->
+- **Draw the circular flow and the production-stage charts in the flow chart editor.** Arrows
+  can be dashed (money flows) and can loop over the top or underneath two boxes, the way HKDSE
+  2026 Paper 1 Q5 draws households and firms; a key explains the dashed and solid lines. A new
+  Grid layout lines rows up across columns, so primary production can sit above secondary and
+  tertiary production in a triangle (HKDSE 2014 Paper 1 Q10), and two arrows between the same
+  two boxes now run side by side instead of on top of each other. Insert → Diagram → Data figures
+  has both as ready-made charts: Circular flow and Production stages. A worksheet using them opens
+  read-only in older versions of Econ Studio, with a note to update.
+  <!-- zh: **在流程圖編輯器繪畫經濟活動的循環流程及生產層次圖。** 箭嘴可以是虛線（貨幣流程），亦可從兩個方框的上方或下方繞過，與 HKDSE 2026 年 Paper 1 第 5 題繪畫住戶與廠商的方式相同；圖例說明虛線及實線的意思。新的「格網」排列使各直欄的橫行對齊，一級生產可放在第二級及三級生產上方，排成三角形（HKDSE 2014 年 Paper 1 第 10 題）；同一對方框之間的兩個箭嘴現在並排顯示，不再重疊。插入 → 圖表 → 數據圖表提供兩款現成圖表：經濟活動的循環流程及生產層次。使用這些功能的工作紙在舊版 Econ Studio 中會以唯讀方式開啟，並提示更新。 -->
+- **The Question studio draws flow charts.** Questions on value added and GDP get the chain of
+  firms with the amounts on the arrows (HKDSE 2021 Paper 1 Q23), and questions on the circular
+  flow or the production stages get those charts, as ordinary flow charts you can edit. The
+  studio checks that every flow the question names (Flow X, E and F) is labelled on the chart.
+  <!-- zh: **擬題工作室能繪畫流程圖。** 關於增加價值及本地生產總值的題目會得到各廠商之間的生產鏈，箭嘴上標示金額（HKDSE 2021 年 Paper 1 第 23 題）；關於收入循環流程或生產層次的題目會得到相應的流程圖，全部都是可編輯的一般流程圖。擬題工作室會檢查題目提及的每個流量（流量 X、E 和 F）都已標示在圖上。 -->
 - **The Question studio draws Lorenz curves the way HKDSE prints them.** A question comparing two
   economies gets one square box per economy, titled as the stem names them; a question about a
   change gets both curves in one box, lettered by the curves, with the key beside the box. The

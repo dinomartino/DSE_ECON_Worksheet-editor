@@ -1931,6 +1931,20 @@ const FLOW_PAD = 12;
 /** Clearance between an arrow shaft and the label riding on it. */
 const FLOW_LABEL_GAP = 7;
 const FLOW_LINE_HEIGHT = FONT_SIZE * 1.15;
+/** Grid layout (k-0588): vertical gap between two rows — a diagonal arrow needs room. */
+const FLOW_GRID_ROW_GAP = 64;
+/** Two arrows joining the same two boxes run side by side this far apart (k-0588). */
+const FLOW_PAIR_GAP = 12;
+/** A routed loop's first lane clears the boxes by this much; each further lane by this. */
+const FLOW_LANE_FIRST = 20;
+const FLOW_LANE_GAP = 16;
+/** Columns a loop joins are at least this far apart, so the loops read as loops. */
+const FLOW_LOOP_GAP = 120;
+/** The dash of a dashed flow arrow (the circular flow's money flow). */
+const FLOW_DASH = '5 3.5';
+/** The key's sample arrow, and the gap before its words. */
+const FLOW_KEY_ARROW = 34;
+const FLOW_KEY_GAP = 6;
 
 export interface FlowBoxLayout {
   node: FlowNode;
@@ -1958,6 +1972,24 @@ export interface FlowArrowLayout {
   y2: number;
   label?: FlowLabelLayout;
   labelBelow?: FlowLabelLayout;
+  /**
+   * A routed arrow's corners, first point (x1, y1) to last (x2, y2) (k-0588). Absent on a
+   * straight shaft, which is the segment (x1, y1)–(x2, y2).
+   */
+  points?: Array<{ x: number; y: number }>;
+}
+
+/** One line of the money / real flow key: a sample arrow and its words (k-0588). */
+export interface FlowKeyRowLayout {
+  dashed: boolean;
+  lines: RichText[];
+  /** The sample arrow runs from x2 (tail) to x1 (head, pointing left), at y. */
+  x1: number;
+  x2: number;
+  y: number;
+  /** Where the words start (left-anchored), baseline of the first line. */
+  textX: number;
+  textY: number;
 }
 
 /**
@@ -1982,9 +2014,49 @@ function flowEdgePoint(
   return { x: cx + dx * t, y: cy + dy * t };
 }
 
+/**
+ * Where a ray from `origin` (inside the box) towards `toward` leaves the box. The
+ * centre-aimed `flowEdgePoint` is this ray from the centre; a side-by-side pair starts
+ * from a point beside it (k-0588).
+ */
+function flowExitPoint(
+  box: FlowBoxLayout,
+  origin: { x: number; y: number },
+  toward: { x: number; y: number },
+): { x: number; y: number } {
+  const dx = toward.x - origin.x;
+  const dy = toward.y - origin.y;
+  const tx = dx > 0 ? (box.x + box.w - origin.x) / dx : dx < 0 ? (box.x - origin.x) / dx : Infinity;
+  const ty = dy > 0 ? (box.y + box.h - origin.y) / dy : dy < 0 ? (box.y - origin.y) / dy : Infinity;
+  const t = Math.max(0, Math.min(tx, ty));
+  if (!Number.isFinite(t)) return origin;
+  return { x: origin.x + dx * t, y: origin.y + dy * t };
+}
+
+/** Distance from a point to a drawn arrow — its segment, or each leg of a routed one. */
+export function distToFlowArrow(p: { x: number; y: number }, seg: FlowArrowLayout): number {
+  const points = seg.points ?? [
+    { x: seg.x1, y: seg.y1 },
+    { x: seg.x2, y: seg.y2 },
+  ];
+  let best = Infinity;
+  for (let i = 1; i < points.length; i += 1) {
+    const a = points[i - 1];
+    const b = points[i];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lengthSq = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSq));
+    best = Math.min(best, Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)));
+  }
+  return best;
+}
+
 export interface FlowLayout {
   boxes: FlowBoxLayout[];
   arrows: FlowArrowLayout[];
+  /** The money / real flow key, when the chart has one with words (k-0588). */
+  key?: FlowKeyRowLayout[];
   /** Natural canvas size, title room included. */
   width: number;
   height: number;
@@ -2075,6 +2147,14 @@ function flowLayout(diagram: Diagram, flow: FlowChart, language: LanguageMode): 
     if (!from || !to) continue;
     const a = colIndex.get(from.node.col)!;
     const b = colIndex.get(to.node.col)!;
+    if (isRouted(arrow)) {
+      // A loop's words ride its lane over (or under) the boxes, not the gap; the gaps it
+      // spans only need room for the loops to read as loops.
+      for (let gap = Math.min(a, b); gap < Math.max(a, b); gap += 1) {
+        gaps[gap] = Math.max(gaps[gap], FLOW_LOOP_GAP);
+      }
+      continue;
+    }
     if (Math.abs(a - b) !== 1) continue;
     const width = arrowLabelWidth(arrow);
     if (width === 0) continue;
@@ -2091,7 +2171,45 @@ function flowLayout(diagram: Diagram, flow: FlowChart, language: LanguageMode): 
   });
 
   const boxes: FlowBoxLayout[] = [];
-  columns.forEach((column, index) => {
+  const boxWidth = (box: (typeof measured)[number], index: number) =>
+    box.node.boxed !== false ? colBoxWidth[index] : box.w;
+  if (flow.layout === 'grid') {
+    // Grid (k-0588): `row` is shared by every column, compacted to its sorted order, and
+    // each box is centred in its cell — so the top stage of a triangle sits over the gap
+    // between the two below it. Two boxes given one cell stack inside it, in stored order,
+    // rather than overlap.
+    const rowValues = [...new Set(measured.map((box) => box.node.row))].sort((a, b) => a - b);
+    const rowIndex = new Map(rowValues.map((value, index) => [value, index]));
+    const cells = new Map<string, (typeof measured)[number][]>();
+    for (const box of measured) {
+      const key = `${colIndex.get(box.node.col)}:${rowIndex.get(box.node.row)}`;
+      const cell = cells.get(key) ?? [];
+      cell.push(box);
+      cells.set(key, cell);
+    }
+    const cellHeight = (cell: (typeof measured)[number][]) =>
+      cell.reduce((sum, box) => sum + box.h, 0) + (cell.length - 1) * FLOW_ROW_GAP;
+    const rowHeight = rowValues.map(() => 0);
+    for (const [key, cell] of cells) {
+      const r = Number(key.split(':')[1]);
+      rowHeight[r] = Math.max(rowHeight[r], cellHeight(cell));
+    }
+    const rowTop: number[] = [];
+    let top = 0;
+    for (const height of rowHeight) {
+      rowTop.push(top);
+      top += height + FLOW_GRID_ROW_GAP;
+    }
+    for (const [key, cell] of cells) {
+      const [c, r] = key.split(':').map(Number);
+      let y = rowTop[r] + (rowHeight[r] - cellHeight(cell)) / 2;
+      for (const box of cell) {
+        const w = boxWidth(box, c);
+        boxes.push({ ...box, w, x: colX[c] + (colWidth[c] - w) / 2, y });
+        y += box.h + FLOW_ROW_GAP;
+      }
+    }
+  } else columns.forEach((column, index) => {
     // Stack in row order, then centre the column on its **boxed** stages: an
     // annotation hangs off the stack without pulling the stages off the chart's
     // midline — the reference centres "Local supermarkets" between the two source
@@ -2122,9 +2240,32 @@ function flowLayout(diagram: Diagram, flow: FlowChart, language: LanguageMode): 
   const placedById = new Map<string, FlowBoxLayout>();
   for (const box of boxes) placedById.set(box.node.id, box);
 
+  // Two or more straight arrows joining the same two boxes run side by side (k-0588): the
+  // stage charts draw each link as a pair of one-way arrows (HKDSE 2014 P1 Q10), which
+  // drawn centre to centre lay exactly on top of each other. A lone arrow is offset 0
+  // and drawn exactly as before.
+  const pairKey = (arrow: FlowArrow): string | undefined =>
+    arrow.from && arrow.to && !isRouted(arrow) && placedById.has(arrow.from) && placedById.has(arrow.to)
+      ? [arrow.from, arrow.to].sort().join('\u0000')
+      : undefined;
+  const pairs = new Map<string, FlowArrow[]>();
+  for (const arrow of flow.arrows) {
+    const key = pairKey(arrow);
+    if (key) pairs.set(key, [...(pairs.get(key) ?? []), arrow]);
+  }
+
+  // Routed loops (k-0588) are resolved apart from the straight arrows: their lanes and
+  // attachment points depend on every other loop on the same side.
+  const routedLayouts = layoutFlowLoops(flow.arrows, placedById, boxes, language);
+
   // Resolve every arrow to a segment between box edges (or a stub off one edge).
   const arrows: FlowArrowLayout[] = [];
   for (const arrow of flow.arrows) {
+    const routed = routedLayouts.get(arrow.id);
+    if (routed) {
+      arrows.push(routed);
+      continue;
+    }
     const from = arrow.from ? placedById.get(arrow.from) : undefined;
     const to = arrow.to ? placedById.get(arrow.to) : undefined;
     if (!from && !to) continue;
@@ -2133,18 +2274,42 @@ function flowLayout(diagram: Diagram, flow: FlowChart, language: LanguageMode): 
     let y1: number;
     let x2: number;
     let y2: number;
+    // How far this shaft sits beside its pair's centre line, and that pair's half spread.
+    let shift = { x: 0, y: 0 };
+    let spread = 0;
     if (from && to) {
-      // Centre-aimed: each end sits where the line between the two centres crosses
-      // that box's own wall (§ `flowEdgePoint`) — two arrows into one stage enter its
-      // edge at different heights, as the reference charts draw them.
       const fromCentre = { x: from.x + from.w / 2, y: from.y + from.h / 2 };
       const toCentre = { x: to.x + to.w / 2, y: to.y + to.h / 2 };
-      const start = flowEdgePoint(from, toCentre);
-      const end = flowEdgePoint(to, fromCentre);
-      x1 = start.x;
-      y1 = start.y;
-      x2 = end.x;
-      y2 = end.y;
+      const group = pairs.get(pairKey(arrow)!) ?? [arrow];
+      const offset = (group.indexOf(arrow) - (group.length - 1) / 2) * FLOW_PAIR_GAP;
+      if (offset === 0) {
+        // Centre-aimed: each end sits where the line between the two centres crosses
+        // that box's own wall (§ `flowEdgePoint`) — two arrows into one stage enter its
+        // edge at different heights, as the reference charts draw them.
+        const start = flowEdgePoint(from, toCentre);
+        const end = flowEdgePoint(to, fromCentre);
+        x1 = start.x;
+        y1 = start.y;
+        x2 = end.x;
+        y2 = end.y;
+      } else {
+        // Beside the centre line, on a side fixed by the pair (not the arrow's own
+        // direction), so a pair of opposite arrows lands on opposite sides.
+        const [first] = [arrow.from!, arrow.to!].sort();
+        const a = first === arrow.from ? fromCentre : toCentre;
+        const b = first === arrow.from ? toCentre : fromCentre;
+        const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        shift = { x: (-(b.y - a.y) / length) * offset, y: ((b.x - a.x) / length) * offset };
+        const fromOrigin = { x: fromCentre.x + shift.x, y: fromCentre.y + shift.y };
+        const toOrigin = { x: toCentre.x + shift.x, y: toCentre.y + shift.y };
+        const start = flowExitPoint(from, fromOrigin, toOrigin);
+        const end = flowExitPoint(to, toOrigin, fromOrigin);
+        x1 = start.x;
+        y1 = start.y;
+        x2 = end.x;
+        y2 = end.y;
+      }
+      spread = ((group.length - 1) / 2) * FLOW_PAIR_GAP;
     } else {
       // A stub grows to fit its own labels — a fixed length put the wording on top
       // of the box it enters.
@@ -2165,9 +2330,10 @@ function flowLayout(diagram: Diagram, flow: FlowChart, language: LanguageMode): 
     }
 
     // Both label slots ride the shaft's midpoint, one per side. On a mostly-vertical
-    // shaft, `above` reads as the right side and `below` as the left.
-    const midX = (x1 + x2) / 2;
-    const midY = (y1 + y2) / 2;
+    // shaft, `above` reads as the right side and `below` as the left. A side-by-side
+    // pair's words sit outside the whole pair, measured from its centre line.
+    const midX = (x1 + x2) / 2 - shift.x;
+    const midY = (y1 + y2) / 2 - shift.y;
     const vertical = Math.abs(x2 - x1) < Math.abs(y2 - y1);
     const placeLabel = (
       text: BiText | undefined,
@@ -2178,7 +2344,7 @@ function flowLayout(diagram: Diagram, flow: FlowChart, language: LanguageMode): 
       if (vertical) {
         return {
           lines,
-          x: midX + (below ? -FLOW_LABEL_GAP : FLOW_LABEL_GAP),
+          x: midX + (below ? -(FLOW_LABEL_GAP + spread) : FLOW_LABEL_GAP + spread),
           y: midY - ((lines.length - 1) * FLOW_LINE_HEIGHT) / 2 + FONT_SIZE * 0.35,
           anchor: below ? 'end' : 'start',
         };
@@ -2188,7 +2354,7 @@ function flowLayout(diagram: Diagram, flow: FlowChart, language: LanguageMode): 
       // shaft ran through the end of every label on a branching arrow.
       const labelW = estimateWidth(lines, FONT_SIZE);
       const rise = Math.abs(y2 - y1) / Math.max(1, Math.abs(x2 - x1));
-      const gap = FLOW_LABEL_GAP + Math.min(rise * (labelW / 2), 18);
+      const gap = FLOW_LABEL_GAP + spread * Math.hypot(1, rise) + Math.min(rise * (labelW / 2), 18);
       // The last baseline clears the shaft above; the first hangs below it.
       return {
         lines,
@@ -2230,6 +2396,7 @@ function flowLayout(diagram: Diagram, flow: FlowChart, language: LanguageMode): 
       Math.max(arrow.x1, arrow.x2),
       Math.max(arrow.y1, arrow.y2),
     );
+    for (const point of arrow.points ?? []) include(point.x, point.y, point.x, point.y);
     for (const label of [arrow.label, arrow.labelBelow]) {
       if (!label) continue;
       const width = estimateWidth(label.lines, FONT_SIZE);
@@ -2248,6 +2415,18 @@ function flowLayout(diagram: Diagram, flow: FlowChart, language: LanguageMode): 
     }
   }
 
+  // The key sits over the chart's top-right corner, as HKDSE 2026 P1 Q5 prints it.
+  const key = flowKeyRows(flow, language, maxX, minY);
+  for (const row of key ?? []) {
+    include(row.x1, row.y - ARROWHEAD, row.x2, row.y + ARROWHEAD);
+    include(
+      row.textX,
+      row.textY - FONT_SIZE * 0.8,
+      row.textX + estimateWidth(row.lines, FONT_SIZE),
+      row.textY + (row.lines.length - 1) * FLOW_LINE_HEIGHT + FONT_SIZE * 0.25,
+    );
+  }
+
   // Shift into the canvas: padding all round, the title's room on its own side only.
   const dx = FLOW_PAD - minX;
   const dy = FLOW_PAD + (titleBelow ? 0 : room) - minY;
@@ -2260,6 +2439,7 @@ function flowLayout(diagram: Diagram, flow: FlowChart, language: LanguageMode): 
     arrow.x2 += dx;
     arrow.y1 += dy;
     arrow.y2 += dy;
+    if (arrow.points) arrow.points = arrow.points.map((point) => ({ x: point.x + dx, y: point.y + dy }));
     for (const label of [arrow.label, arrow.labelBelow]) {
       if (!label) continue;
       label.x += dx;
@@ -2270,14 +2450,196 @@ function flowLayout(diagram: Diagram, flow: FlowChart, language: LanguageMode): 
   const contentW = maxX - minX + 2 * FLOW_PAD;
   const titleW =
     room > 0 ? estimateWidth(pickSides(diagram.title, language), TITLE_SIZE) + 20 : 0;
+  for (const row of key ?? []) {
+    row.x1 += dx;
+    row.x2 += dx;
+    row.textX += dx;
+    row.y += dy;
+    row.textY += dy;
+  }
   return {
     boxes,
     arrows,
+    ...(key ? { key } : {}),
     width: Math.max(contentW, titleW),
     height: maxY - minY + 2 * FLOW_PAD + room,
     titleRoom: room,
     titleBelow,
   };
+}
+
+/** A loop over or under the chart (k-0588): both ends on boxes and a known side. */
+function isRouted(arrow: FlowArrow): boolean {
+  return Boolean(arrow.from && arrow.to && (arrow.route === 'above' || arrow.route === 'below'));
+}
+
+/**
+ * The money / real flow key's rows, right-aligned at `right`, stacked upwards from just
+ * above `top` (the chart's top edge so far). Undefined when no line has words.
+ */
+function flowKeyRows(
+  flow: FlowChart,
+  language: LanguageMode,
+  right: number,
+  top: number,
+): FlowKeyRowLayout[] | undefined {
+  const entries = (
+    [
+      [true, flow.key?.dashed],
+      [false, flow.key?.solid],
+    ] as const
+  )
+    .map(([dashed, text]) => ({ dashed, lines: pickSides(text, language) }))
+    .filter((entry) => entry.lines.length > 0);
+  if (entries.length === 0) return undefined;
+  const textW = Math.max(...entries.map((entry) => estimateWidth(entry.lines, FONT_SIZE)));
+  const left = right - textW - FLOW_KEY_GAP - FLOW_KEY_ARROW;
+  const heights = entries.map((entry) => Math.max(1, entry.lines.length) * FLOW_LINE_HEIGHT + 4);
+  let y = top - 12 - heights.reduce((sum, h) => sum + h, 0);
+  return entries.map((entry, index) => {
+    const rowTop = y;
+    y += heights[index];
+    const mid = rowTop + heights[index] / 2;
+    return {
+      dashed: entry.dashed,
+      lines: entry.lines,
+      x1: left,
+      x2: left + FLOW_KEY_ARROW,
+      y: mid,
+      textX: left + FLOW_KEY_ARROW + FLOW_KEY_GAP,
+      textY: mid - ((entry.lines.length - 1) * FLOW_LINE_HEIGHT) / 2 + FONT_SIZE * 0.35,
+    };
+  });
+}
+
+/**
+ * The routed loops (k-0588): right-angle arrows that leave the top (or bottom) of one box,
+ * run along a lane over (or under) the chart and come down into the other — the circular
+ * flow's money and real flows (HKDSE 2026 P1 Q5).
+ *
+ * Nothing is stored but the side. On each side, loops nest by span: the narrower span
+ * takes the inner lane, equal spans keep their stored order (first inside). Where several
+ * loops meet one box's edge, the attachment points spread along it so loops never cross:
+ * loops heading left attach from the left, innermost first; loops heading right attach
+ * from the right, innermost first — the outer loop leaves from the box's far side, as the
+ * paper draws it. Each lane sits clear of every box under its span and of the words
+ * riding the lane inside it.
+ */
+function layoutFlowLoops(
+  arrowsIn: FlowArrow[],
+  placedById: Map<string, FlowBoxLayout>,
+  boxes: FlowBoxLayout[],
+  language: LanguageMode,
+): Map<string, FlowArrowLayout> {
+  const out = new Map<string, FlowArrowLayout>();
+  const centreX = (box: FlowBoxLayout) => box.x + box.w / 2;
+  const textHeight = (text: BiText | undefined) => {
+    const lines = pickSides(text, language);
+    return lines.length === 0 ? 0 : lines.length * FLOW_LINE_HEIGHT + FLOW_LABEL_GAP;
+  };
+  for (const side of ['above', 'below'] as const) {
+    const loops = arrowsIn
+      .filter((arrow) => isRouted(arrow) && arrow.route === side)
+      .map((arrow, order) => ({ arrow, order, from: placedById.get(arrow.from!), to: placedById.get(arrow.to!) }))
+      .filter((loop): loop is typeof loop & { from: FlowBoxLayout; to: FlowBoxLayout } => !!loop.from && !!loop.to && loop.from !== loop.to)
+      .map((loop) => {
+        const a = centreX(loop.from);
+        const b = centreX(loop.to);
+        return { ...loop, left: Math.min(a, b), right: Math.max(a, b), lane: 0 };
+      });
+    if (loops.length === 0) continue;
+
+    // Lanes: narrowest span first; each sits outside every placed loop it overlaps.
+    const placed: typeof loops = [];
+    for (const loop of [...loops].sort((p, q) => p.right - p.left - (q.right - q.left) || p.order - q.order)) {
+      const under = placed.filter((other) => other.left <= loop.right && loop.left <= other.right);
+      loop.lane = under.length === 0 ? 0 : Math.max(...under.map((other) => other.lane)) + 1;
+      placed.push(loop);
+    }
+
+    // Lane offsets from the boxes, the same for every loop in one lane: room for the words
+    // on the inner side of this lane and on the outer side of the lane inside it.
+    const outer = (arrow: FlowArrow) => (side === 'above' ? arrow.label : arrow.labelBelow);
+    const inner = (arrow: FlowArrow) => (side === 'above' ? arrow.labelBelow : arrow.label);
+    const laneCount = Math.max(...loops.map((loop) => loop.lane)) + 1;
+    const laneOffset: number[] = [];
+    for (let lane = 0; lane < laneCount; lane += 1) {
+      const inLane = loops.filter((loop) => loop.lane === lane);
+      const innerRoom = Math.max(0, ...inLane.map((loop) => textHeight(inner(loop.arrow))));
+      if (lane === 0) laneOffset.push(FLOW_LANE_FIRST + innerRoom);
+      else {
+        const below = loops.filter((loop) => loop.lane === lane - 1);
+        const outerRoom = Math.max(0, ...below.map((loop) => textHeight(outer(loop.arrow))));
+        laneOffset.push(laneOffset[lane - 1] + FLOW_LANE_GAP + innerRoom + outerRoom);
+      }
+    }
+
+    // Attachment points along each box's top (or bottom) edge.
+    const attachX = new Map<string, number>();
+    const ends = new Map<FlowBoxLayout, Array<{ key: string; leftward: boolean; lane: number }>>();
+    for (const loop of loops) {
+      for (const end of ['from', 'to'] as const) {
+        const box = loop[end];
+        const other = end === 'from' ? loop.to : loop.from;
+        const list = ends.get(box) ?? [];
+        list.push({ key: `${loop.arrow.id}:${end}`, leftward: centreX(other) < centreX(box), lane: loop.lane });
+        ends.set(box, list);
+      }
+    }
+    for (const [box, list] of ends) {
+      const ordered = [
+        ...list.filter((end) => end.leftward).sort((p, q) => p.lane - q.lane),
+        ...list.filter((end) => !end.leftward).sort((p, q) => q.lane - p.lane),
+      ];
+      ordered.forEach((end, index) => attachX.set(end.key, box.x + (box.w * (index + 1)) / (ordered.length + 1)));
+    }
+
+    for (const loop of loops) {
+      const ax = attachX.get(`${loop.arrow.id}:from`)!;
+      const bx = attachX.get(`${loop.arrow.id}:to`)!;
+      const lo = Math.min(ax, bx);
+      const hi = Math.max(ax, bx);
+      // Clear of every box the lane passes over (or under), its own two included.
+      const crossed = boxes.filter((box) => box.x <= hi && lo <= box.x + box.w);
+      const edgeOf = (box: FlowBoxLayout) => (side === 'above' ? box.y : box.y + box.h);
+      const sign = side === 'above' ? -1 : 1;
+      const base =
+        side === 'above'
+          ? Math.min(...crossed.map((box) => box.y))
+          : Math.max(...crossed.map((box) => box.y + box.h));
+      const laneY = base + sign * laneOffset[loop.lane];
+      const points = [
+        { x: ax, y: edgeOf(loop.from) },
+        { x: ax, y: laneY },
+        { x: bx, y: laneY },
+        { x: bx, y: edgeOf(loop.to) },
+      ];
+      const midX = (ax + bx) / 2;
+      const place = (text: BiText | undefined, onTop: boolean): FlowLabelLayout | undefined => {
+        const lines = pickSides(text, language);
+        if (lines.length === 0) return undefined;
+        return {
+          lines,
+          x: midX,
+          y: onTop
+            ? laneY - FLOW_LABEL_GAP - (lines.length - 1) * FLOW_LINE_HEIGHT
+            : laneY + FLOW_LABEL_GAP + FONT_SIZE * 0.8,
+          anchor: 'middle',
+        };
+      };
+      out.set(loop.arrow.id, {
+        arrow: loop.arrow,
+        x1: points[0].x,
+        y1: points[0].y,
+        x2: points[3].x,
+        y2: points[3].y,
+        points,
+        label: place(loop.arrow.label, true),
+        labelBelow: place(loop.arrow.labelBelow, false),
+      });
+    }
+  }
+  return out;
 }
 
 /**
@@ -2353,15 +2715,31 @@ function flowSvg(diagram: Diagram, flow: FlowChart, options: DiagramSvgOptions):
   }
 
   const shaftStroke = `stroke="#000" stroke-width="1.6" fill="none"`;
+  // A dashed shaft (k-0588) keeps a solid head; the attribute is absent on a solid one,
+  // so a chart without dashes draws byte for byte as before.
+  const dash = (dashed: boolean | undefined) => (dashed ? ` stroke-dasharray="${FLOW_DASH}"` : '');
   for (const arrow of layout.arrows) {
+    const points = arrow.points ?? [
+      { x: arrow.x1, y: arrow.y1 },
+      { x: arrow.x2, y: arrow.y2 },
+    ];
+    const d = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${n(point.x)} ${n(point.y)}`).join(' ');
     parts.push(
-      `<path d="M ${n(arrow.x1)} ${n(arrow.y1)} L ${n(arrow.x2)} ${n(arrow.y2)}" ${shaftStroke}/>` +
-        arrowheadPath({ x: arrow.x1, y: arrow.y1 }, { x: arrow.x2, y: arrow.y2 }, ARROWHEAD),
+      `<path d="${d}" ${shaftStroke}${dash(arrow.arrow.dashed)}/>` +
+        arrowheadPath(points[points.length - 2], points[points.length - 1], ARROWHEAD),
     );
     for (const label of [arrow.label, arrow.labelBelow]) {
       if (!label) continue;
       parts.push(textAt(label.lines, label.x, label.y, { anchor: label.anchor }));
     }
+  }
+
+  for (const row of layout.key ?? []) {
+    parts.push(
+      `<path d="M ${n(row.x2)} ${n(row.y)} L ${n(row.x1)} ${n(row.y)}" ${shaftStroke}${dash(row.dashed)}/>` +
+        arrowheadPath({ x: row.x2, y: row.y }, { x: row.x1, y: row.y }, ARROWHEAD),
+      textAt(row.lines, row.textX, row.textY, { anchor: 'start' }),
+    );
   }
 
   // The caption, centred on the canvas and underlined like the axes diagrams' — a flow

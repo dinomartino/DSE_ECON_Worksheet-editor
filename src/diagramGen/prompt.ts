@@ -87,6 +87,7 @@ DECIDE
 - kind "scene": a typed market diagram the editor draws exactly (below): consumer and producer surplus, a per-unit tax, a per-unit subsidy, a per-unit tax or subsidy raised, a price ceiling, a price floor or minimum wage, a quota, an externality, a cost rise and total social surplus, a tariff. ALWAYS use a scene for these, and for every question about areas (surplus, deadweight loss, tax revenue, burdens, benefits); never compose them from curves.
 - kind "curves": axes and straight lines you compose (below). Use it for demand and supply shifts, a movement along a curve, elasticity and revenue, fixed supply, AD-AS, the money market, an import quota at a world price, the PPC and plain graphs such as tax schedules: anything no scene draws (recipes below).
 - kind "chart": a bar, line or pie chart of figures from the question (a table as a graph, shares of a whole). chart: {type bar | line | pie, categories, series, yTitle, xTitle}; a pie has one series, its values the shares and the categories the slices' names.
+- kind "flow": boxes joined by arrows (below): a value-added chain of firms with $ on the arrows (GDP, value added), the circular flow of income, the production stages (primary, secondary, tertiary). Never template "flow".
 - kind "lorenz": Lorenz curves (below). ALWAYS for a Lorenz curve or income distribution figure.
 - kind "template": one of the editor's ready-made diagrams, by id, when neither a scene nor kind "curves" can draw it (an import quota drawn as a kinked supply, monopoly, PPF with trade). Never a data template (flow, pie, charts): those draw another question's content. Its labels are fixed: use it only when the question names no label the template lacks. Set title/xAxis/yAxis only to rename them, else leave them "".
 
@@ -103,6 +104,13 @@ KIND "scene"
 
 SCENES
 ${'${SCENES}'}
+
+KIND "flow"
+- flow: {layout, nodes, arrows, key}. nodes: {id, label, col, row, boxed}: col 0, 1, 2… left to right; row orders a column top to bottom. boxed false = bare words (a note such as "increase in inventory $50" under the box it comes from).
+- arrows: {from, to, label, labelBelow, dashed, route}: from and to are node ids; "" = an open end (raw materials entering: from ""; exports leaving: to ""). label sits over the shaft, labelBelow under it: the $ amount and the goods ("$400", "Flour ($25 000)"), or the letter the question asks about ("Flow X", "E"). Draw only the transactions the question gives, never the value added it asks for.
+- The circular flow: households col 0, firms col 1, the same row; route "above" / "below" loops over / under the boxes (the first listed on a side runs inside); dashed true for money flows, false for real flows; key {dashed: "Money flow" 貨幣流程, solid: "Real flow" 實質流程}.
+- Production stages in a triangle: layout "grid" (row is shared by every column): primary col 1 row 0, secondary col 0 row 1, tertiary col 2 row 1; two arrows between two boxes are drawn side by side, one each way.
+- Otherwise layout "columns", every route "straight", dashed false, key words "".
 
 KIND "lorenz"
 - lorenz: {panels, equality, grid, axes}. panels: one box, or two side by side when the question compares economies ("Economy X and Economy Y": one box each, title "Lorenz curve of Economy X" / "X 經濟體的洛倫茲曲線"). A box's curves: {label, name, inequality, style}; one curve (label "") or two lettered "A", "B" as the question names them (before/after a policy), with name {en, zh} for the key beside the box ("pre-tax income"). inequality: slight | moderate | high | extreme (further from the line of equality = less even, larger Gini); two curves of a box differ. style: solid | dashed. equality: draw the line of equality (HKDSE often leaves it out). grid: the 20% grid with 0–100 numbers. axes: percent ("% of income") | cumulative ("Cumulative percentage of income"). Every economy or curve the question names is on the figure; the key's comparison must be true of it. For any other kind, lorenz.panels is [].
@@ -124,7 +132,7 @@ KIND "curves"
 - Recipes. Money market: axes "Quantity of money" / "Nominal interest rate" (貨幣數量 / 名義利率), M_s role vertical, M_d role demand, lettered crossings as points (name, dot); one money-demand curve shifting (M_a1 → M_a2) has no M_s. Two lettered points on ONE curve (a movement along it): two guide levels (kind fixed, label "" unless the question names the prices), side above and side below, and a point on the curve at each, named as the question names them; never two "on" marks (they land on one spot). Import quota at a world price with no kinked supply: D, S, a world level below equilibrium and a gap at it labelled "Import quota". A price fixed in the seller's currency while demand shifts (a revenue box): the price is a curve of role horizontal, not a level. AD-AS back at full employment: the shift goes through ["AD","LRAS"] (or ["AD1","LRAS"]); an economy starting at full employment has its LRAS through ["AD0","SRAS0"]. Tax schedules, old and new: two graph lines of one broken shape with a different start or cap.
 - Two things the question tells apart are never drawn on one spot (two lines alike, two points at one place, two brackets on one stretch): the editor rejects it.
 - ids are short and unique ("D", "S", "D1", "Pc"); every entry refers to ids defined before it.
-- For kind "scene", "curves", "shifts", "levels", "points", "gaps", "brackets", "shades", "marks" are []: the scene draws them. For any other kind, scene.type is "none".
+- For kind "scene", "curves", "shifts", "levels", "points", "gaps", "brackets", "shades", "marks" are []: the scene draws them. For any other kind, scene.type is "none". flow.nodes and flow.arrows are [] unless kind is "flow".
 
 A QUESTION'S FIGURE (placement "question")
 - Draw exactly what the question and its options name: every label in the stem or an option (Q1, Q2, Q3, Q4, P1, S1, S2, D1, area A, point B) is on the figure, and nothing the student is asked to find is said in words on it.

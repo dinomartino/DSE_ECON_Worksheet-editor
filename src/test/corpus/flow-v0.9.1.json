@@ -1,0 +1,1036 @@
+{
+  "schemaVersion": 1,
+  "id": "flow-v0.9.1-corpus",
+  "title": {
+    "en": [
+      {
+        "text": "Flow charts"
+      }
+    ],
+    "zh": [
+      {
+        "text": "流程圖"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "aOiq_kunCg",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "0uw751DKWQ"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "q-template",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "template-stem",
+          "text": {
+            "en": [
+              {
+                "text": "Refer to the template chart."
+              }
+            ],
+            "zh": [
+              {
+                "text": "參閱 template 圖。"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "diagram",
+          "id": "template-figure",
+          "diagram": {
+            "x": {},
+            "y": {},
+            "curves": [],
+            "points": [],
+            "labels": [],
+            "arrows": [],
+            "flow": {
+              "nodes": [
+                {
+                  "id": "5zjlM1J6bb",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Flour mill"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "麵粉廠"
+                      }
+                    ]
+                  },
+                  "col": 0,
+                  "row": 0
+                },
+                {
+                  "id": "Gm_q-YohHu",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Bakery"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "麵包店"
+                      }
+                    ]
+                  },
+                  "col": 1,
+                  "row": 0
+                },
+                {
+                  "id": "qBx5mNe1oL",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Local consumers"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "本地消費者"
+                      }
+                    ]
+                  },
+                  "col": 2,
+                  "row": 0
+                },
+                {
+                  "id": "Dn8qfM4ewV",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Hotels"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "酒店"
+                      }
+                    ]
+                  },
+                  "col": 2,
+                  "row": 1
+                }
+              ],
+              "arrows": [
+                {
+                  "id": "-AsIYhVCy4",
+                  "to": "5zjlM1J6bb",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "$10 000"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "$10 000"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "hG-i8SZki9",
+                  "from": "5zjlM1J6bb",
+                  "to": "Gm_q-YohHu",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Flour ($25 000)"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "麵粉（$25 000）"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "4mPR9NOHWI",
+                  "from": "Gm_q-YohHu",
+                  "to": "qBx5mNe1oL",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Bread ($40 000)"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "麵包（$40 000）"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "6CxUK87cWK",
+                  "from": "Gm_q-YohHu",
+                  "to": "Dn8qfM4ewV",
+                  "labelBelow": {
+                    "en": [
+                      {
+                        "text": "Bread ($18 000)"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "麵包（$18 000）"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "templateId": "flow"
+          },
+          "widthPx": 460,
+          "heightPx": 83,
+          "altText": {
+            "en": [
+              {
+                "text": "Flow chart"
+              }
+            ],
+            "zh": [
+              {
+                "text": "流程圖"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "Cm8RDrC57P",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "Vc8J5dxyjZ",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "CaQlCAKQwY",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "zfhkmU0aIQ",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "q-chain2021",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "chain2021-stem",
+          "text": {
+            "en": [
+              {
+                "text": "Refer to the chain2021 chart."
+              }
+            ],
+            "zh": [
+              {
+                "text": "參閱 chain2021 圖。"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "diagram",
+          "id": "chain2021-figure",
+          "diagram": {
+            "x": {},
+            "y": {},
+            "curves": [],
+            "points": [],
+            "labels": [],
+            "arrows": [],
+            "flow": {
+              "nodes": [
+                {
+                  "id": "imp",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Local importers"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "本地進口商"
+                      }
+                    ]
+                  },
+                  "col": 0,
+                  "row": 0
+                },
+                {
+                  "id": "farm",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Local farmers"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "本地農民"
+                      }
+                    ]
+                  },
+                  "col": 0,
+                  "row": 1
+                },
+                {
+                  "id": "inv",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "increase in inventory\n$50"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "存貨增加\n$50"
+                      }
+                    ]
+                  },
+                  "col": 0,
+                  "row": 2,
+                  "boxed": false
+                },
+                {
+                  "id": "sup",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Local supermarkets"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "本地超級市場"
+                      }
+                    ]
+                  },
+                  "col": 1,
+                  "row": 0
+                },
+                {
+                  "id": "con",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Local consumers"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "本地消費者"
+                      }
+                    ]
+                  },
+                  "col": 2,
+                  "row": 0
+                },
+                {
+                  "id": "tour",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Foreign tourists"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "外國遊客"
+                      }
+                    ]
+                  },
+                  "col": 2,
+                  "row": 1
+                }
+              ],
+              "arrows": [
+                {
+                  "id": "raw",
+                  "to": "imp",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "$200"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "$200"
+                      }
+                    ]
+                  },
+                  "labelBelow": {
+                    "en": [
+                      {
+                        "text": "raw materials"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "原料"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "a400",
+                  "from": "imp",
+                  "to": "sup",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "$400"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "$400"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "a600",
+                  "from": "farm",
+                  "to": "sup",
+                  "labelBelow": {
+                    "en": [
+                      {
+                        "text": "$600"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "$600"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "a50",
+                  "from": "farm",
+                  "to": "inv"
+                },
+                {
+                  "id": "a1200",
+                  "from": "sup",
+                  "to": "con",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "$1 200\n($100 sales tax inclusive)"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "$1 200\n（包括 $100 銷售稅）"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "a500",
+                  "from": "sup",
+                  "to": "tour",
+                  "labelBelow": {
+                    "en": [
+                      {
+                        "text": "$500"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "$500"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "out",
+                  "from": "tour",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "exported"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "出口"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "templateId": "flow"
+          },
+          "widthPx": 460,
+          "heightPx": 95,
+          "altText": {
+            "en": [
+              {
+                "text": "Flow chart"
+              }
+            ],
+            "zh": [
+              {
+                "text": "流程圖"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "5557xptzQi",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "yaSJnFFwL7",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "2EKASDJiDp",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "Dv_nIWsjtr",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "q-ring",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "ring-stem",
+          "text": {
+            "en": [
+              {
+                "text": "Refer to the ring chart."
+              }
+            ],
+            "zh": [
+              {
+                "text": "參閱 ring 圖。"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "diagram",
+          "id": "ring-figure",
+          "diagram": {
+            "x": {},
+            "y": {},
+            "curves": [],
+            "points": [],
+            "labels": [],
+            "arrows": [],
+            "flow": {
+              "nodes": [
+                {
+                  "id": "h",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Households"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "住戶"
+                      }
+                    ]
+                  },
+                  "col": 0,
+                  "row": 0
+                },
+                {
+                  "id": "fm",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Factor market"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "生產要素市場"
+                      }
+                    ]
+                  },
+                  "col": 1,
+                  "row": 0
+                },
+                {
+                  "id": "pm",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Product market"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "產品市場"
+                      }
+                    ]
+                  },
+                  "col": 1,
+                  "row": 1
+                },
+                {
+                  "id": "f",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Firms"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "廠商"
+                      }
+                    ]
+                  },
+                  "col": 2,
+                  "row": 0
+                }
+              ],
+              "arrows": [
+                {
+                  "id": "r1",
+                  "from": "h",
+                  "to": "fm",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "factor services"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "生產要素服務"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "r2",
+                  "from": "fm",
+                  "to": "f"
+                },
+                {
+                  "id": "r3",
+                  "from": "f",
+                  "to": "pm",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "goods"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "物品"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "r4",
+                  "from": "pm",
+                  "to": "h"
+                }
+              ]
+            },
+            "templateId": "flow"
+          },
+          "widthPx": 460,
+          "heightPx": 105,
+          "altText": {
+            "en": [
+              {
+                "text": "Flow chart"
+              }
+            ],
+            "zh": [
+              {
+                "text": "流程圖"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "-_TOq4Rk8Q",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "cdQg1Z_xbR",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "EMAfHNffWJ",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "5tGI9EGXU-",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "q-stagesInARow",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "stagesInARow-stem",
+          "text": {
+            "en": [
+              {
+                "text": "Refer to the stagesInARow chart."
+              }
+            ],
+            "zh": [
+              {
+                "text": "參閱 stagesInARow 圖。"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "diagram",
+          "id": "stagesInARow-figure",
+          "diagram": {
+            "x": {},
+            "y": {},
+            "curves": [],
+            "points": [],
+            "labels": [],
+            "arrows": [],
+            "flow": {
+              "nodes": [
+                {
+                  "id": "p",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Primary"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "第一級"
+                      }
+                    ]
+                  },
+                  "col": 0,
+                  "row": 0
+                },
+                {
+                  "id": "s",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Secondary"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "第二級"
+                      }
+                    ]
+                  },
+                  "col": 1,
+                  "row": 0
+                },
+                {
+                  "id": "t",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Tertiary"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "第三級"
+                      }
+                    ]
+                  },
+                  "col": 2,
+                  "row": 0
+                }
+              ],
+              "arrows": [
+                {
+                  "id": "ps",
+                  "from": "p",
+                  "to": "s",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "E"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "E"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "sp",
+                  "from": "s",
+                  "to": "p"
+                },
+                {
+                  "id": "st",
+                  "from": "s",
+                  "to": "t",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "F"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "F"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "ts",
+                  "from": "t",
+                  "to": "s"
+                }
+              ]
+            },
+            "templateId": "flow"
+          },
+          "widthPx": 460,
+          "heightPx": 67,
+          "altText": {
+            "en": [
+              {
+                "text": "Flow chart"
+              }
+            ],
+            "zh": [
+              {
+                "text": "流程圖"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "SuxhzNEb04",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "9vAyNNLtTp",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "bkMb5iKEpc",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        },
+        {
+          "id": "Oje-IyWnyz",
+          "text": {
+            "en": [],
+            "zh": []
+          }
+        }
+      ],
+      "answerIndex": 0
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "NcvfeBB81P",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Multiple Choice"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "section",
+      "id": "TYJeD6qsoh",
+      "text": {
+        "en": [
+          {
+            "text": "Section B: Structured Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部：結構性問題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    }
+  ],
+  "flow": [
+    {
+      "type": "question",
+      "id": "q-template"
+    },
+    {
+      "type": "question",
+      "id": "q-chain2021"
+    },
+    {
+      "type": "question",
+      "id": "q-ring"
+    },
+    {
+      "type": "question",
+      "id": "q-stagesInARow"
+    }
+  ],
+  "createdAt": "2026-11-27T00:00:00.000Z",
+  "updatedAt": "2026-11-27T00:00:00.000Z"
+}

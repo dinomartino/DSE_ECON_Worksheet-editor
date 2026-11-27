@@ -1317,6 +1317,25 @@ whole block pipeline — one PNG, re-measure sizing, the title mechanism — unc
   modal owns it.
 - The `flow` template ships invented wording — the reference charts are past-paper
   questions and must not ship. An empty chart stays visible as one empty stage box.
+- **The circular flow and the stage charts (k-0588)** add four optional fields, each
+  absent in every chart drawn before them: `FlowArrow.dashed` (the money flow),
+  `FlowArrow.route` `above`/`below` (a right-angle loop over or under the chart; ignored on
+  a stub), `FlowChart.layout` `grid` (`row` is shared by every column, compacted like
+  columns, each box centred in its cell, two boxes in one cell stack) and `FlowChart.key`
+  (dashed / solid words, drawn over the top-right corner). **Loops store only their side**
+  (`render/diagram.ts:layoutFlowLoops`): on a side, the narrower span takes the inner lane,
+  equal spans keep stored order (first inside); where loops meet one box edge, those heading
+  left attach from the left, those heading right from the right, innermost nearest the
+  other box, so loops never cross; a lane clears every box under its span plus the words
+  riding the lane inside it. **Two straight arrows between the same two boxes run side by
+  side** (`FLOW_PAIR_GAP`, on a side fixed by the pair, so opposite arrows land on
+  opposite sides; their words sit outside the pair); a lone arrow is offset 0 and drawn
+  byte for byte as before — this is the one change to how an old chart prints, and only
+  where it had arrows drawn on top of each other. A chart using any of the four fields is
+  written at schema 4 (§ Schema evolution). Edits: `flowEdits.ts:moveNodeToCell` (a grid
+  drag; onto a box swaps) and `:setFlowLayout` (into the grid, each column's boxes take
+  rows 0, 1… from the top). The editor's templates `circular-flow` and `production-stages`
+  draw HKDSE 2026 P1 Q5 and 2014 P1 Q10's figures in invented wording.
 
 ### A forum figure is a diagram variant, and its bubbles are data
 
@@ -3877,6 +3896,14 @@ intact but unreachable.
   (`scripts/emit-v3-stakeholder-corpus.test.ts`, `scripts/emit-v3-chart-corpus.test.ts`). v4 = v3 +
   a stem figure grid anywhere (`FigureGridBlock`, k-0545; `hasFigureGrid`); the 3→4 step is
   identity, its frozen corpus `v4-figure-grid.json` (`scripts/emit-v4-figure-grid-corpus.test.ts`).
+  Also v4 (k-0588, while no release had written 4): a flow chart with a dashed arrow, a loop,
+  the grid layout or a key with words (`hasV4Flow`; 0.10.1 and older draw them solid,
+  straight, in columns and without the key). Proven both ways against the releases' own
+  code by `scripts/flow-release-corpus.test.ts`, run inside checkouts of v0.8.7, v0.9.1,
+  v0.10.0 and v0.10.1: each wrote `flow-<tag>.json` + the SVG it drew (this build opens,
+  re-saves byte for byte and draws them the same) and recorded opening this build's
+  `v4-flow-figures.json` (read-only, all 114 words kept, every word drawn but the key's):
+  `src/model/flowCompat.test.ts`.
   **A new block kind needs a picture for older builds**: 0.10.x and older draw any block kind
   they do not know as an image (reading `src`, `altText`, `widthPx`, `heightPx`), and a block
   without those stopped the page from loading. So a stored grid carries a small "made in a

@@ -26,6 +26,7 @@ import {
 } from '@/model/diagramTemplateKit';
 import { buildFromTemplate, getDiagramTemplate } from '@/model/diagramTemplates';
 import { compileScene } from './scene';
+import { compileFlow } from './flow';
 import { phrase, plainOf, symbol, symbolRuns } from './text';
 import {
   REVENUE_SHADES,
@@ -404,6 +405,7 @@ export function compileSpec(given: DiagramSpec): Compiled {
 
   if (spec.kind === 'none') return { diagram: null, issues, curveIds, roles, levels: levelAt };
   if (spec.kind === 'scene') return compileScene(spec);
+  if (spec.kind === 'flow') return compileFlow(spec);
   if (spec.kind === 'lorenz') return compileLorenz(spec);
 
   if (spec.kind === 'template') {

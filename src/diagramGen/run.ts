@@ -17,6 +17,7 @@ import type { DiagramGenDeps, DiagramGenInput, DiagramGenOutcome, DiagramIssue, 
 import { checkDiagram, checkStem } from './validate';
 import { checkLayout, separateNames } from './layoutCheck';
 import { checkCoincide } from './coincide';
+import { checkFlow } from './flow';
 import { checkLorenz, lorenzWidth } from './lorenz';
 import type { SceneBuilt } from './scene';
 import { checkCornerLettersDrawn, checkSceneCorners, checkSceneKey, checkSceneLook, checkSceneWords, cornerLettersIn } from './sceneCheck';
@@ -100,9 +101,14 @@ function evaluateDrawing(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides'
       ...checkStem(spec, compiled, [input.mcq.stem, ...input.mcq.statements].join('\n')),
       ...checkCornerLettersDrawn(compiled.diagram, input.mcq, input.key),
     );
+    if (spec.kind === 'flow') issues.push(...checkFlow(compiled.diagram, input.mcq, input.sides));
     const solvedKey = solveKey(spec, compiled, input.mcq);
     solved = solvedKey.solved;
     issues.push(...solvedKey.issues);
+  }
+  // A model answer's flow chart: only its languages are checked (k-0588).
+  if (spec.kind === 'flow' && compiled.diagram && !(input.mcq && spec.placement === 'question')) {
+    issues.push(...checkFlow(compiled.diagram, undefined, input.sides));
   }
   if (spec.kind !== 'none' && !compiled.diagram && !errors(issues)) {
     issues.push({ level: 'error', code: 'diagram.empty', text: 'Nothing could be drawn from that diagram.' });

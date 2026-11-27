@@ -78,7 +78,9 @@ function templateIssues(spec: DiagramSpec): DiagramIssue[] {
       ? 'Draw it with kind "chart", type "pie", the question\'s own slices and shares.'
       : spec.template === 'bar-chart' || spec.template === 'line-chart'
         ? 'Draw it with kind "chart" and the question\'s own figures.'
-        : 'No kind draws this figure with the question\'s own content yet: say so in "reason" and use kind "none".';
+        : spec.template === 'flow'
+          ? 'Draw it with kind "flow", the question\'s own boxes and arrows.'
+          : 'No kind draws this figure with the question\'s own content yet: say so in "reason" and use kind "none".';
   return [
     {
       level: 'error',

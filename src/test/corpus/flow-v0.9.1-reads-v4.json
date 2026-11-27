@@ -1,0 +1,57 @@
+{
+  "tag": "v0.9.1",
+  "opens": true,
+  "storedVersion": 4,
+  "loadedVersion": 4,
+  "readOnly": true,
+  "textInFile": 114,
+  "textLoaded": 114,
+  "pageError": null,
+  "figures": [
+    {
+      "question": "q-circular",
+      "keptFields": {
+        "layout": null,
+        "key": true,
+        "dashed": 2,
+        "routed": 4
+      },
+      "wordsMissingFromDrawing": [
+        "Money flow",
+        "貨幣流程",
+        "Real flow",
+        "實質流程"
+      ]
+    },
+    {
+      "question": "q-stages",
+      "keptFields": {
+        "layout": "grid",
+        "key": false,
+        "dashed": 0,
+        "routed": 0
+      },
+      "wordsMissingFromDrawing": []
+    },
+    {
+      "question": "q-households",
+      "keptFields": {
+        "layout": "grid",
+        "key": false,
+        "dashed": 0,
+        "routed": 0
+      },
+      "wordsMissingFromDrawing": []
+    },
+    {
+      "question": "q-chain",
+      "keptFields": {
+        "layout": null,
+        "key": false,
+        "dashed": 0,
+        "routed": 0
+      },
+      "wordsMissingFromDrawing": []
+    }
+  ]
+}

@@ -49,9 +49,9 @@ describe('A2: things drawn on one spot fail', () => {
     expect(run('y-lorenz-place').issues.find((i) => i.code === 'same.line')!.text).toMatch(/kind "lorenz"/);
   });
 
-  it('points a data template to kind chart (pie) or to none (flow)', () => {
+  it('points a data template to kind chart (pie) or kind flow (k-0588)', () => {
     expect(run('x-tmpl-pie').issues.find((i) => i.code === 'template.data')!.text).toMatch(/kind "chart", type "pie"/);
-    expect(run('x-tmpl-flow').issues.find((i) => i.code === 'template.data')!.text).toMatch(/kind "none"/);
+    expect(run('x-tmpl-flow').issues.find((i) => i.code === 'template.data')!.text).toMatch(/kind "flow"/);
   });
 
   it('two shifts of one curve by the same size and way are one line', () => {

@@ -54,6 +54,10 @@ export function mapDiagramTexts(d: Diagram, fn: TextFn): Diagram {
           labelBelow: opt(`flow/arrow:${a.id}/below`, a.labelBelow),
         }),
       ),
+      key: d.flow.key && patch(d.flow.key, {
+        dashed: opt('flow/key/dashed', d.flow.key.dashed),
+        solid: opt('flow/key/solid', d.flow.key.solid),
+      }),
     }),
     forum: d.forum && patch(d.forum, {
       bubbles: each(d.forum.bubbles, (b) =>
