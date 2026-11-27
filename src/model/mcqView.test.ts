@@ -153,6 +153,10 @@ describe('writing MCQ topics (k-0569 § 3)', () => {
     ]);
   });
 
+  it('keeps a wanted 題型 whose sub-topic stays, and drops one whose sub-topic goes', () => {
+    expect(withViewCodes([], ['C.ped', 'C.ped::Total revenue', 'E.policy::Old pattern'])).toEqual(['C.ped', 'C.ped::Total revenue']);
+  });
+
   it('keeps a later build’s code that reads as a wanted section', () => {
     expect(withViewCodes(['E.monopoly'], ['E'])).toEqual(['E.monopoly']);
   });

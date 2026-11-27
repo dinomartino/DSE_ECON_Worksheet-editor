@@ -91,7 +91,7 @@ const openTopic = async (id, name) => {
 };
 const BAR_TOPICS = [
   ['gdp', { en: 'GDP', zh: 'GDP' }],
-  ['economic-free-goods', { en: 'Economic Good', zh: '經濟物品' }],
+  ['economic-free-goods', { en: 'Economic & Free', zh: '經濟物品' }],
   ['tax-base-tax-net-effects-of-tax-changes', { en: 'Tax Base', zh: '稅基' }],
 ];
 const WIDTHS = [1280, 1440, 1600, 2000, 1024, 760];
