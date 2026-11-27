@@ -372,7 +372,8 @@ export function checkDiagram(spec: DiagramSpec, compiled: Compiled, sides: reado
     // A plain graph's line may go unnamed (k-0545: the axes say what it is).
     const graphIds = new Set(spec.curves.filter((c) => c.role === 'graph').map((c) => compiled.curveIds.get(c.id)));
     for (const c of diagram.curves) {
-      if (!plainOf(c.label).trim() && !graphIds.has(c.id)) error('curve.unnamed', 'A curve has no name.');
+      // Prototype: a dashed guide between two points (b–a) needs no name.
+      if (!plainOf(c.label).trim() && !graphIds.has(c.id) && c.stroke !== 'dashed') error('curve.unnamed', 'A curve has no name.');
     }
     const names = diagram.curves.map((c) => plainOf(c.label).trim()).filter(Boolean);
     const dupes = [...new Set(names.filter((n, i) => names.indexOf(n) !== i))];
@@ -387,7 +388,7 @@ export function checkDiagram(spec: DiagramSpec, compiled: Compiled, sides: reado
     const market = d && s ? curveCrossing(d, s) : null;
     for (const level of spec.levels) {
       const binding = level.kind === 'ceiling' ? level.side === 'below' : level.kind === 'floor' ? level.side === 'above' : true;
-      if (!binding && !INEFFECTIVE.test(key)) {
+      if (!binding && level.side !== 'at' && !INEFFECTIVE.test(key)) {
         look('level.nonbinding', `The ${level.kind} "${level.label}" is ${level.side} equilibrium, where it has no effect.`);
       }
     }

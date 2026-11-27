@@ -1,3 +1,4 @@
+import { placePointLabels } from './pointLabels';
 import type { Diagram, DiagramAnchorRef, DiagramArea, DiagramArrow, DiagramCurve, DiagramPointMark, DiagramSpan } from '@/model/diagram';
 import { MAX_CHART_CATEGORIES, MAX_CHART_SERIES } from '@/model/diagram';
 import { curveXAt, curveYAt, resolveAnchor } from '@/model/diagramAnchors';
@@ -472,6 +473,15 @@ export function compileSpec(given: DiagramSpec): Compiled {
   const bandOf = (level: SpecLevel): { lo: number; hi: number; free: boolean } | null => {
     const vertical = level.kind === 'quota';
     const coord = (p: { x: number; y: number }) => (vertical ? p.x : p.y);
+    // Prototype (k-0577 round 3): a line through a crossing ("P1 at D1×S", HKDSE 2023 P1 Q21).
+    if (level.side === 'at' && level.above.length === 2) {
+      const p = crossingOf(level.above);
+      if (!p) {
+        error('level.ref', `"${level.id}" is placed at ${level.above.join('×')}, but those two do not cross on the diagram.`);
+        return null;
+      }
+      return { lo: coord(p), hi: coord(p), free: false };
+    }
     const named = (ids: string[], side: string) => {
       if (!ids.length) return undefined;
       const p = crossingOf(ids);
@@ -549,8 +559,9 @@ export function compileSpec(given: DiagramSpec): Compiled {
 
   // ---- points ----
   /** A point's two references → where it is and the anchor that keeps it there; a tick name refers to an earlier point. */
-  type Placed = { at: { x: number; y: number }; anchor: DiagramAnchorRef; guide?: string };
+  type Placed = { at: { x: number; y: number }; anchor: DiagramAnchorRef; guide?: string; under?: DiagramPointMark };
   const marksByTick = new Map<string, DiagramPointMark>();
+  const marksByName = new Map<string, DiagramPointMark>();
   const placePoint = (p: SpecPoint, scratch: Array<DiagramCurve | DiagramPointMark>): Placed | string => {
     // A guide level holds no line: the point is on the other curve at the guide's height.
     const guideId = guides.has(p.b) ? p.b : guides.has(p.a) ? p.a : '';
@@ -574,6 +585,14 @@ export function compileSpec(given: DiagramSpec): Compiled {
       const hit = curveCrossing(a, b);
       if (!hit) return `"${p.a}" and "${p.b}" do not cross inside the plot.`;
       return { at: hit, anchor: cross(a, b) };
+    }
+    // Prototype: b names an earlier point ("b on D2 directly above a").
+    const byName = marksByName.get(p.b.trim());
+    if (byName) {
+      const anchor: DiagramAnchorRef = { on: a.id, x: { point: byName.id } };
+      const at = resolveAnchor({ x: {}, y: {}, curves: scratch.filter((k): k is DiagramCurve => 'points' in k), points: scratch.filter((k): k is DiagramPointMark => 'at' in k), labels: [], arrows: [] }, anchor);
+      if (!at) return `Point ${pointName(p)}: "${p.a}" does not pass above or below point ${p.b}.`;
+      return { at, anchor, under: byName };
     }
     const ref = marksByTick.get(`x:${tickKey(p.b)}`) ?? marksByTick.get(`y:${tickKey(p.b)}`);
     if (!ref) return `Point ${pointName(p)} names "${p.b}", which is neither a drawn line nor an earlier point's tick.`;
@@ -600,6 +619,7 @@ export function compileSpec(given: DiagramSpec): Compiled {
       if (typeof placed === 'string') continue;
       const mark = point(placed.at.x, placed.at.y, undefined, { anchor: placed.anchor });
       scratch.push(mark);
+      if (p.name.trim()) marksByName.set(p.name.trim(), mark);
       if (p.xTick.trim()) {
         xs.push([placed.at.x, tickKey(p.xTick)]);
         marksByTick.set(`x:${tickKey(p.xTick)}`, mark);
@@ -636,6 +656,7 @@ export function compileSpec(given: DiagramSpec): Compiled {
     placeLevel(level, best.at);
   }
   marksByTick.clear();
+  marksByName.clear();
 
   const equilibriumMarks: DiagramPointMark[] = [];
   const onGuide = new Map<string, DiagramPointMark[]>();
@@ -665,6 +686,17 @@ export function compileSpec(given: DiagramSpec): Compiled {
     });
     if (e.xTick.trim()) marksByTick.set(`x:${tickKey(e.xTick)}`, mark);
     if (e.yTick.trim()) marksByTick.set(`y:${tickKey(e.yTick)}`, mark);
+    if (e.name.trim()) marksByName.set(e.name.trim(), mark);
+    // Prototype: the dashed line between a point and the earlier point it stands above (b–a).
+    if (placed.under) {
+      try {
+        const lo = Math.min(placed.under.at.y, placed.at.y);
+        const hi = Math.max(placed.under.at.y, placed.at.y);
+        curves.push(derived({ kind: 'vertical', x: { point: placed.under.id }, from: lo, to: hi }, [...parts], undefined, { stroke: 'dashed', weight: 0.8 }));
+      } catch {
+        // Not drawable: the point still stands.
+      }
+    }
     if (guide) onGuide.set(guide.id, [...(onGuide.get(guide.id) ?? []), mark]);
     // Equilibria (two curves, not a level) are what the change arrows run between.
     if (!levelAt.has(e.a) && !levelAt.has(e.b) && bySpecId.has(e.b)) equilibriumMarks.push(mark);
@@ -831,5 +863,8 @@ export function compileSpec(given: DiagramSpec): Compiled {
     error('diagram.resolve', 'The diagram could not be resolved.');
     return { diagram: null, issues, curveIds, roles, levels: levelAt };
   }
+  // Prototype: every one-letter point name placed by the scene placer (clear of lines, above, outside named areas).
+  const lettered = new Set(diagram.points.filter((p) => p.dot !== false && /^[a-z]$/.test(plainOf(p.label ?? { en: [], zh: [] }))).map((p) => p.id));
+  if (lettered.size) diagram = placePointLabels(diagram, lettered);
   return { diagram, issues, curveIds, roles, levels: levelAt };
 }

@@ -75,7 +75,7 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
       kind: { type: 'string', enum: [...LEVEL_KINDS] },
       above: list(str),
       below: list(str),
-      side: { type: 'string', enum: ['below', 'above'] },
+      side: { type: 'string', enum: ['below', 'above', 'at'] },
       style: { type: 'string', enum: [...LEVEL_STYLES] },
       label: str,
     }),
@@ -226,7 +226,7 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
       above: crossingRef(c.above),
       below: crossingRef(c.below),
       // A ceiling binds below equilibrium, a floor above: the natural default when unsaid.
-      side: pick(c.side, ['below', 'above'] as const, kind === 'floor' ? 'above' : 'below', `level ${s(c.id)} side`),
+      side: pick(c.side, ['below', 'above', 'at'] as const, kind === 'floor' ? 'above' : 'below', `level ${s(c.id)} side`),
       style: pick(c.style, LEVEL_STYLES, 'line', `level ${s(c.id)} style`),
       label: s(c.label),
     };

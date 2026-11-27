@@ -261,6 +261,24 @@ export function checkCornerLettersDrawn(diagram: Diagram, texts: readonly string
   for (const p of diagram.points) for (const side of ['en', 'zh'] as const) p.label?.[side].forEach((r) => printed.add(r.text.trim()));
   for (const l of diagram.labels) for (const side of ['en', 'zh'] as const) l.text?.[side].forEach((r) => printed.add(r.text.trim()));
   const missing = named.filter((l) => !printed.has(l));
+  // Prototype: every side of each corner-named area runs along a line of the figure, as for scenes.
+  if (!missing.length) {
+    const at = new Map<string, Pt>();
+    for (const p of diagram.points) {
+      const l = p.label?.en.map((r) => r.text).join('').trim();
+      if (l) at.set(l, p.at);
+    }
+    const lines = figureLines(diagram);
+    const out: DiagramIssue[] = [];
+    for (const area of [...new Set(texts.flatMap(cornerAreasIn))]) {
+      const pts = [...area].map((l) => at.get(l)).filter((p): p is Pt => Boolean(p));
+      const shape = hull(pts);
+      if (shape.length < 3) continue;
+      const loose = shape.map((a, i) => [a, shape[(i + 1) % shape.length]] as const).filter(([a, b]) => !lines.some((line) => onLine(line, a) && onLine(line, b) && onLine(line, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })));
+      if (loose.length) out.push({ level: 'error', code: 'figure.cornerEdge', text: `Area ${area} has ${loose.length === 1 ? 'a side' : 'sides'} that run along no line of the figure: the letters are on the wrong points.` });
+    }
+    return out;
+  }
   return missing.length
     ? [
         {

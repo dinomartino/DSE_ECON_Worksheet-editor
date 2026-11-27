@@ -106,8 +106,8 @@ export interface SpecLevel {
    */
   above: string[];
   below: string[];
-  /** The fallback when `above` and `below` are both empty. */
-  side: 'below' | 'above';
+  /** The fallback when `above` and `below` are both empty; 'at' (prototype): through the crossing named in `above`. */
+  side: 'below' | 'above' | 'at';
   style: LevelStyle;
   label: string;
 }
