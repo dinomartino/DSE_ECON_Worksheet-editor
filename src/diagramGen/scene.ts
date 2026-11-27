@@ -6,7 +6,7 @@ import type { BiText } from '@/model/types';
 import { shiftArrowPlace, type Compiled } from './compile';
 import { placePointLabels } from './pointLabels';
 import { defaultLabel, regionsOf, type SceneDef, type ScenePointDef } from './sceneCatalogue';
-import { grows, isPlan, sceneDefOf, stageParts, stagePlan, stageRegionIds, type StagePlan } from './stageCatalogue';
+import { grows, isPlan, sceneDefOf, stageAliases, stageParts, stagePlan, stageRegionIds, type StagePlan } from './stageCatalogue';
 import { phrase, plainOf, symbol } from './text';
 import type { CurveRole, DiagramIssue, DiagramSpec, Slope, SpecScene, SpecText } from './types';
 
@@ -985,6 +985,8 @@ export function sceneLabels(def: SceneDef, scene: SpecScene): Map<string, string
   return out;
 }
 
+const tickKeyOf = (label: string) => label.replace(/[_{}\s]/g, '').toUpperCase();
+
 export function compileScene(spec: DiagramSpec): SceneBuilt {
   const issues: DiagramIssue[] = [];
   const error = (code: string, text: string) => issues.push({ level: 'error', code, text });
@@ -1001,7 +1003,7 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     pointPlaces: new Map(),
     regionPolygons: new Map(),
   });
-  const scene = spec.scene;
+  let scene = spec.scene;
   const def = scene ? sceneDefOf(scene) : undefined;
   if (!scene || !def) {
     error('scene.type', `"${scene?.type ?? ''}" is not a scene type: use one of the scene list, or kind "curves".`);
@@ -1012,9 +1014,19 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     error('scene.stage', plan.error);
     return empty();
   }
+  // A part this figure does not draw: a label on one that sits on another part moves there; an empty one is nothing to print (k-0587).
+  const aliases = isPlan(plan) ? stageAliases(plan) : {};
+  const sceneLabelsIn: typeof scene.labels = [];
   for (const l of scene.labels) {
-    if (!def.parts.some((p) => p.id === l.part.trim())) error('scene.part', `Scene ${def.type} has no part "${l.part}". Its parts are ${def.parts.map((p) => p.id).join(', ')}.`);
+    const part = l.part.trim();
+    if (def.parts.some((p) => p.id === part)) sceneLabelsIn.push(l);
+    else if (aliases[part] && l.label.trim()) {
+      const other = scene.labels.find((k) => k.part.trim() === aliases[part] && k.label.trim());
+      if (other && tickKeyOf(other.label) !== tickKeyOf(l.label)) error('scene.part', `${part} and ${aliases[part]} are one point on this figure, but they are labelled ${l.label} and ${other.label}: give it one label.`);
+      else if (!other) sceneLabelsIn.push({ part: aliases[part], label: l.label });
+    } else if (l.label.trim()) error('scene.part', `Scene ${def.type}${isPlan(plan) ? ` (stage ${plan.stage}, binds ${plan.binds})` : ''} has no part "${l.part}". Its parts are ${def.parts.map((p) => p.id).join(', ')}.`);
   }
+  scene = { ...scene, labels: sceneLabelsIn };
   const labels = sceneLabels(def, scene);
   const scenePoints = scene.points ?? [];
   // Lettered corners need the dashed lines that bound their areas, as lettered regions do.

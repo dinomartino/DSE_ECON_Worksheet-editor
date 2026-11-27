@@ -3,7 +3,8 @@ import { GRAPH_CASES } from '../../evals/graphs/cases';
 import { inputOf } from '../../evals/graphs.eval';
 import { tickKey } from './compile';
 import { diagramLabels } from './labels';
-import { evaluateSpec } from './run';
+import MM_LATTICE_2_LIVE from './mmLattice2.live.json';
+import { evaluateReply, evaluateSpec } from './run';
 import { plainOf } from './text';
 import { emptyScene, emptySpec } from './schema';
 import { readClaim, optionStatements } from './stageCheck';
@@ -206,4 +207,25 @@ describe('the frozen B eval cases are drawable (k-0587): the spec a right reply 
       for (const l of c.labels) expect([...diagramLabels(e.compiled.diagram!)].map(tickKey), l).toContain(tickKey(l));
     });
   }
+});
+
+describe('what the first live run taught (k-0587)', () => {
+  it('a reply listing every generic part with "" labels draws (e-ceiling-demand-rise needed a repair for it)', () => {
+    const e = evaluateSpec(spec({ type: 'priceCeiling', stage: 'demandRise', binds: 'after', labels: lab([['D', 'D_1'], ['D2', 'D_2'], ['Pc1', 'P_1'], ['Qd1', ''], ['Qs1', ''], ['Qs2', ''], ['P0', '']]) }), { sides: ['en', 'zh'], key: '' });
+    expect(errors(e)).toEqual([]);
+  });
+  it('a label on a part that sits on another moves there; two different labels on one point are refused', () => {
+    const e = evaluateSpec(spec({ type: 'priceCeiling', stage: 'demandRise', binds: 'after', labels: lab([['Qs1', 'Q_1']]) }), { sides: ['en', 'zh'], key: '' });
+    expect(errors(e)).toEqual([]);
+    expect([...diagramLabels(e.compiled.diagram!)].map(tickKey)).toContain(tickKey('Q_1'));
+    const bad = evaluateSpec(spec({ type: 'priceCeiling', stage: 'demandRise', binds: 'after', labels: lab([['Qs1', 'Q_1'], ['Q0', 'Q_2']]) }), { sides: ['en', 'zh'], key: '' });
+    expect(errors(bad).map((i) => i.code)).toContain('scene.part');
+  });
+  it('mm-lattice-2: upright lines named M_s1, M_s0, M_s2 left to right are names, not ticks out of order', () => {
+    const c = GRAPH_CASES.find((g) => g.id === 'mm-lattice-2')!;
+    const reply = JSON.stringify(MM_LATTICE_2_LIVE);
+    const input = inputOf(c);
+    const e = evaluateReply(reply, input)!;
+    expect(errors(e as ReturnType<typeof run>)).toEqual([]);
+  });
 });

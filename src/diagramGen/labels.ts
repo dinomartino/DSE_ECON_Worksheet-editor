@@ -131,7 +131,8 @@ function tickOrder(diagram: Diagram, axis: 'x' | 'y'): DiagramIssue[] {
   for (const c of diagram.curves) {
     const d = c.derive;
     if (axis === 'y' && d?.kind === 'level' && c.label) ticks.push({ at: c.points[0]?.y ?? 0, key: tickKey(plainOf(c.label)) });
-    if (axis === 'x' && d?.kind === 'vertical' && c.label) ticks.push({ at: c.points[0]?.x ?? 0, key: tickKey(plainOf(c.label)) });
+    // An upright line's name prints at its top (M_s1, LRAS, a quota line): a line named by its state, in any order (k-0587, live mm-lattice-2), not a tick.
+    if (axis === 'x' && d?.kind === 'vertical' && c.label && c.labelAt === 'start') ticks.push({ at: c.points[0]?.x ?? 0, key: tickKey(plainOf(c.label)) });
   }
   const families = new Map<string, Array<{ at: number; n: number; key: string }>>();
   for (const t of ticks) {

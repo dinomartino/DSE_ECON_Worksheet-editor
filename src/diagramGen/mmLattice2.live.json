@@ -1,0 +1,171 @@
+{
+ "kind": "curves",
+ "reason": "",
+ "placement": "question",
+ "template": "",
+ "title": {
+  "en": "",
+  "zh": ""
+ },
+ "xAxis": {
+  "en": "Quantity of money",
+  "zh": "貨幣數量"
+ },
+ "yAxis": {
+  "en": "Nominal interest rate",
+  "zh": "名義利率"
+ },
+ "curves": [
+  {
+   "id": "Ms1",
+   "role": "vertical",
+   "slope": "normal",
+   "place": "low",
+   "label": "M_s1",
+   "through": []
+  },
+  {
+   "id": "Ms0",
+   "role": "vertical",
+   "slope": "normal",
+   "place": "mid",
+   "label": "M_s0",
+   "through": []
+  },
+  {
+   "id": "Ms2",
+   "role": "vertical",
+   "slope": "normal",
+   "place": "high",
+   "label": "M_s2",
+   "through": []
+  },
+  {
+   "id": "Md0",
+   "role": "demand",
+   "slope": "flat",
+   "place": "mid",
+   "label": "M_d0",
+   "through": []
+  }
+ ],
+ "shifts": [
+  {
+   "of": "Md0",
+   "id": "Md1",
+   "direction": "left",
+   "size": "small",
+   "label": "M_d1",
+   "through": []
+  },
+  {
+   "of": "Md0",
+   "id": "Md2",
+   "direction": "right",
+   "size": "small",
+   "label": "M_d2",
+   "through": []
+  }
+ ],
+ "levels": [],
+ "points": [
+  {
+   "a": "Md0",
+   "b": "Ms0",
+   "name": "E",
+   "yTick": "",
+   "xTick": "",
+   "dot": true
+  },
+  {
+   "a": "Md0",
+   "b": "Ms1",
+   "name": "D",
+   "yTick": "",
+   "xTick": "",
+   "dot": true
+  },
+  {
+   "a": "Md1",
+   "b": "Ms1",
+   "name": "C",
+   "yTick": "",
+   "xTick": "",
+   "dot": true
+  },
+  {
+   "a": "Md2",
+   "b": "Ms2",
+   "name": "A",
+   "yTick": "",
+   "xTick": "",
+   "dot": true
+  },
+  {
+   "a": "Md1",
+   "b": "Ms2",
+   "name": "B",
+   "yTick": "",
+   "xTick": "",
+   "dot": true
+  }
+ ],
+ "gaps": [],
+ "brackets": [],
+ "shades": [],
+ "marks": [],
+ "changeArrows": false,
+ "asks": {
+  "what": "none",
+  "state": "before"
+ },
+ "chart": {
+  "type": "bar",
+  "categories": [],
+  "series": [],
+  "yTitle": {
+   "en": "",
+   "zh": ""
+  },
+  "xTitle": {
+   "en": "",
+   "zh": ""
+  }
+ },
+ "scene": {
+  "type": "none",
+  "market": "goods",
+  "externality": "none",
+  "demand": "normal",
+  "supply": "normal",
+  "size": "normal",
+  "labels": [],
+  "areas": [],
+  "points": [],
+  "ask": "none",
+  "gap": false,
+  "stage": "none",
+  "binds": "both"
+ },
+ "flow": {
+  "layout": "columns",
+  "nodes": [],
+  "arrows": [],
+  "key": {
+   "dashed": {
+    "en": "",
+    "zh": ""
+   },
+   "solid": {
+    "en": "",
+    "zh": ""
+   }
+  }
+ },
+ "lorenz": {
+  "panels": [],
+  "equality": true,
+  "grid": true,
+  "axes": "percent"
+ }
+}

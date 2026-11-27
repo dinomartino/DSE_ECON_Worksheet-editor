@@ -280,6 +280,26 @@ export function sceneDefOf(scene: SpecScene): SceneDef | undefined {
   return plan ? stageDef(scene, plan) : sceneDef(scene.type);
 }
 
+/**
+ * Parts a plan does not draw because they sit on another part (k-0587, first live run: the model
+ * listed every generic part): a ceiling at the old price puts Qd1 and Qs1 on Q0 and P0 on Pc1; the
+ * curve a shift leaves keeps its 1 (Qs2 = Qs1 under a demand shift); a quota at the old quantity
+ * puts Q0 on Qq1 and Pq1 on P0. A label given to one is the label of the part it sits on.
+ */
+export function stageAliases(plan: StagePlan): Record<string, string> {
+  const out: Record<string, string> = {};
+  const atOld = plan.place === 'old';
+  if (plan.control === 'quota') {
+    if (atOld) Object.assign(out, { Q0: 'Qq1', Pq1: 'P0' });
+    if (plan.shift && plan.b2 === false) Object.assign(out, { Pq2: 'Pn' });
+    return out;
+  }
+  if (atOld) Object.assign(out, { Qd1: 'Q0', Qs1: 'Q0', P0: 'Pc1' });
+  if (plan.shift === 'demand') out.Qs2 = atOld ? 'Q0' : 'Qs1';
+  if (plan.shift === 'supply') out.Qd2 = atOld ? 'Q0' : 'Qd1';
+  return out;
+}
+
 /** The part a question's "from X to Y" names first must be the before part of its pair. */
 export const STAGE_PAIRS: Array<[string, string]> = [
   ['D', 'D2'],
