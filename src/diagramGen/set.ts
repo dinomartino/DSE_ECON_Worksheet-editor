@@ -321,7 +321,8 @@ export function solveSet(figures: ReadonlyArray<{ at: FigureAt; spec: DiagramSpe
 function evaluateFigure(at: FigureAt, spec: DiagramSpec, parseIssues: DiagramIssue[], input: DiagramSetInput, note: string): Evaluated {
   const keyed = at === 'stem' || at === 'ABCD'[input.mcq?.answer ?? -1];
   // The key's claims ("demand increases") describe the stem's figure and the keyed option's only.
-  const evaluated = evaluateSpec(spec, { sides: input.sides, key: keyed ? input.key : '' }, parseIssues);
+  const widthPx = widthFor(at, input.figures.filter((a) => a.at.startsWith('(')).length);
+  const evaluated = evaluateSpec(spec, { sides: input.sides, key: keyed ? input.key : '', ...(widthPx ? { widthPx } : {}) }, parseIssues);
   // Option figures compare shifts and print no equilibrium marks (HKDSE 2024 Q11): no "mark one" look there.
   const option = /^[A-D]$/.test(at);
   const issues = evaluated.issues.filter((i) => !(option && i.code === 'eq.none'));

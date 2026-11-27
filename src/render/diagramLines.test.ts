@@ -70,8 +70,9 @@ describe('a hard break in diagram text', () => {
   });
 
   it('a break in the x-axis title narrows the reserved side margin', () => {
+    // Wide enough that the one-line title still fits past the arrow (a narrower figure sets it under the axis).
     const title = (text: string) =>
-      diagramSvg({ ...blank(), x: { title: { en: [{ text }], zh: [] } } }, opts);
+      diagramSvg({ ...blank(), x: { title: { en: [{ text }], zh: [] } } }, { ...opts, widthPx: 480 });
 
     // The room reserved beside the plot is measured from the *widest* line, so breaking
     // a long title in two lets the plot run further right. Read from where the title

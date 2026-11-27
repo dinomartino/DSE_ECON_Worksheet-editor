@@ -205,7 +205,7 @@ export const SPEC_KINDS = ['none', 'curves', 'chart', 'template', 'scene'] as co
  * works the answer out from the drawing. The catalogue (parts, regions, measures) is
  * `diagramGen/sceneCatalogue.ts`.
  */
-export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'unitSubsidy', 'priceCeiling', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff'] as const;
+export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'taxChange', 'unitSubsidy', 'priceCeiling', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff'] as const;
 export type SceneType = (typeof SCENE_TYPES)[number];
 
 /** goods: Price / Quantity; labour: Wage rate / Quantity of labour, ticks W instead of P. */
@@ -247,6 +247,7 @@ export const SCENE_ASKS = [
   'tssLoss',
   'externalCost',
   'psGain',
+  'dwlChange',
   // ticks
   'priceBefore',
   'priceAfter',
@@ -273,6 +274,16 @@ export interface SceneLabel {
   label: string;
 }
 
+/**
+ * A lettered point (k-0577 round 2): a catalogue point (where two parts meet, or a curve at a
+ * tick's quantity) carrying a letter. HKDSE names areas by their corners ("area efj", "fgmj"):
+ * those questions letter points, not regions.
+ */
+export interface ScenePoint {
+  point: string;
+  label: string;
+}
+
 /** A lettered (or worded) region: a catalogue region, or a whole measure drawn as one area. */
 export interface SceneArea {
   region: string;
@@ -292,6 +303,8 @@ export interface SpecScene {
   size: ShiftSize;
   labels: SceneLabel[];
   areas: SceneArea[];
+  /** Lettered corners, for a question that names areas by them; [] = none. */
+  points: ScenePoint[];
   ask: SceneAsk;
   /** Draw the shortage / surplus bracket at a price control (a model answer; never when the question asks for it). */
   gap: boolean;

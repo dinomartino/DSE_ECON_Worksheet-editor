@@ -14,8 +14,9 @@ import { checkLabels } from './labels';
 import { solveKey } from './solve';
 import type { DiagramGenDeps, DiagramGenInput, DiagramGenOutcome, DiagramIssue, DiagramSpec, SolvedKey } from './types';
 import { checkDiagram, checkStem } from './validate';
+import { checkLayout } from './layoutCheck';
 import type { SceneBuilt } from './scene';
-import { checkSceneKey, checkSceneWords } from './sceneCheck';
+import { checkSceneCorners, checkSceneKey, checkSceneLook, checkSceneWords, cornerLettersIn } from './sceneCheck';
 
 /**
  * Question + key (+ a reference figure) → an editable diagram. Pure over injected deps,
@@ -37,7 +38,7 @@ export interface Evaluated {
 const errors = (issues: readonly DiagramIssue[]) => issues.filter((i) => i.level === 'error').length;
 
 /** A reply checked end to end; null when it is not a spec at all. Exported for the harness and tests. */
-export function evaluateReply(reply: string, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq' | 'edit'> & { question?: string }): Evaluated | null {
+export function evaluateReply(reply: string, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq' | 'edit' | 'widthPx'> & { question?: string }): Evaluated | null {
   const parsed = parseSpec(reply);
   if (!parsed) return null;
   const evaluated = { ...evaluateSpec(parsed.spec, input, parsed.issues), questionChange: questionChangeOf(reply) };
@@ -62,7 +63,17 @@ function editOutcome(evaluated: Evaluated, input: Pick<DiagramGenInput, 'mcq'>):
 }
 
 /** A spec checked end to end: compiled, its drawing checked, the question's labels and words against it, the key worked out again. */
-export function evaluateSpec(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq'> & { question?: string }, parseIssues: DiagramIssue[] = []): Evaluated {
+export function evaluateSpec(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq' | 'widthPx'> & { question?: string }, parseIssues: DiagramIssue[] = []): Evaluated {
+  const evaluated = evaluateDrawing(spec, input, parseIssues);
+  // The figure as it prints, at its width (u-ewel): nothing cut off, every name by its curve.
+  const diagram = evaluated.compiled.diagram;
+  if (diagram && !errors(evaluated.issues)) {
+    evaluated.issues.push(...checkLayout(diagram, input.widthPx ?? (diagram.chart ? DATA_CHART_WIDTH_PX : DEFAULT_DIAGRAM_SIZE.widthPx), input.sides));
+  }
+  return evaluated;
+}
+
+function evaluateDrawing(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq'> & { question?: string }, parseIssues: DiagramIssue[]): Evaluated {
   const compiled = compileSpec(spec);
   if (spec.kind === 'scene') return evaluateScene(spec, compiled as SceneBuilt, input, parseIssues);
   const issues = [...parseIssues, ...compiled.issues, ...checkDiagram(spec, compiled, input.sides, input.key)];
@@ -84,16 +95,38 @@ export function evaluateSpec(spec: DiagramSpec, input: Pick<DiagramGenInput, 'si
  * it, its words must fit the scene, and the answer worked out from its letters or ticks must be
  * the keyed option.
  */
-function evaluateScene(spec: DiagramSpec, compiled: SceneBuilt, input: Pick<DiagramGenInput, 'key' | 'mcq'> & { question?: string }, parseIssues: DiagramIssue[]): Evaluated {
+function evaluateScene(spec: DiagramSpec, compiledIn: SceneBuilt, input: Pick<DiagramGenInput, 'key' | 'mcq'> & { question?: string }, parseIssues: DiagramIssue[]): Evaluated {
+  let compiled = compiledIn;
+  // Nothing extra (u-fbsp): a lettered point no word of the question or its key names is dropped, not printed.
+  const words = input.mcq ? [input.mcq.stem, ...input.mcq.statements, ...input.mcq.options, input.key] : [input.question ?? '', input.key];
+  const named = new Set(words.flatMap(cornerLettersIn));
+  const points = spec.scene?.points ?? [];
+  if (spec.placement === 'question' && points.some((p) => !named.has(p.label.trim()))) {
+    spec = { ...spec, scene: { ...spec.scene!, points: points.filter((p) => named.has(p.label.trim())) } };
+    compiled = compileSpec(spec) as SceneBuilt;
+  }
   const issues = [...parseIssues, ...compiled.issues];
   const stem = input.mcq ? [input.mcq.stem, ...input.mcq.statements].join('\n') : (input.question ?? '');
-  issues.push(...checkSceneWords(spec, stem, input.key));
+  issues.push(...checkSceneWords(spec, stem, input.key), ...checkSceneLook(spec));
   let solved: SolvedKey | null = null;
   if (compiled.diagram && input.mcq && spec.placement === 'question') {
-    issues.push(...checkLabels(input.mcq, compiled.diagram, { order: false }));
-    const key = checkSceneKey(spec, compiled, input.mcq);
-    solved = key.solved;
-    issues.push(...key.issues);
+    // A label no part of the scene can carry (a ceiling question's distractor Q₄): the scene cannot draw it, kind "curves" can.
+    issues.push(
+      ...checkLabels(input.mcq, compiled.diagram, { order: false }).map((i) =>
+        i.code === 'label.missing'
+          ? { ...i, text: `${i.text} Scene ${spec.scene?.type} has only the parts listed for it; when the question needs a label none of them carries, draw it with kind "curves" instead (levels and points can mark every quantity and price).` }
+          : i,
+      ),
+    );
+    // Areas named by their corners (k-0577 round 2) are checked by their corners; lettered regions by their letters.
+    const corners = checkSceneCorners(spec, compiled, input.mcq, input.key);
+    issues.push(...corners.issues);
+    if (corners.solved) solved = corners.solved;
+    else if (!corners.used || !corners.issues.length) {
+      const key = checkSceneKey(spec, compiled, input.mcq, corners.used);
+      solved = key.solved;
+      issues.push(...key.issues);
+    }
   }
   if (!compiled.diagram && !errors(issues)) issues.push({ level: 'error', code: 'diagram.empty', text: 'Nothing could be drawn from that diagram.' });
   return { spec, compiled, issues, solved, questionChange: '' };

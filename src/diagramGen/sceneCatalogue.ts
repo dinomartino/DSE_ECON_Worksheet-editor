@@ -35,6 +35,18 @@ export interface SceneRegionDef {
   shape: string;
 }
 
+/**
+ * A point a question may letter (k-0577 round 2), for areas named by their corners ("area efj").
+ * It lies on curve `on`, where it meets `at`: another curve, or a tick part (directly above or
+ * below that quantity, level with that price). `other` and `private` stand for the externality's
+ * curves (the one the social curve crosses, the private one beside it).
+ */
+export interface ScenePointDef {
+  id: string;
+  on: string;
+  at: string;
+}
+
 export interface SceneDef {
   type: Exclude<SceneType, 'none'>;
   /** For the prompt: when to use it. */
@@ -51,6 +63,8 @@ export interface SceneDef {
   shown: string[];
   /** Ticks whose dashed line bounds a region: drawn (unlabelled if need be) whenever regions are. */
   edges: string[];
+  /** Points a question may letter (corners of its areas). */
+  points: ScenePointDef[];
 }
 
 const w = (en: string, zh: string): SpecText => ({ en, zh });
@@ -78,6 +92,7 @@ export const WORDS = {
 const curve = (id: string, label: string, what: string, place: string): ScenePartDef => ({ id, kind: 'curve', label, what, place });
 const y = (id: string, label: string, what: string, place: string, labour?: string): ScenePartDef => ({ id, kind: 'yTick', label, what, place, ...(labour ? { labour } : {}) });
 const x = (id: string, label: string, what: string, place: string): ScenePartDef => ({ id, kind: 'xTick', label, what, place });
+const pt = (id: string, on: string, at: string): ScenePointDef => ({ id, on, at });
 
 export const SCENES: SceneDef[] = [
   {
@@ -94,6 +109,7 @@ export const SCENES: SceneDef[] = [
     ticks: { priceBefore: ['P0'], quantityBefore: ['Q0'] },
     shown: ['P0', 'Q0'],
     edges: ['P0', 'Q0'],
+    points: [pt('e0', 'D', 'S')],
   },
   {
     type: 'unitTax',
@@ -134,6 +150,47 @@ export const SCENES: SceneDef[] = [
     ticks: { buyersPay: ['Pb'], sellersGet: ['Ps'], priceBefore: ['P0'], priceAfter: ['Pb'], quantityAfter: ['Q1'], quantityBefore: ['Q0'] },
     shown: ['Pb', 'P0', 'Ps', 'Q1', 'Q0'],
     edges: ['Pb', 'P0', 'Ps', 'Q1', 'Q0'],
+    points: [pt('e0', 'D', 'S0'), pt('e1', 'D', 'S1'), pt('s0AtQ1', 'S0', 'Q1'), pt('s1AtQ0', 'S1', 'Q0')],
+  },
+  {
+    type: 'taxChange',
+    when: 'a per-unit tax raised from t1 to t2 (or cut from t2 to t1): three supply curves, S0 with no tax, S1 with t1, S2 with t2; the deadweight loss before and after and its change. Questions like this usually name areas by corner letters (area efj): letter points',
+    parts: [
+      curve('D', 'D', 'demand', 'downward-sloping'),
+      curve('S0', 'S_0', 'supply with no tax', 'upward-sloping'),
+      curve('S1', 'S_1', 'supply with the tax t1 (S0 moved up by t1)', '{S0} shifted upward'),
+      curve('S2', 'S_2', 'supply with the larger tax t2 (S0 moved up by t2)', '{S1} shifted further upward'),
+      y('Pt2', 'P_2', 'price with the tax t2', 'where {D} meets {S2}'),
+      y('Pt1', 'P_1', 'price with the tax t1', 'where {D} meets {S1}'),
+      y('P0', 'P_0', 'price with no tax', 'where {D} meets {S0}'),
+      x('Qt2', 'Q_2', 'quantity with the tax t2', 'where {D} meets {S2}'),
+      x('Qt1', 'Q_1', 'quantity with the tax t1', 'where {D} meets {S1}'),
+      x('Q0', 'Q_0', 'quantity with no tax', 'where {D} meets {S0}'),
+    ],
+    regions: [
+      { id: 'dwlBefore', what: 'deadweight loss with t1: between D and S0, Qt1 to Q0', words: null, shape: 'the triangle between {D} and {S0}, from {Qt1} to {Q0}' },
+      { id: 'dwlAddUpper', what: 'between D and S1, Qt2 to Qt1', words: null, shape: 'the triangle between {D} and {S1}, from {Qt2} to {Qt1}' },
+      { id: 'dwlAddLower', what: 'between S1 and S0, Qt2 to Qt1', words: null, shape: 'the band between {S1} and {S0}, from {Qt2} to {Qt1}' },
+    ],
+    measures: {
+      dwl: ['dwlBefore', 'dwlAddUpper', 'dwlAddLower'],
+      dwlChange: ['dwlAddUpper', 'dwlAddLower'],
+    },
+    measureWords: { dwl: WORDS.dwl },
+    ticks: { priceBefore: ['Pt1'], priceAfter: ['Pt2'], quantityBefore: ['Qt1'], quantityAfter: ['Qt2'] },
+    shown: [],
+    edges: ['Qt2', 'Qt1', 'Q0'],
+    points: [
+      pt('e0', 'D', 'S0'),
+      pt('e1', 'D', 'S1'),
+      pt('e2', 'D', 'S2'),
+      pt('s0AtQt1', 'S0', 'Qt1'),
+      pt('s0AtQt2', 'S0', 'Qt2'),
+      pt('s1AtQt2', 'S1', 'Qt2'),
+      pt('s1AtQ0', 'S1', 'Q0'),
+      pt('s2AtQt1', 'S2', 'Qt1'),
+      pt('s2AtQ0', 'S2', 'Q0'),
+    ],
   },
   {
     type: 'unitSubsidy',
@@ -163,6 +220,7 @@ export const SCENES: SceneDef[] = [
     ticks: { buyersPay: ['Pb'], sellersGet: ['Ps'], priceBefore: ['P0'], priceAfter: ['Pb'], quantityAfter: ['Q1'], quantityBefore: ['Q0'] },
     shown: ['Ps', 'P0', 'Pb', 'Q0', 'Q1'],
     edges: ['Ps', 'P0', 'Pb', 'Q0', 'Q1'],
+    points: [pt('e0', 'D', 'S0'), pt('e1', 'D', 'S1'), pt('s0AtQ1', 'S0', 'Q1'), pt('s1AtQ0', 'S1', 'Q0')],
   },
   {
     type: 'priceCeiling',
@@ -199,6 +257,7 @@ export const SCENES: SceneDef[] = [
     ticks: { shortage: ['Qs', 'Qd'], quantityAfter: ['Qs'], quantitySupplied: ['Qs'], quantityDemanded: ['Qd'], quantityBefore: ['Q0'], priceBefore: ['P0'], priceAfter: ['Pc'] },
     shown: ['P0', 'Pc', 'Qs', 'Q0', 'Qd'],
     edges: ['P0', 'Qs', 'Q0'],
+    points: [pt('e0', 'D', 'S'), pt('sAtPc', 'S', 'Pc'), pt('dAtPc', 'D', 'Pc'), pt('dAtQs', 'D', 'Qs')],
   },
   {
     type: 'priceFloor',
@@ -233,6 +292,7 @@ export const SCENES: SceneDef[] = [
     ticks: { surplus: ['Qd', 'Qs'], quantityAfter: ['Qd'], quantityDemanded: ['Qd'], quantitySupplied: ['Qs'], quantityBefore: ['Q0'], priceBefore: ['P0'], priceAfter: ['Pf'] },
     shown: ['Pf', 'P0', 'Qd', 'Q0', 'Qs'],
     edges: ['P0', 'Qd', 'Q0'],
+    points: [pt('e0', 'D', 'S'), pt('dAtPf', 'D', 'Pf'), pt('sAtPf', 'S', 'Pf'), pt('sAtQd', 'S', 'Qd')],
   },
   {
     type: 'quota',
@@ -267,6 +327,7 @@ export const SCENES: SceneDef[] = [
     ticks: { priceAfter: ['P1'], quantityAfter: ['Qq'], priceBefore: ['P0'], quantityBefore: ['Q0'] },
     shown: ['P1', 'P0', 'Qq', 'Q0'],
     edges: ['P1', 'P0', 'Qq', 'Q0'],
+    points: [pt('e0', 'D', 'S'), pt('dAtQq', 'D', 'Qq'), pt('sAtQq', 'S', 'Qq')],
   },
   {
     type: 'externality',
@@ -290,6 +351,7 @@ export const SCENES: SceneDef[] = [
     ticks: { marketQuantity: ['Qm'], efficientQuantity: ['Qe'], misallocation: ['Qm', 'Qe'], priceBefore: ['Pm'] },
     shown: ['Qm', 'Qe'],
     edges: ['Qm', 'Qe'],
+    points: [pt('em', 'D', 'S'), pt('ee', 'social', 'other'), pt('socialAtQm', 'social', 'Qm'), pt('privateAtQe', 'private', 'Qe')],
   },
   {
     type: 'costRise',
@@ -313,6 +375,7 @@ export const SCENES: SceneDef[] = [
     ticks: { priceAfter: ['P1'], priceBefore: ['P0'], quantityAfter: ['Q1'], quantityBefore: ['Q0'] },
     shown: ['Q1', 'Q0'],
     edges: ['Q1', 'Q0'],
+    points: [pt('e0', 'D', 'S0'), pt('e1', 'D', 'S1'), pt('s0AtQ1', 'S0', 'Q1')],
   },
   {
     type: 'tariff',
@@ -348,6 +411,7 @@ export const SCENES: SceneDef[] = [
     ticks: { importsBefore: ['Q1', 'Q4'], importsAfter: ['Q2', 'Q3'], domesticOutput: ['Q2'], quantityAfter: ['Q3'], priceAfter: ['Pt'], priceBefore: ['Pw'] },
     shown: ['Pt', 'Pw', 'Q1', 'Q2', 'Q3', 'Q4'],
     edges: ['Q1', 'Q2', 'Q3', 'Q4'],
+    points: [pt('sAtPw', 'S', 'Pw'), pt('sAtPt', 'S', 'Pt'), pt('dAtPt', 'D', 'Pt'), pt('dAtPw', 'D', 'Pw'), pt('pwAtQ2', 'Pw', 'Q2'), pt('pwAtQ3', 'Pw', 'Q3')],
   },
 ];
 

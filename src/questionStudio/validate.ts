@@ -15,6 +15,7 @@ import {
 } from '@/generate/validate';
 import type { Glossary } from '@/glossary/types';
 import { plain } from '@/model/text';
+import type { BiText } from '@/model/types';
 import type { Side } from '@/model/textSlots';
 import { checkDseStyle } from '@/dseStyle/check';
 import { scanLimited } from './guard';
@@ -145,16 +146,44 @@ export function parseWriteReply(text: string): RawDraft[] | null {
   return out;
 }
 
-/** Labels the paper derives stripped, Hong Kong forms and punctuation, a side the paper does not print dropped. */
+/** Labels the paper derives stripped, Hong Kong forms and punctuation, a side the paper does not print dropped, picture markers gone. */
 export function cleanMcq(raw: McqDraft, sides: readonly Side[]): McqDraft {
+  const draft = withoutPictureMarks(raw);
   return {
     kind: 'mcq',
-    stem: clean(raw.stem, sides, STEM_NUMBER),
-    statements: raw.statements.map((s) => clean(s, sides, STATEMENT_NUMBER)),
-    options: raw.options.map((o) => clean(o, sides, OPTION_LETTER)),
-    answerIndex: raw.answerIndex,
-    explanation: clean(raw.explanation, sides),
+    stem: clean(draft.stem, sides, STEM_NUMBER),
+    statements: draft.statements.map((s) => clean(s, sides, STATEMENT_NUMBER)),
+    options: draft.options.map((o) => clean(o, sides, OPTION_LETTER)),
+    answerIndex: draft.answerIndex,
+    explanation: clean(draft.explanation, sides),
   };
+}
+
+// ---- "[picture]" copied from a reference (u-fbsp) ----
+
+/**
+ * A reference's words mark its figures with "[picture]" (`source.ts:PICTURE_MARK`); a model
+ * writing "very close to" the reference copied the marker into its stem, and the card printed
+ * "[picture]" above the drawn figure. The figure is placed by the editor, never by a marker:
+ * a line that is only markers goes, and a marker inside a line is dropped. Also "[圖]",
+ * "[圖片]", "[figure]", "[diagram]", "[image]", "(1) [picture]".
+ */
+const MARK = String.raw`[\[［【](?:picture|figure|diagram|image|graph|圖片?|圖表|圖示)[\]］】]`;
+const MARK_LINE = new RegExp(String.raw`^[ \t]*(?:(?:[(（][1-4][)）][ \t]*)?${MARK}[ \t|]*)+$\n?`, 'gimu');
+const MARK_ANY = new RegExp(String.raw`[ \t]*${MARK}`, 'giu');
+
+export function stripPictureMarks(text: string): string {
+  if (!text) return text;
+  return text.replace(MARK_LINE, '').replace(MARK_ANY, '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+const hasMark = (text: string) => new RegExp(MARK, 'iu').test(text);
+const stripBi = (t: BiDraft): BiDraft => (hasMark(t.en) || hasMark(t.zh) ? { en: stripPictureMarks(t.en), zh: stripPictureMarks(t.zh) } : t);
+
+export function withoutPictureMarks(draft: McqDraft): McqDraft {
+  const all = [draft.stem, ...draft.statements, ...draft.options, draft.explanation];
+  if (!all.some((t) => hasMark(t.en) || hasMark(t.zh))) return draft;
+  return { ...draft, stem: stripBi(draft.stem), statements: draft.statements.map(stripBi), options: draft.options.map(stripBi), explanation: stripBi(draft.explanation) };
 }
 
 // ---- a stem that narrates its figure (k-0534) ----
@@ -324,7 +353,24 @@ export const hasWarning = (draft: Pick<StudioDraft, 'checks' | 'status'>): boole
 
 /** A draft as it is shown: one saved before k-0531 as `failed` (left out then) reads as `look`. */
 export function shownDraft<T extends StudioDraft>(draft: T): T {
-  return draft.status === 'failed' ? { ...draft, status: 'look' } : draft;
+  const shown = draft.status === 'failed' ? { ...draft, status: 'look' as const } : draft;
+  // A draft saved with a "[picture]" marker in its words (u-fbsp, before the write step stripped it) reads without it.
+  const mcq = withoutPictureMarks(shown.draft);
+  const rich = shown.rich && richHasMark(shown.rich.stem) ? { ...shown.rich, stem: richWithout(shown.rich.stem) } : shown.rich;
+  return mcq === shown.draft && rich === shown.rich ? shown : { ...shown, draft: mcq, ...(rich ? { rich } : {}) };
+}
+
+const richHasMark = (t: BiText) => hasMark(plain(t.en)) || hasMark(plain(t.zh));
+/** The marker out of rich text, run by run (a marker is typed in one run). */
+function richWithout(t: BiText): BiText {
+  const side = (runs: BiText['en']) => {
+    const joined = runs.map((r) => r.text).join('');
+    if (!hasMark(joined)) return runs;
+    const kept = runs.map((r) => ({ ...r, text: r.text.replace(MARK_ANY, '') })).filter((r) => r.text !== '');
+    // A line left empty by the marker goes with it.
+    return kept.map((r) => ({ ...r, text: r.text.replace(/\n[ \t]*\n/g, '\n') }));
+  };
+  return { en: side(t.en), zh: side(t.zh) };
 }
 
 export const failing = (draft: StudioDraft): Finding[] => draft.checks.filter((c) => c.state === 'fail').flatMap((c) => c.findings);

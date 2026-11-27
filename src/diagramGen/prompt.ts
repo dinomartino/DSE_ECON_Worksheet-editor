@@ -58,7 +58,9 @@ export function sceneMenu(): string {
       .map(([id, rs]) => `${id} = ${rs!.join(' + ')}`)
       .join('; ');
     const ticks = Object.entries(def.ticks).map(([id, ps]) => `${id} = ${ps!.join('..')}`).join('; ');
-    return [`- ${def.type}: ${def.when}.`, `  parts: ${parts}.`, `  regions: ${regions}.`, areas ? `  areas: ${areas}.` : '', `  ticks: ${ticks}.`].filter(Boolean).join('\n');
+    const curves = new Set(def.parts.filter((p) => p.kind === 'curve').map((p) => p.id));
+    const points = def.points.map((p) => `${p.id} (${p.on} ${curves.has(p.at) || p.at === 'other' ? '×' : 'at'} ${p.at})`).join(', ');
+    return [`- ${def.type}: ${def.when}.`, `  parts: ${parts}.`, `  regions: ${regions}.`, areas ? `  areas: ${areas}.` : '', `  ticks: ${ticks}.`, `  points: ${points}.`].filter(Boolean).join('\n');
   }).join('\n');
 }
 
@@ -80,11 +82,12 @@ DECIDE
 - kind "template": one of the editor's ready-made diagrams, by id, when neither a scene nor kind "curves" can draw it (an import quota, monopoly, money market, Lorenz curve, PPF with trade). Its labels are fixed: use it only when the question names no label the template lacks. Set title/xAxis/yAxis only to rename them, else leave them "".
 
 KIND "scene"
-- scene: {type, market, externality, demand, supply, size, labels, areas, ask, gap}. The editor draws the curves, the shift, the price line or quota, the ticks and the regions from the type: you only choose.
+- scene: {type, market, externality, demand, supply, size, labels, areas, points, ask, gap}. The editor draws the curves, the shift, the price line or quota, the ticks and the regions from the type: you only choose.
 - market: goods | labour (wage rate and labour: a minimum wage). externality (type externality only): negativeProduction (MSC above MPC) | positiveProduction (MSC below MPC) | negativeConsumption (MSB below MPB) | positiveConsumption (MSB above MPB); else "none".
 - demand, supply: normal | steep (inelastic) | flat (elastic), as the question says. size: small | normal | large (the tax, subsidy, external effect or control).
-- labels: [{part, label}]: the label the question and its key use for each part, exactly ({"part":"Pb","label":"P_1"}). A part not listed keeps its default below; "" prints no tick. Every label the stem, the options or the key name must be on a part.
+- labels: [{part, label}]: the label the question and its key use for each part, exactly ({"part":"Pb","label":"P_1"}): a short symbol (S_2), never words in brackets ("S_2 (with tax t_2)": the stem says what a curve is). A part not listed keeps its default below; "" prints no tick. Every label the stem, the options or the key name must be on a part.
 - areas: [{region, label}]: the regions that carry a letter, label {"en":"A","zh":"A"} (or "a"). An MCQ about areas letters EVERY region its options name, one letter per region, never two letters on one area and never words that say what an area is (no "DWL" on the figure the student reads). A model answer may give an area from "areas" (it covers its regions) with label {"en":"","zh":""}: the editor prints its standard words.
+- points: [{point, label}]: lettered corners, when the question names areas by their corners ("area efj", "fgmj") or names a point ("point e"). Put each letter the stem, the options AND the explanation use on the scene point where the explanation's geometry puts it ("D×S1" = where D meets S1; "S0 at Qt1" = on S0 directly below or above that crossing), one letter per point, and no letter the question does not use. Then areas is [] (no region letters) and the keyed option's corners must be exactly the corners of what "ask" names. Example (tax raised from t1 to t2, key "the deadweight loss increases by area fgmj", explanation "with t1 it is efj; with t2 egm"): taxChange, ask dwlChange, points e0 e, e1 f, e2 g, s0AtQt1 j, s0AtQt2 m.
 - ask: what the question asks, one of the scene's areas, regions or ticks (below), or "none". The editor works the answer out from your letters and labels: it must be the keyed option.
 - gap: true draws the shortage or surplus bracket at a price control (a model answer only).
 - A question about areas is answered by the letters: work out which regions make up what it asks (e.g. a tax's deadweight loss = dwlBuyers + dwlSellers), letter them as the keyed option says, and letter the other regions the options name.

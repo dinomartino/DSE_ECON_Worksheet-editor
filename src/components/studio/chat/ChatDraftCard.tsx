@@ -82,6 +82,7 @@ export function ChatDraftCard({
   const [editing, setEditing] = useState(false);
   const { entry, state } = draft;
   const studio = entry.draft;
+  const diagramLook = studio.diagram?.status === 'look' || Boolean(studio.diagramSet?.figures.some((f) => f.status === 'look'));
   const item = useMemo(() => draftItem(entry), [entry]);
   const why = explanationLines(studio.draft, entry.request.sides);
   // A failed check (near-copy, format) is a warning on the card, never a reason to hide it (k-0531).
@@ -122,7 +123,7 @@ export function ChatDraftCard({
         )}
         <BasedOn request={entry.request} />
         {drawing && <Chip tone="ai">✦ {m.drawing}</Chip>}
-        {(studio.diagram?.status === 'look' || studio.diagramSet?.figures.some((f) => f.status === 'look')) && (
+        {diagramLook && (
           <span title={[...(studio.diagram?.issues ?? []), ...(studio.diagramSet?.figures.flatMap((f) => f.issues) ?? [])].map((i) => i.text).join('\n')}>
             <Chip tone="look">{m.diagramLook}</Chip>
           </span>
@@ -133,7 +134,8 @@ export function ChatDraftCard({
             <WarningIcon size={12} /> {warnLabel(warnings, m, f)}
           </Chip>
         ) : (
-          <Chip tone={studio.status === 'look' ? 'look' : 'ok'}>{studio.status === 'look' ? q.statusLook : q.statusOk}</Chip>
+          // A figure to look at is something to look at (u-ewel): never "No problems found" beside it.
+          <Chip tone={studio.status === 'look' || diagramLook ? 'look' : 'ok'}>{studio.status === 'look' || diagramLook ? q.statusLook : q.statusOk}</Chip>
         )}
         <span className="flex-1" />
         <span className="shrink-0 rounded-md bg-surface-sunken px-2 py-0.5 text-[11.5px] font-medium text-ink">{q.key(letterOf(studio.draft.answerIndex))}</span>

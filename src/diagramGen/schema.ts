@@ -102,6 +102,7 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
     size: { type: 'string', enum: [...SIZES] },
     labels: list(obj({ part: str, label: str })),
     areas: list(obj({ region: str, label: TEXT })),
+    points: list(obj({ point: str, label: str })),
     ask: { type: 'string', enum: [...SCENE_ASKS] },
     gap: { type: 'boolean' },
   }),
@@ -123,7 +124,7 @@ export const EDIT_SHAPE_HINT = DIAGRAM_SHAPE_HINT.replace('changeArrows, asks, c
 const EMPTY_TEXT: SpecText = { en: '', zh: '' };
 
 export function emptyScene(): SpecScene {
-  return { type: 'none', market: 'goods', externality: 'none', demand: 'normal', supply: 'normal', size: 'normal', labels: [], areas: [], ask: 'none', gap: false };
+  return { type: 'none', market: 'goods', externality: 'none', demand: 'normal', supply: 'normal', size: 'normal', labels: [], areas: [], points: [], ask: 'none', gap: false };
 }
 
 export function emptySpec(kind: DiagramSpec['kind'] = 'none'): DiagramSpec {
@@ -277,6 +278,7 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
       size: pick(c.size, SIZES, 'normal', 'scene size'),
       labels: arr(c.labels).filter(isRecord).map((l) => ({ part: s(l.part).trim(), label: s(l.label) })),
       areas: arr(c.areas).filter(isRecord).map((a) => ({ region: s(a.region).trim(), label: text(a.label) })),
+      points: arr(c.points).filter(isRecord).map((p) => ({ point: s(p.point).trim(), label: s(p.label).trim() })),
       ask: pick(c.ask, SCENE_ASKS, 'none', 'scene ask'),
       gap: c.gap === true,
     };

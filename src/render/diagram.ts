@@ -1448,10 +1448,12 @@ export function axisTitleAnchor(
   scale: number,
   /** Needed to measure the title for the clamp; defaults to the widest (bilingual) case. */
   language: LanguageMode = 'bilingual',
-): { x: number; y: number } {
+): { x: number; y: number; anchor: 'start' | 'end'; baseline: 'auto' | 'middle' | 'hanging' } {
   const offset = diagram[axis].titleOffset;
-  const base =
-    axis === 'x'
+  const below = axis === 'x' && xTitleBelow(diagram, width, scale, language);
+  const base = below
+    ? xTitleUnder(diagram, proj, scale, language)
+    : axis === 'x'
       ? // Anchored just past the arrowhead rather than at the SVG's right edge. The
         // edge is `PAD.right` away — room reserved so a long title cannot clip — so
         // right-anchoring there stranded a short title like "Quantity" in open space,
@@ -1510,7 +1512,46 @@ export function axisTitleAnchor(
   return {
     x: base.x + (offset ? offset.x * plotSpanX(proj) : 0),
     y: base.y - (offset ? offset.y * plotSpanY(proj) : 0),
+    anchor: below ? 'end' : 'start',
+    baseline: axis === 'y' ? 'auto' : below ? 'hanging' : 'middle',
   };
+}
+
+/**
+ * Whether the x-axis title is set under the axis, right-aligned to its end, as HKDSE sets a
+ * long one ("Aggregate output" under a narrow option figure, u-ewel): when the axis says so
+ * (`titleAt: 'below'`), or, unless it says `end`, when past the arrowhead it would not fit
+ * the room the cap leaves and would be cut off ("Aggregate outp"). A title that fits past
+ * the arrow stays there, so a diagram that printed whole prints as it always did.
+ */
+/** Narrower than this (px at nominal size) is a grid cell's or an option's figure, not a full-width one. */
+const NARROW_FIGURE = 340;
+
+export function xTitleBelow(diagram: Diagram, width: number, scale: number, language: LanguageMode): boolean {
+  const lines = pickSides(diagram.x.title, language);
+  if (lines.length === 0 || diagram.x.titleAt === 'end') return false;
+  if (diagram.x.titleAt === 'below') return true;
+  // A narrow figure (an option's or a grid cell's, u-ewel) is measured as the label fitting measures
+  // it, with its slack: bold words run wider than the estimate and there is no spare canvas to
+  // overhang into. A full-width figure keeps the plain estimate, so a saved one prints as it did.
+  const w = estimateWidth(lines, AXIS_TITLE_SIZE * scale) * (width / scale < NARROW_FIGURE ? LABEL_SLACK : 1);
+  const padRight = Math.min(Math.max(PAD.right * scale, estimateWidth(lines, AXIS_TITLE_SIZE * scale) + 30 * scale), width * MAX_X_TITLE_SHARE);
+  return w + (AXIS_OVERSHOOT + AXIS_TITLE_GAP) * scale > padRight + 0.5 * scale;
+}
+
+/**
+ * Under the axis, its right edge at the arrow tip, on the tick labels' row; a row lower when
+ * an x tick label sits under it.
+ */
+function xTitleUnder(diagram: Diagram, proj: Projection, scale: number, language: LanguageMode): { x: number; y: number } {
+  const tip = proj.plot.right + AXIS_OVERSHOOT * scale;
+  const w = estimateWidth(pickSides(diagram.x.title, language), AXIS_TITLE_SIZE * scale);
+  const ticks: number[] = [];
+  for (const p of diagram.points) if (p.xTickLabel && p.dropTo?.includes('x') && pickSides(p.xTickLabel, language).length) ticks.push(proj.px(p.at.x));
+  for (const t of diagram.x.ticks ?? []) ticks.push(proj.px(t.at));
+  const reach = 14 * scale;
+  const clash = ticks.some((x) => x + reach > tip - w - 4 * scale && x - reach < tip);
+  return { x: tip, y: proj.plot.bottom + X_TICK_TOP * scale + (clash ? FONT_SIZE * scale * 1.25 : 0) };
 }
 
 /**
@@ -1614,8 +1655,7 @@ function titleWidthFloor(diagram: Diagram, widthPx: number, language: LanguageMo
   const lines = pickSides(diagram.title, language);
   if (lines.length === 0) return widthPx;
   const title = estimateWidth(lines, TITLE_SIZE);
-  const rightRoom =
-    estimateWidth(pickSides(diagram.x.title, language), AXIS_TITLE_SIZE) + 30;
+  const rightRoom = xTitleBelow(diagram, widthPx, 1, language) ? 0 : estimateWidth(pickSides(diagram.x.title, language), AXIS_TITLE_SIZE) + 30;
   const CUSHION = 10;
   let width = widthPx;
   for (let pass = 0; pass < 2; pass += 1) {
@@ -3551,7 +3591,8 @@ export function diagramPlot(diagram: Diagram, options: DiagramSvgOptions): Proje
   // words straight through "Price (Renminbi)".
   const extraTop = axisTitleStack(yTitleLines.length, scale) + (below ? 0 : room);
   const xTitleLines = pickSides(diagram.x.title, options.language);
-  const rightRoom = estimateWidth(xTitleLines, AXIS_TITLE_SIZE * scale) + 30 * scale;
+  // A title set under the axis needs no room past the arrow.
+  const rightRoom = xTitleBelow(diagram, options.widthPx * scale, scale, options.language) ? 0 : estimateWidth(xTitleLines, AXIS_TITLE_SIZE * scale) + 30 * scale;
   return projection(
     options.widthPx * scale,
     options.heightPx * scale,
@@ -3617,8 +3658,8 @@ export function diagramSvg(stored: Diagram, options: DiagramSvgOptions): string 
   // so the clamp has to live there or the handle would float off the drawn text.
   const xTitleAt = axisTitleAnchor(diagram, 'x', proj, width, scale, language);
   const xTitle = textAt(xTitleLines, xTitleAt.x, xTitleAt.y, {
-    anchor: 'start',
-    baseline: 'middle',
+    anchor: xTitleAt.anchor,
+    baseline: xTitleAt.baseline,
     fontSize: AXIS_TITLE_SIZE * scale,
     bold: true,
   });
@@ -3833,7 +3874,7 @@ function fitLabels(
   const xTitle = pickSides(diagram.x.title, language);
   if (xTitle.length > 0) {
     const at = axisTitleAnchor(diagram, 'x', proj, width, scale, language);
-    labels.push({ kind: 'title', id: 'x', box: textBox(xTitle, at.x, at.y, 'start', 'middle', AXIS_TITLE_SIZE * scale) });
+    labels.push({ kind: 'title', id: 'x', box: textBox(xTitle, at.x, at.y, at.anchor, at.baseline, AXIS_TITLE_SIZE * scale) });
   }
   const yTitle = pickSides(diagram.y.title, language);
   if (yTitle.length > 0) {
@@ -3854,7 +3895,10 @@ function fitLabels(
     const placed = lines.length > 0 ? curveLabelAnchor(curve, proj, scale) : null;
     if (!placed) continue;
     const box = textBox(lines, placed.x, placed.y, placed.anchor, 'middle', size);
-    const spot = freeSpot(box, labels.map((l) => l.box), polylines, { width, height }, gap, axisBoxes);
+    // A name that has to move stays beside its curve: inside the plot, above the x-axis (u-ewel: AD₁ went down among the axis's words).
+    const plotRoom: LabelBox = { x0: proj.plot.left + AXIS_WIDTH * scale, y0: 0, x1: width, y1: proj.plot.bottom - AXIS_WIDTH * scale };
+    const startsInside = placed.y < plotRoom.y1 && placed.x > plotRoom.x0;
+    const spot = freeSpot(box, labels.map((l) => l.box), polylines, { width, height }, gap, axisBoxes, startsInside ? plotRoom : undefined);
     if (spot.x !== 0 || spot.y !== 0) curveNudge.set(curve.id, spot);
     labels.push({ kind: 'curve', id: curve.id, box: shiftBox(box, spot.x, spot.y) });
   }

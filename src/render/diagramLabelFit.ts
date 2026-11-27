@@ -88,12 +88,15 @@ export function freeSpot(
   /** Things to avoid only when the name has to move anyway (the axis lines): a name already
    *  resting on one stays, so a saved diagram without a label clash prints as it always did. */
   soft: LabelBox[] = [],
+  /** Where a moved name must stay (a curve's name inside the plot, above the x-axis, u-ewel); absent = the canvas. */
+  within?: LabelBox,
 ): { x: number; y: number } {
   const h = box.y1 - box.y0 + gap;
   const w = box.x1 - box.x0 + gap;
   const clear = (b: LabelBox) => !obstacles.some((o) => boxesTouch(b, o, gap));
   if (clear(box)) return { x: 0, y: 0 };
-  const inside = (b: LabelBox) => b.x0 >= 0 && b.y0 >= 0 && b.x1 <= canvas.width && b.y1 <= canvas.height;
+  const inside = (b: LabelBox) =>
+    b.x0 >= 0 && b.y0 >= 0 && b.x1 <= canvas.width && b.y1 <= canvas.height && (!within || (b.x0 >= within.x0 && b.y0 >= within.y0 && b.x1 <= within.x1 && b.y1 <= within.y1));
   const moves: Array<{ x: number; y: number }> = [];
   for (const ky of [0, 1, -1, 2, -2, 3, -3]) {
     for (const kx of [0, 0.5, -0.5, 1, -1]) {
