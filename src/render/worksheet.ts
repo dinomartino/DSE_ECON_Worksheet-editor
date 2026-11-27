@@ -18,6 +18,7 @@ import type {
   BandField,
   BiText,
   FontPair,
+  InlineRun,
   LanguageMode,
   LayoutElement,
   OutputMode,
@@ -42,6 +43,8 @@ import {
   withLeadingGap,
   type CoverGridRender,
   type CoverRenderNode,
+  type EditSegment,
+  type EditTarget,
   type NodeStyle,
   type TextNode,
   pageMetricsOf,
@@ -939,6 +942,49 @@ function keepQuestionWhole(nodes: RenderNode[]): RenderNode[] {
 }
 
 /**
+ * A heading's text with the derived "(22 marks)" / 「（22分）」 appended, for a section
+ * that shows its marks and a part header (u-d4n6).
+ *
+ * The suffix is dressed like the text right before it — the last run with something
+ * visible in it — so a heading the teacher resized or recoloured by selecting its words
+ * takes its marks along, instead of leaving them at the style's size (Section Heading's
+ * 14pt, the QAB's 10pt). Copying one run whole covers both "the label has one size" and
+ * "the runs differ, follow the last one". `vertAlign` and `fraction` stay behind: they
+ * describe that run's characters, not the line's. A heading sized as a whole
+ * (`format.fontSize`) needs nothing here — every backend applies the element's format to
+ * the suffix run too. An unformatted heading gets a bare run, exactly as before.
+ *
+ * `segments` keep the suffix out of the editable field: the page types into the authored
+ * text alone and prints the total beside it. Without them the field held the printed
+ * line, so one keystroke stored "(22 marks)" into the heading and it printed twice, the
+ * stored copy going stale on the next re-mark. Never stored, like the total itself.
+ */
+function markedHeading(
+  authored: BiText,
+  total: number,
+  edit: EditTarget,
+): { text: BiText; segments: { en: EditSegment[]; zh: EditSegment[] } } {
+  const suffix = (side: 'en' | 'zh'): InlineRun => {
+    const text = side === 'en' ? ` (${total} marks)` : `（${total}分）`;
+    const last = [...authored[side]].reverse().find((run) => run.text.trim() !== '');
+    if (!last) return { text };
+    const run: InlineRun = { ...last, text };
+    delete run.vertAlign;
+    delete run.fraction;
+    return run;
+  };
+  const en = suffix('en');
+  const zh = suffix('zh');
+  return {
+    text: { en: [...authored.en, en], zh: [...authored.zh, zh] },
+    segments: {
+      en: [{ edit, value: authored }, { runs: [en] }],
+      zh: [{ edit, value: authored }, { runs: [zh] }],
+    },
+  };
+}
+
+/**
  * Expand a layout element into IR nodes.
  *
  * `first` suppresses a heading's leading blank line when nothing precedes it — a gap
@@ -970,19 +1016,16 @@ function renderLayoutElement(
       // restart-bearing element. Opt-in and appended at render, never stored, for the
       // reason partHeader's is: a stored total goes stale on the next re-mark.
       const showMarks = element.kind === 'section' && element.showMarks;
-      const withMarks = (side: 'en' | 'zh') => {
-        const suffix = side === 'en' ? ` (${sectionTotal} marks)` : `（${sectionTotal}分）`;
-        return [...element.text[side], { text: suffix }];
-      };
+      const edit: EditTarget = { kind: 'layoutText', elementId: element.id };
       return withLeadingGap(
         [
           {
             kind: 'text',
             style: 'Section Heading',
-            text: showMarks ? { en: withMarks('en'), zh: withMarks('zh') } : element.text,
+            ...(showMarks ? markedHeading(element.text, sectionTotal, edit) : { text: element.text }),
             keepNext: true,
             format: element.format,
-            edit: { kind: 'layoutText', elementId: element.id },
+            edit,
           },
         ],
         first ? 0 : ITEM_GAP_LINES,
@@ -1071,23 +1114,18 @@ function renderLayoutElement(
     case 'partHeader': {
       // The "(19 marks)" suffix is appended to the authored text rather than stored
       // with it, so editing the header never captures a stale total.
-      const withMarks = (side: 'en' | 'zh') => {
-        const authored = element.text[side];
-        if (element.showMarks === false) return authored;
-        const suffix = side === 'en' ? ` (${sectionTotal} marks)` : `（${sectionTotal}分）`;
-        return [...authored, { text: suffix }];
-      };
+      const edit: EditTarget = { kind: 'layoutText', elementId: element.id };
       return withLeadingGap(
         [
           {
             kind: 'text',
             style: 'Section Heading',
-            text: element.showMarks === false
-              ? element.text
-              : { en: withMarks('en'), zh: withMarks('zh') },
+            ...(element.showMarks === false
+              ? { text: element.text }
+              : markedHeading(element.text, sectionTotal, edit)),
             keepNext: true,
             format: element.format,
-            edit: { kind: 'layoutText', elementId: element.id },
+            edit,
           },
         ],
         first ? 0 : ITEM_GAP_LINES,

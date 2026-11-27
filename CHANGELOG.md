@@ -294,6 +294,13 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **A section heading's marks now follow its text size.** Select a heading's words and change
+  the size, and the "(22 marks)" after it — or "(19 marks)" after a part header — changes with it
+  on the page, in Word and in the PDF, instead of staying at 14pt (10pt in a mock exam booklet).
+  It also takes the heading's bold, italic and colour. Typing in a heading that shows its marks
+  no longer copies the total into the heading's own text, where it printed twice and went out of
+  date when the marks changed.
+  <!-- zh: **部分標題後的分數現在跟隨標題的字型大小。** 選取標題文字並更改大小，標題後的「（22分）」或分部標題後的「（19分）」會在頁面、Word 及 PDF 中一併改變，不再停留在 14pt（模擬試卷中為 10pt），亦會跟隨標題的粗體、斜體及顏色。在顯示分數的標題中輸入文字時，總分不會再被抄進標題本身，以致印出兩次並在分數更改後過時。 -->
 - **The Question studio draws a price ceiling that binds when demand rises.** A question like
   HKDSE 2023 Paper 1 Q21 (a ceiling at P1, demand rises from D1 to D2, “under-production … area
   abc”) now gets the paper's diagram on the first draft: D1, D2 and S, the ceiling as a dashed line
