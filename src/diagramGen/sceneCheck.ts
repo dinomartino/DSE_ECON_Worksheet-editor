@@ -289,7 +289,7 @@ export function checkCornerLettersDrawn(diagram: Diagram, mcq: McqWords, explana
     }
     const lines = figureLines(diagram);
     const out: DiagramIssue[] = [];
-    for (const area of [...new Set(texts.flatMap(cornerAreasIn))]) {
+    for (const area of namedCorners(mcq, explanation).areas) {
       const pts = [...area].map((l) => at.get(l)).filter((p): p is Pt => Boolean(p));
       const shape = hull(pts);
       if (shape.length < 3) continue;

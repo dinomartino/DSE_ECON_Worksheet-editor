@@ -76,7 +76,7 @@ DECIDE
 - kind "none": the question needs no figure (a pure definition, a calculation with no graph). Say why in "reason".
 - placement "question": the figure is printed with the question and the students read it (an MCQ's diagram, a data stimulus). Draw only what the question gives. Never draw what the student is asked to work out.
 - placement "answer": the question asks the student to draw ("with the aid of a diagram", "illustrate"). Draw the model answer the marking scheme rewards: every point it says to indicate, labelled as it names them.
-- kind "scene": a typed market diagram the editor draws exactly (below): consumer and producer surplus, a per-unit tax, a per-unit subsidy, a price ceiling, a price floor or minimum wage, a quota, an externality, a cost rise and total social surplus, a tariff. ALWAYS use a scene for these, and for every question about areas (surplus, deadweight loss, tax revenue, burdens, benefits); never compose them from curves.
+- kind "scene": NOT AVAILABLE (prototype run): never use it. Draw every market figure, including questions about areas, with kind "curves".
 - kind "curves": axes and straight lines you compose (below). Use it for demand and supply shifts, elasticity and revenue, fixed supply, AD-AS, the PPC and plain graphs: anything no scene draws.
 - kind "chart": a bar or line chart of figures from the question (a table as a graph).
 - kind "template": one of the editor's ready-made diagrams, by id, when neither a scene nor kind "curves" can draw it (an import quota, monopoly, money market, Lorenz curve, PPF with trade). Its labels are fixed: use it only when the question names no label the template lacks. Set title/xAxis/yAxis only to rename them, else leave them "".
@@ -102,6 +102,7 @@ KIND "curves"
 - levels: {id, kind, above, below, side, style, label}: a fixed price line, or for kind "quota" a fixed quantity line. kind: ceiling | floor (also minimum wage) | world | fixed | quota.
   Place it against crossings of two drawn curves: "above": ["D1","S1"] puts it higher than (a quota: right of) where D1 meets S1; "below": ["D1","S2"] lower than (left of) where D1 meets S2. Give both when the question needs it between two equilibria. [] = no bound; with both [] it goes "side" (below | above) the first equilibrium. The editor finds the exact height.
   style "guide": dashed from the axis to the last point marked on it, its label a tick on the axis: the usual HKDSE multiple-choice look ("P1 - - -" to the crossings). style "line": a solid line across the plot (a price ceiling drawn as a line, a world price).
+- Prototype relations: a level with side "at" and above [a, b] passes through where a meets b (a ceiling at the old equilibrium price, as D1 meets S). A point's b may name an earlier point: the point on curve a directly above or below that point, joined to it by a dashed line ("b on D2 directly above a"). Areas named by corner letters ("area abc", "fgmj"): mark every letter the stem, options and explanation use as a point name (dot true) where the explanation's geometry puts it, and no other letters; the editor places the letters.
 - points: {a, b, name, xTick, yTick, dot}: a marked point where lines a and b meet. a and b are any drawn ids: two curves (an equilibrium), or a curve and a level (the quantity supplied on S2 at the price P1: a "S2", b "P1"). b may also be an earlier point's tick: {a "S1", b "Q_1"} is the point on S1 above Q1 (the price sellers receive under a tax). xTick/yTick: the tick labels where its dashed lines meet the axes; "" leaves that line off. name "" unless the question names the point (E_0). dot: false for HKDSE multiple-choice figures (they mark ticks, not dots).
 - gaps: {level, label}: the shortage or surplus bracket at a price line, between demand and supply.
 - shades: {preset, label}: a shaded area (curves only; a question about areas is a scene). preset is one of: ${'${SHADES}'}. label {en:"",zh:""} keeps the preset's own.
@@ -149,7 +150,7 @@ ${'${TEMPLATES}'}
 Every key of the JSON is always present; use "" or [] for what is unused.`;
 
 export function systemPrompt(): string {
-  return DIAGRAM_SYSTEM_PROMPT.replace('${SCENES}', sceneMenu()).replace('${SHADES}', shadeMenu()).replace('${TEMPLATES}', templateMenu());
+  return DIAGRAM_SYSTEM_PROMPT.replace('${SCENES}', '(not available in this prototype run)').replace('${SHADES}', shadeMenu()).replace('${TEMPLATES}', templateMenu());
 }
 
 export interface DiagramPayload {
