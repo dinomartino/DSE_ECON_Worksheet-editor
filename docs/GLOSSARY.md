@@ -75,8 +75,11 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Graph space** — blank axes (optional grid) a student draws a diagram on; a part's
   `answerGraph`, whole 12pt lines tall, one PNG in the `.docx`. `src/render/ir.ts:AnswerGraphNode`
 - **Model answer diagram** — a teacher-only `DiagramBlock` on a leaf's `answerDiagram`: the
-  answer to "draw a diagram", printed after the answer text and in the answer key.
-  `src/components/editor/AnswerDiagramRow.tsx:AnswerDiagramRow`
+  answer to "draw a diagram", printed after the answer text and in the answer key. Since
+  u-0c5q the first of the answer's blocks.
+- **Answer blocks** — what a model answer holds after its text: paragraphs, tables, pictures,
+  diagrams, in any order, teacher-only (`answerBlocks`, schema v4 when more than one diagram).
+  `src/model/answerBlocks.ts:answerBlocksOf`
 - **Answer layer** — elements of an axes diagram flagged `answer: true` (Draw answer on the
   canvas): red in the teacher version and answer key, absent with their dependents from the
   student version. `src/model/diagramAnswers.ts:answerLayer`

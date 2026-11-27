@@ -55,6 +55,14 @@ a version heading is edited afterwards.
   checks that every economy and curve the question names is on the figure and that the answer
   agrees with the drawing, and fixes the figure before you see it.
   <!-- zh: **擬題工作室能按 HKDSE 的方式繪畫洛倫茲曲線。** 比較兩個經濟體的題目，每個經濟體各有一個正方形圖框，標題與題幹所用名稱一致；關於變化的題目，兩條曲線畫在同一圖框內，字母標在曲線旁，圖例放在圖框旁邊。曲線平滑，由一角伸延至另一角，位於絕對平等線之下，且互不相交；題目需要時會畫出絕對平等線及以 20% 為一格、標示 0–100 的方格。擬題工作室會檢查題目提到的每個經濟體及曲線都在圖上，以及答案與圖表相符，並在你看到前修正圖表。 -->
+- **Model answers can hold tables, pictures, diagrams and more text.** Under a part's answer in
+  the right panel, "More in the answer" has the same Add row as the question: Text, Table, Image
+  and Diagram, in any order, each moved with ↑ ↓ or removed with ✕. Like the answer itself, they
+  print only on the teacher version and in the marking scheme (every layout), in Word, in the PDF
+  and in Copy for Word, and never on the student copy. An answer's existing model diagram becomes
+  its first block, in the same place on the page. A paper whose answers use these opens read-only
+  in older versions of Econ Studio, with the answers' text still showing.
+  <!-- zh: **參考答案現可加入表格、圖片、圖表及更多文字。** 在右側面板分題答案下的「答案的其他內容」，有與題目相同的加入列：文字、表格、圖片及圖表，次序不限，可用 ↑ ↓ 移動或用 ✕ 移除。與答案一樣，這些內容只在教師版及評卷參考（所有版面）、Word、PDF 及「複製到 Word」中出現，學生版不會顯示。答案原有的參考圖表會成為第一項，在頁面上的位置不變。使用了這些內容的試卷在舊版 Econ Studio 中只能唯讀開啟，但仍會顯示答案文字。 -->
 - **My questions in the Question studio's reference picker lists your questions by MCQ topic.**
   As in the Past paper bank, the sections A–J open onto their MCQ topics (Elasticity, Price
   Ceiling…), each with how many of your multiple-choice questions it holds; questions filed under a

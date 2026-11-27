@@ -2,19 +2,35 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { createAnswerGraph } from '@/model/answerGraph';
 import { defaultDiagramAltText } from '@/model/diagramTemplates';
-import { altTextAfterTemplateSwap, createAnswerDiagram } from '@/model/factories';
+import { altTextAfterTemplateSwap, createAnswerDiagram, createParagraphBlock } from '@/model/factories';
 import { bi, plain } from '@/model/text';
-import { AnswerDiagramRow } from './AnswerDiagramRow';
 import { AnswerGraphFields } from './AnswerGraphFields';
+import { BlockEditor } from './BlockEditor';
 
 const noop = () => {};
 
-describe('model answer diagram row', () => {
-  it('offers the alt text and title a stem diagram has', () => {
-    const block = createAnswerDiagram();
-    const markup = renderToStaticMarkup(<AnswerDiagramRow block={block} onChange={noop} onRemove={noop} />);
+describe('a model answer’s blocks (u-0c5q)', () => {
+  const answer = { label: 'Answer text' };
+
+  it('a model diagram offers the alt text and title a stem diagram has', () => {
+    const markup = renderToStaticMarkup(<BlockEditor blocks={[createAnswerDiagram()]} onChange={noop} answer={answer} />);
     expect(markup).toContain('aria-label="Alt text (English)"');
     expect(markup).toContain('aria-label="Title (English)"');
+  });
+
+  it('types a paragraph in the panel, offers the stem’s Add row, and no source panel', () => {
+    const markup = renderToStaticMarkup(
+      <BlockEditor blocks={[createParagraphBlock(bi('Then supply falls.', '然後供應下跌。'))]} onChange={noop} answer={answer} />,
+    );
+    expect(markup).toContain('aria-label="Answer text (English)"');
+    for (const add of ['Add text', 'Add image', 'Add diagram']) expect(markup).toContain(add);
+    expect(markup).not.toContain('Source');
+    // A stem's paragraph stays an address of text typed on the page.
+    const stem = renderToStaticMarkup(
+      <BlockEditor blocks={[createParagraphBlock(bi('Then supply falls.', '然後供應下跌。'))]} onChange={noop} />,
+    );
+    expect(stem).not.toContain('aria-label="Answer text');
+    expect(stem).toContain('Source');
   });
 });
 

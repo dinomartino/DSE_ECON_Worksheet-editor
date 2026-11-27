@@ -611,9 +611,12 @@ export interface QuestionSubPart {
   answerGraph?: AnswerGraph;
   /**
    * The model answer to a "draw a diagram" leaf: a teacher-only figure, printed after
-   * the answer text and before the marking scheme, and in the answer key.
+   * the answer text and before the marking scheme, and in the answer key. Read through
+   * `answerBlocksOf` (`model/answerBlocks.ts`): it is the answer's first block.
    */
   answerDiagram?: DiagramBlock;
+  /** The rest of the answer (§ `QuestionPart.answerBlocks`). */
+  answerBlocks?: ContentBlock[];
   /**
    * Its own topic codes and 題型 (`model/tagSlots.ts`); absent = the same as its part's.
    * Replaces the part's list, never adds to it. Never printed, never content.
@@ -672,8 +675,19 @@ export interface QuestionPart {
   /**
    * The model answer to a "draw a diagram" part: a teacher-only figure, printed after
    * the answer text and before the marking scheme (with sub-parts, after the group).
+   * Read through `answerBlocksOf`: it is the answer's first block.
    */
   answerDiagram?: DiagramBlock;
+  /**
+   * The rest of the model answer after its text (u-0c5q): paragraphs, tables, pictures,
+   * diagrams, in any order, teacher-only like `answer`, printed between the answer text
+   * and the marking scheme. `answer` stays the answer's opening text, so the AI writer,
+   * the answer-sheet import and every older build keep reading it. Never stored empty, and
+   * never as a lone diagram (that is `answerDiagram`, which every build since 0.4.0
+   * reads): `withAnswerBlocks` keeps the oldest shape. A document holding one is written
+   * at schema v4 (`model/migrations.ts`). Read through `answerBlocksOf`.
+   */
+  answerBlocks?: ContentBlock[];
   /**
    * Topic codes and 題型 this part tests (`model/tagSlots.ts`). Never printed, never
    * content (`contentKey` ignores it). Absent = none of its own: the part takes the
@@ -701,6 +715,8 @@ export interface StructuredQuestion extends QuestionBase {
   answerGraph?: AnswerGraph;
   /** The model answer diagram (§ `QuestionPart.answerDiagram`); only when there are no parts. */
   answerDiagram?: DiagramBlock;
+  /** The rest of the essay's answer (§ `QuestionPart.answerBlocks`); only when there are no parts. */
+  answerBlocks?: ContentBlock[];
   /** The essay's model answer, teacher-only, as `QuestionPart.answer`; only when there are no parts. */
   answer?: BiText;
   /** The essay's HKEAA marking scheme, as `QuestionPart.scheme`; only when there are no parts. */

@@ -1,4 +1,5 @@
 import { withAnswerKeyLayout, withAnswerKeyText } from './answerKeyLayout';
+import { answerBlocksOf, withAnswerBlocks, type AnswerOwner } from './answerBlocks';
 import { findCoverLine, setCoverLineFormat, setCoverLineText } from './cover';
 import type {
   AnswerGraph,
@@ -292,31 +293,38 @@ export function flattenBlocks(blocks: ContentBlock[]): ContentBlock[] {
   });
 }
 
-/** A leaf that may carry a model answer diagram (§ `QuestionPart.answerDiagram`). */
-type AnswerDiagramOwner = { id: string; answerDiagram?: DiagramBlock };
+/** A leaf that may carry a model answer (§ `model/answerBlocks.ts`). */
+type AnswerDiagramOwner = AnswerOwner & { id: string };
 
-/** A leaf's answer diagram as a one-block list, so every read walk finds it by id. */
+/** A leaf's answer blocks as one list (none when empty), so every read walk finds them by id. */
 function answerDiagramList(owner: AnswerDiagramOwner): ContentBlock[][] {
-  return owner.answerDiagram ? [[owner.answerDiagram]] : [];
+  const blocks = answerBlocksOf(owner);
+  return blocks.length > 0 ? [blocks] : [];
 }
 
-/** Patch a leaf's answer diagram by id; kept only while it stays a diagram. */
+/** Whether `blockId` sits anywhere in the leaf's answer blocks. */
+function answerHolds(owner: AnswerDiagramOwner, blockId: string): boolean {
+  return flattenBlocks(answerBlocksOf(owner)).some((block) => block.id === blockId);
+}
+
+/** Patch a block of a leaf's answer by id; the leaf itself when the answer does not hold it. */
 function patchAnswerDiagram<T extends AnswerDiagramOwner>(
   owner: T,
   blockId: string,
   patch: (block: ContentBlock) => ContentBlock,
 ): T {
-  if (owner.answerDiagram?.id !== blockId) return owner;
-  const next = patch(owner.answerDiagram);
-  return next.kind === 'diagram' ? { ...owner, answerDiagram: next } : owner;
+  if (!answerHolds(owner, blockId)) return owner;
+  return withAnswerBlocks(owner, patchBlocks(answerBlocksOf(owner), blockId, patch));
 }
 
-/** Drop a leaf's answer diagram if it is `blockId` — deleting the figure clears the field. */
-function clearAnswerDiagram<T extends AnswerDiagramOwner>(owner: T, blockId: string): T {
-  if (owner.answerDiagram?.id !== blockId) return owner;
-  const next = { ...owner };
-  delete next.answerDiagram;
-  return next;
+/** Drop `blockId` from a leaf's answer blocks with `strip` (the delete walk's own list rule). */
+function clearAnswerDiagram<T extends AnswerDiagramOwner>(
+  owner: T,
+  blockId: string,
+  strip: (blocks: ContentBlock[]) => ContentBlock[],
+): T {
+  if (!answerHolds(owner, blockId)) return owner;
+  return withAnswerBlocks(owner, strip(answerBlocksOf(owner)));
 }
 
 /**
@@ -561,17 +569,30 @@ export function insertBlockAfter(
     return next;
   };
 
+  /** A leaf's answer blocks (§ `model/answerBlocks.ts`): inserting after the old model
+   *  diagram turns the pair into a list, stored in the shape that holds it. */
+  const tryAnswer = <T extends AnswerOwner>(leaf: T): T => {
+    if (done) return leaf;
+    const current = answerBlocksOf(leaf);
+    const next = tryList(current);
+    return next === current ? leaf : withAnswerBlocks(leaf, next);
+  };
+
   const questions = worksheet.questions.map((question) => {
     if (done) return question;
     const blocks = tryList(question.blocks);
     if (blocks !== question.blocks) return { ...question, blocks } as Question;
+    const answered = tryAnswer(question as AnswerOwner);
+    if (answered !== question) return answered as Question;
 
     const shaped = question as {
-      parts?: Array<{
-        blocks: ContentBlock[];
-        blocksBefore?: ContentBlock[];
-        subParts?: Array<{ blocks: ContentBlock[] }>;
-      }>;
+      parts?: Array<
+        AnswerOwner & {
+          blocks: ContentBlock[];
+          blocksBefore?: ContentBlock[];
+          subParts?: Array<AnswerOwner & { blocks: ContentBlock[] }>;
+        }
+      >;
       options?: Array<{ blocks?: ContentBlock[] }>;
     };
     if (shaped.parts) {
@@ -587,13 +608,13 @@ export function insertBlockAfter(
           const subParts = part.subParts.map((sub) => {
             if (done) return sub;
             const subBlocks = tryList(sub.blocks);
-            return subBlocks !== sub.blocks ? { ...sub, blocks: subBlocks } : sub;
+            return subBlocks !== sub.blocks ? { ...sub, blocks: subBlocks } : tryAnswer(sub);
           });
           if (subParts.some((sub, i) => sub !== part.subParts![i])) {
             return { ...part, subParts };
           }
         }
-        return part;
+        return tryAnswer(part);
       });
       if (parts.some((part, i) => part !== shaped.parts![i])) {
         return { ...question, parts } as Question;
@@ -1681,22 +1702,6 @@ export function findFigureBlock(
 }
 
 /**
- * Whether this block is a leaf's model answer diagram (§ `QuestionPart.answerDiagram`) —
- * a field, not a list entry, so nothing can be inserted after it.
- */
-export function isAnswerDiagram(worksheet: Worksheet, blockId: string): boolean {
-  type Part = AnswerDiagramOwner & { subParts?: AnswerDiagramOwner[] };
-  return worksheet.questions.some((question) => {
-    const parts = (question as { parts?: Part[] }).parts ?? [];
-    const leaves: AnswerDiagramOwner[] = [
-      question,
-      ...parts.flatMap((part) => [part, ...(part.subParts ?? [])]),
-    ];
-    return leaves.some((leaf) => leaf.answerDiagram?.id === blockId);
-  });
-}
-
-/**
  * Replace one block wherever it lives, by id.
  *
  * The sidebar edits blocks through the `onChange(blocks)` chain of the panel that owns
@@ -1884,6 +1889,7 @@ function removeBlock(worksheet: Worksheet, blockId: string): Worksheet {
       const next = clearAnswerDiagram(
         { ...question, blocks: strip(question.blocks) } as Question,
         blockId,
+        strip,
       );
       // An option's blocks are deletable exactly like a stem's — read structurally,
       // as `questionBlockLists` and `mapAllBlocks` read them. Emptied, the key drops
@@ -1919,10 +1925,11 @@ function removeBlock(worksheet: Worksheet, blockId: string): Worksheet {
               blocksBefore: part.blocksBefore ? strip(part.blocksBefore) : part.blocksBefore,
               blocks: strip(part.blocks),
               subParts: part.subParts?.map((sub) =>
-                clearAnswerDiagram({ ...sub, blocks: strip(sub.blocks) }, blockId),
+                clearAnswerDiagram({ ...sub, blocks: strip(sub.blocks) }, blockId, strip),
               ),
             },
             blockId,
+            strip,
           ),
         );
       }

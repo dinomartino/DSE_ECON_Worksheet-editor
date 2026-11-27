@@ -43,6 +43,7 @@ const QUESTION_FIELDS: Record<AnyQuestionKey, 'content' | 'metadata'> = {
   answerSpace: 'content',
   answerGraph: 'content',
   answerDiagram: 'content',
+    answerBlocks: 'content',
   answer: 'content',
   scheme: 'content',
   showTotalMarks: 'content',
@@ -60,6 +61,7 @@ const PART_FIELDS: Record<keyof QuestionPart, 'content' | 'metadata'> = {
   answerSpace: 'content',
   answerGraph: 'content',
   answerDiagram: 'content',
+    answerBlocks: 'content',
   tags: 'metadata',
   rootId: 'metadata',
 };
@@ -73,6 +75,7 @@ const SUB_PART_FIELDS: Record<keyof QuestionSubPart, 'content' | 'metadata'> = {
   answerSpace: 'content',
   answerGraph: 'content',
   answerDiagram: 'content',
+    answerBlocks: 'content',
   tags: 'metadata',
   rootId: 'metadata',
 };

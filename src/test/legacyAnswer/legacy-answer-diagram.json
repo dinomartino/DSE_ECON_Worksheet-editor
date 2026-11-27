@@ -1,0 +1,1243 @@
+{
+  "schemaVersion": 2,
+  "id": "la001",
+  "title": {
+    "en": [
+      {
+        "text": "Legacy answers"
+      }
+    ],
+    "zh": [
+      {
+        "text": "舊式答案"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "la002",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "la003"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "la004",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "la005",
+          "text": {
+            "en": [
+              {
+                "text": "Explain with a diagram why the price rises."
+              }
+            ],
+            "zh": [
+              {
+                "text": "試以圖解釋價格為何上升。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [],
+      "marks": 6,
+      "answer": {
+        "en": [
+          {
+            "text": "Demand increases, so price rises."
+          }
+        ],
+        "zh": [
+          {
+            "text": "需求增加，所以價格上升。"
+          }
+        ]
+      },
+      "answerDiagram": {
+        "kind": "diagram",
+        "id": "la006",
+        "diagram": {
+          "x": {
+            "title": {
+              "en": [
+                {
+                  "text": "Quantity"
+                }
+              ],
+              "zh": [
+                {
+                  "text": "數量"
+                }
+              ]
+            }
+          },
+          "y": {
+            "title": {
+              "en": [
+                {
+                  "text": "Price"
+                }
+              ],
+              "zh": [
+                {
+                  "text": "價格"
+                }
+              ]
+            }
+          },
+          "curves": [
+            {
+              "id": "la007",
+              "points": [
+                {
+                  "x": 0.08,
+                  "y": 0.88
+                },
+                {
+                  "x": 0.86,
+                  "y": 0.12
+                }
+              ],
+              "shape": "straight",
+              "label": {
+                "en": [
+                  {
+                    "text": "D"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "D"
+                  }
+                ]
+              },
+              "labelAt": "end"
+            },
+            {
+              "id": "la008",
+              "points": [
+                {
+                  "x": 0.08,
+                  "y": 0.12
+                },
+                {
+                  "x": 0.86,
+                  "y": 0.88
+                }
+              ],
+              "shape": "straight",
+              "label": {
+                "en": [
+                  {
+                    "text": "S"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "S"
+                  }
+                ]
+              },
+              "labelAt": "end"
+            }
+          ],
+          "points": [
+            {
+              "id": "la009",
+              "at": {
+                "x": 0.47000000000000003,
+                "y": 0.5
+              },
+              "labelSide": "right",
+              "dot": true,
+              "dropTo": [
+                "x",
+                "y"
+              ],
+              "xTickLabel": {
+                "en": [
+                  {
+                    "text": "Q"
+                  },
+                  {
+                    "text": "0",
+                    "vertAlign": "subscript"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "Q"
+                  },
+                  {
+                    "text": "0",
+                    "vertAlign": "subscript"
+                  }
+                ]
+              },
+              "yTickLabel": {
+                "en": [
+                  {
+                    "text": "P"
+                  },
+                  {
+                    "text": "0",
+                    "vertAlign": "subscript"
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "P"
+                  },
+                  {
+                    "text": "0",
+                    "vertAlign": "subscript"
+                  }
+                ]
+              },
+              "anchor": {
+                "cross": [
+                  "la007",
+                  "la008"
+                ]
+              }
+            }
+          ],
+          "labels": [],
+          "arrows": [],
+          "showOrigin": true,
+          "templateId": "supply-demand"
+        },
+        "widthPx": 320,
+        "heightPx": 275,
+        "altText": {
+          "en": [
+            {
+              "text": "Supply and demand"
+            }
+          ],
+          "zh": [
+            {
+              "text": "供應與需求"
+            }
+          ]
+        }
+      },
+      "scheme": {
+        "routes": [
+          {
+            "id": "la010",
+            "groups": [
+              {
+                "id": "la011",
+                "points": [
+                  {
+                    "id": "la012",
+                    "text": {
+                      "en": [
+                        {
+                          "text": "Demand rises"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "需求上升"
+                        }
+                      ]
+                    },
+                    "marks": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "la013",
+      "type": "structured",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "la014",
+          "text": {
+            "en": [
+              {
+                "text": "Read the data."
+              }
+            ],
+            "zh": [
+              {
+                "text": "閱讀資料。"
+              }
+            ]
+          }
+        }
+      ],
+      "parts": [
+        {
+          "id": "la015",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "la016",
+              "text": {
+                "en": [
+                  {
+                    "text": "Draw a diagram."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "繪圖。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4,
+          "answer": {
+            "en": [
+              {
+                "text": "Shift demand right."
+              }
+            ],
+            "zh": [
+              {
+                "text": "需求曲線右移。"
+              }
+            ]
+          },
+          "answerDiagram": {
+            "kind": "diagram",
+            "id": "la017",
+            "diagram": {
+              "x": {
+                "title": {
+                  "en": [
+                    {
+                      "text": "Quantity"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "數量"
+                    }
+                  ]
+                }
+              },
+              "y": {
+                "title": {
+                  "en": [
+                    {
+                      "text": "Price"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "價格"
+                    }
+                  ]
+                }
+              },
+              "curves": [
+                {
+                  "id": "la018",
+                  "points": [
+                    {
+                      "x": 0.08,
+                      "y": 0.88
+                    },
+                    {
+                      "x": 0.86,
+                      "y": 0.12
+                    }
+                  ],
+                  "shape": "straight",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "D"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "D"
+                      }
+                    ]
+                  },
+                  "labelAt": "end"
+                },
+                {
+                  "id": "la019",
+                  "points": [
+                    {
+                      "x": 0.08,
+                      "y": 0.12
+                    },
+                    {
+                      "x": 0.86,
+                      "y": 0.88
+                    }
+                  ],
+                  "shape": "straight",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "S"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "S"
+                      }
+                    ]
+                  },
+                  "labelAt": "end"
+                }
+              ],
+              "points": [
+                {
+                  "id": "la020",
+                  "at": {
+                    "x": 0.47000000000000003,
+                    "y": 0.5
+                  },
+                  "labelSide": "right",
+                  "dot": true,
+                  "dropTo": [
+                    "x",
+                    "y"
+                  ],
+                  "xTickLabel": {
+                    "en": [
+                      {
+                        "text": "Q"
+                      },
+                      {
+                        "text": "0",
+                        "vertAlign": "subscript"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "Q"
+                      },
+                      {
+                        "text": "0",
+                        "vertAlign": "subscript"
+                      }
+                    ]
+                  },
+                  "yTickLabel": {
+                    "en": [
+                      {
+                        "text": "P"
+                      },
+                      {
+                        "text": "0",
+                        "vertAlign": "subscript"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "P"
+                      },
+                      {
+                        "text": "0",
+                        "vertAlign": "subscript"
+                      }
+                    ]
+                  },
+                  "anchor": {
+                    "cross": [
+                      "la018",
+                      "la019"
+                    ]
+                  }
+                }
+              ],
+              "labels": [],
+              "arrows": [],
+              "showOrigin": true,
+              "templateId": "supply-demand"
+            },
+            "widthPx": 320,
+            "heightPx": 275,
+            "altText": {
+              "en": [
+                {
+                  "text": "Supply and demand"
+                }
+              ],
+              "zh": [
+                {
+                  "text": "供應與需求"
+                }
+              ]
+            }
+          },
+          "scheme": {
+            "routes": [
+              {
+                "id": "la021",
+                "groups": [
+                  {
+                    "id": "la022",
+                    "points": [
+                      {
+                        "id": "la023",
+                        "text": {
+                          "en": [
+                            {
+                              "text": "Demand rises"
+                            }
+                          ],
+                          "zh": [
+                            {
+                              "text": "需求上升"
+                            }
+                          ]
+                        },
+                        "marks": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "la024",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "la025",
+              "text": {
+                "en": [
+                  {
+                    "text": "Consider the market."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "考慮市場。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 4,
+          "subParts": [
+            {
+              "id": "la026",
+              "blocks": [
+                {
+                  "kind": "paragraph",
+                  "id": "la027",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Show the surplus."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "顯示過剩。"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "marks": 2,
+              "answer": {
+                "en": [
+                  {
+                    "text": "Area above the price."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "價格以上的面積。"
+                  }
+                ]
+              },
+              "answerDiagram": {
+                "kind": "diagram",
+                "id": "la028",
+                "diagram": {
+                  "x": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Quantity"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "數量"
+                        }
+                      ]
+                    }
+                  },
+                  "y": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Price"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "價格"
+                        }
+                      ]
+                    }
+                  },
+                  "curves": [
+                    {
+                      "id": "la029",
+                      "points": [
+                        {
+                          "x": 0.08,
+                          "y": 0.88
+                        },
+                        {
+                          "x": 0.86,
+                          "y": 0.12
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "D"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "D"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    },
+                    {
+                      "id": "la030",
+                      "points": [
+                        {
+                          "x": 0.08,
+                          "y": 0.12
+                        },
+                        {
+                          "x": 0.86,
+                          "y": 0.88
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "S"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "S"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    }
+                  ],
+                  "points": [
+                    {
+                      "id": "la031",
+                      "at": {
+                        "x": 0.47000000000000003,
+                        "y": 0.5
+                      },
+                      "labelSide": "right",
+                      "dot": true,
+                      "dropTo": [
+                        "x",
+                        "y"
+                      ],
+                      "xTickLabel": {
+                        "en": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "yTickLabel": {
+                        "en": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "anchor": {
+                        "cross": [
+                          "la029",
+                          "la030"
+                        ]
+                      }
+                    }
+                  ],
+                  "labels": [],
+                  "arrows": [],
+                  "showOrigin": true,
+                  "templateId": "supply-demand"
+                },
+                "widthPx": 320,
+                "heightPx": 275,
+                "altText": {
+                  "en": [
+                    {
+                      "text": "Supply and demand"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "供應與需求"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "id": "la032",
+              "blocks": [
+                {
+                  "kind": "paragraph",
+                  "id": "la033",
+                  "text": {
+                    "en": [
+                      {
+                        "text": "Show the shortage."
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "顯示短缺。"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "marks": 2,
+              "answerDiagram": {
+                "kind": "diagram",
+                "id": "la034",
+                "diagram": {
+                  "x": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Quantity"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "數量"
+                        }
+                      ]
+                    }
+                  },
+                  "y": {
+                    "title": {
+                      "en": [
+                        {
+                          "text": "Price"
+                        }
+                      ],
+                      "zh": [
+                        {
+                          "text": "價格"
+                        }
+                      ]
+                    }
+                  },
+                  "curves": [
+                    {
+                      "id": "la035",
+                      "points": [
+                        {
+                          "x": 0.08,
+                          "y": 0.88
+                        },
+                        {
+                          "x": 0.86,
+                          "y": 0.12
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "D"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "D"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    },
+                    {
+                      "id": "la036",
+                      "points": [
+                        {
+                          "x": 0.08,
+                          "y": 0.12
+                        },
+                        {
+                          "x": 0.86,
+                          "y": 0.88
+                        }
+                      ],
+                      "shape": "straight",
+                      "label": {
+                        "en": [
+                          {
+                            "text": "S"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "S"
+                          }
+                        ]
+                      },
+                      "labelAt": "end"
+                    }
+                  ],
+                  "points": [
+                    {
+                      "id": "la037",
+                      "at": {
+                        "x": 0.47000000000000003,
+                        "y": 0.5
+                      },
+                      "labelSide": "right",
+                      "dot": true,
+                      "dropTo": [
+                        "x",
+                        "y"
+                      ],
+                      "xTickLabel": {
+                        "en": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "Q"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "yTickLabel": {
+                        "en": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ],
+                        "zh": [
+                          {
+                            "text": "P"
+                          },
+                          {
+                            "text": "0",
+                            "vertAlign": "subscript"
+                          }
+                        ]
+                      },
+                      "anchor": {
+                        "cross": [
+                          "la035",
+                          "la036"
+                        ]
+                      }
+                    }
+                  ],
+                  "labels": [],
+                  "arrows": [],
+                  "showOrigin": true,
+                  "templateId": "supply-demand"
+                },
+                "widthPx": 320,
+                "heightPx": 275,
+                "altText": {
+                  "en": [
+                    {
+                      "text": "Supply and demand"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "供應與需求"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "answer": {
+            "en": [
+              {
+                "text": "Overall the market clears."
+              }
+            ],
+            "zh": [
+              {
+                "text": "整體市場出清。"
+              }
+            ]
+          },
+          "answerDiagram": {
+            "kind": "diagram",
+            "id": "la038",
+            "diagram": {
+              "x": {
+                "title": {
+                  "en": [
+                    {
+                      "text": "Quantity"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "數量"
+                    }
+                  ]
+                }
+              },
+              "y": {
+                "title": {
+                  "en": [
+                    {
+                      "text": "Price"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "價格"
+                    }
+                  ]
+                }
+              },
+              "curves": [
+                {
+                  "id": "la039",
+                  "points": [
+                    {
+                      "x": 0.08,
+                      "y": 0.88
+                    },
+                    {
+                      "x": 0.86,
+                      "y": 0.12
+                    }
+                  ],
+                  "shape": "straight",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "D"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "D"
+                      }
+                    ]
+                  },
+                  "labelAt": "end"
+                },
+                {
+                  "id": "la040",
+                  "points": [
+                    {
+                      "x": 0.08,
+                      "y": 0.12
+                    },
+                    {
+                      "x": 0.86,
+                      "y": 0.88
+                    }
+                  ],
+                  "shape": "straight",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "S"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "S"
+                      }
+                    ]
+                  },
+                  "labelAt": "end"
+                }
+              ],
+              "points": [
+                {
+                  "id": "la041",
+                  "at": {
+                    "x": 0.47000000000000003,
+                    "y": 0.5
+                  },
+                  "labelSide": "right",
+                  "dot": true,
+                  "dropTo": [
+                    "x",
+                    "y"
+                  ],
+                  "xTickLabel": {
+                    "en": [
+                      {
+                        "text": "Q"
+                      },
+                      {
+                        "text": "0",
+                        "vertAlign": "subscript"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "Q"
+                      },
+                      {
+                        "text": "0",
+                        "vertAlign": "subscript"
+                      }
+                    ]
+                  },
+                  "yTickLabel": {
+                    "en": [
+                      {
+                        "text": "P"
+                      },
+                      {
+                        "text": "0",
+                        "vertAlign": "subscript"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "P"
+                      },
+                      {
+                        "text": "0",
+                        "vertAlign": "subscript"
+                      }
+                    ]
+                  },
+                  "anchor": {
+                    "cross": [
+                      "la039",
+                      "la040"
+                    ]
+                  }
+                }
+              ],
+              "labels": [],
+              "arrows": [],
+              "showOrigin": true,
+              "templateId": "supply-demand"
+            },
+            "widthPx": 320,
+            "heightPx": 275,
+            "altText": {
+              "en": [
+                {
+                  "text": "Supply and demand"
+                }
+              ],
+              "zh": [
+                {
+                  "text": "供應與需求"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "la042",
+          "blocks": [
+            {
+              "kind": "paragraph",
+              "id": "la043",
+              "text": {
+                "en": [
+                  {
+                    "text": "Explain."
+                  }
+                ],
+                "zh": [
+                  {
+                    "text": "解釋。"
+                  }
+                ]
+              }
+            }
+          ],
+          "marks": 2,
+          "answer": {
+            "en": [
+              {
+                "text": "Because of scarcity."
+              }
+            ],
+            "zh": [
+              {
+                "text": "因為稀少。"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "la044",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Multiple Choice"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "section",
+      "id": "la045",
+      "text": {
+        "en": [
+          {
+            "text": "Section B: Structured Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部：結構性問題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    }
+  ],
+  "flow": [
+    {
+      "type": "question",
+      "id": "la004"
+    },
+    {
+      "type": "question",
+      "id": "la013"
+    }
+  ],
+  "createdAt": "2026-11-27T00:00:00.000Z",
+  "updatedAt": "2026-11-27T00:00:00.000Z"
+}

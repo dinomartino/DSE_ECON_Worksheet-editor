@@ -175,7 +175,7 @@ async function rasterizeDiagrams(
 
 /**
  * The PNG pre-pass for a stand-alone IR — the answer key, whose model answer diagrams
- * (§ `QuestionPart.answerDiagram`) are its only pictures.
+ * (§ `QuestionPart.answerDiagram`, `answerBlocks`) are its only diagrams.
  */
 export async function renderNodeDiagramImages(
   nodes: RenderNode[],
