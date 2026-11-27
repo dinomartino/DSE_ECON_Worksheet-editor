@@ -16,10 +16,12 @@ import type { DiagramIssue, DiagramSpec, SolvedKey } from './types';
  * S2" must match the stage and which part carries which label.
  */
 
-type Measure = 'quantity' | 'price' | 'cs' | 'ps' | 'tss' | 'dwl' | 'shortage' | 'surplus';
+type Measure = 'quantity' | 'price' | 'cs' | 'ps' | 'tss' | 'dwl' | 'shortage' | 'surplus' | 'efficient';
 type Change = 'up' | 'down' | 'same' | 'gone' | 'shortageToSurplus' | 'surplusToShortage';
 
 const SUBJECTS: Array<{ m: Measure; re: RegExp }> = [
+  // k-0589: a monopoly's efficient (competitive) output, never its own output.
+  { m: 'efficient', re: /(?:efficient|socially\s+(?:optimal|efficient)|competitive|allocatively\s+efficient)\s+(?:level\s+of\s+)?(?:output|quantity)|有效率的?(?:產量|產出)|社會最佳產量/i },
   { m: 'cs', re: /consumers?['’]?\s+surplus|消費者盈餘/i },
   { m: 'ps', re: /producers?['’]?\s+surplus|生產者盈餘/i },
   { m: 'tss', re: /(?:total\s+)?social\s+surplus|total\s+surplus|總社會盈餘|社會盈餘/i },
@@ -27,7 +29,7 @@ const SUBJECTS: Array<{ m: Measure; re: RegExp }> = [
   { m: 'shortage', re: /excess\s+demand|shortage|超額需求|短缺/i },
   { m: 'surplus', re: /excess\s+supply|unemployment|(?<!consumers?['’]?\s|producers?['’]?\s|social\s|total\s)\bsurplus\b|超額供應|(?<!盈)過剩|失業/i },
   { m: 'quantity', re: /quantity\s+(?:transacted|traded|sold|exchanged|bought)|(?:level\s+of\s+)?employment|output|成交量|交易量|銷售量|就業/i },
-  { m: 'price', re: /(?:market|equilibrium)\s+price|\bprice\s+(?:paid|of)|\bwage\s+rate|成交價|市場價格/i },
+  { m: 'price', re: /(?:market|equilibrium|monopoly)\s+price|\bprice\s+(?:paid|of|charged)|\bwage\s+rate|成交價|市場價格|壟斷價格|售價/i },
 ];
 
 const CHANGES: Array<{ c: Change; re: RegExp }> = [
@@ -55,7 +57,7 @@ export function readClaim(sentence: string): { m: Measure; c: Change; at?: strin
   if (change === 'shortageToSurplus' || change === 'surplusToShortage') return { m: 'shortage', c: change };
   const subjects = SUBJECTS.filter((x) => x.re.test(text)).map((x) => x.m);
   // "the total social surplus" also matches "surplus": keep the most specific.
-  const specific = subjects.filter((m) => !(m === 'surplus' && subjects.some((o) => o === 'cs' || o === 'ps' || o === 'tss')));
+  const specific = subjects.filter((m) => !(m === 'surplus' && subjects.some((o) => o === 'cs' || o === 'ps' || o === 'tss')) && !(m === 'quantity' && subjects.includes('efficient')));
   if (specific.length !== 1 || changes.filter((x) => x.c !== change).some((x) => x.c === 'up' || x.c === 'down')) return null;
   return { m: specific[0], c: change };
 }
@@ -113,6 +115,8 @@ function truth(claim: NonNullable<ReturnType<typeof readClaim>>, before: StateFa
   if (claim.c === 'surplusToShortage') return before.surplus > EPS && after.shortage > EPS;
   const a = before[claim.m];
   const b = after[claim.m];
+  // A measure this figure does not work out (a control's efficient output): not read.
+  if (a === undefined || b === undefined) return null;
   const scale = Math.max(Math.abs(a), Math.abs(b), 1e-3);
   const d = (b - a) / scale;
   if (claim.at) {
@@ -166,7 +170,7 @@ export function checkStageStatements(spec: DiagramSpec, built: SceneBuilt, mcq: 
   const letter = (i: number) => 'ABCD'[i];
   const scene = spec.scene!;
   const plan = stagePlan(scene);
-  const variants = facts.plan ? stageVariants(facts.plan) : [];
+  const variants = facts.variants ?? (facts.plan ? stageVariants(facts.plan) : []);
   /** True or false when the drawing and every variant agree; 'depends' when the curves decide; null when not read. */
   const judge = (claim: ReturnType<typeof readClaim>): boolean | 'depends' | null => {
     if (!claim) return null;
@@ -174,7 +178,7 @@ export function checkStageStatements(spec: DiagramSpec, built: SceneBuilt, mcq: 
     if (own === null || claim.at) return own;
     return variants.every((v) => truth(claim, v.before, v.after, tickOf) === own) ? own : 'depends';
   };
-  const stageText = plan && !('error' in plan) ? `stage ${plan.stage}, binds ${plan.binds}` : '';
+  const stageText = plan && !('error' in plan) ? `stage ${plan.stage}, binds ${plan.binds}` : `stage ${scene.stage ?? 'none'}`;
 
   const listed = mcq.options.map(optionStatements);
   if (mcq.statements.length && listed.some(Boolean)) {

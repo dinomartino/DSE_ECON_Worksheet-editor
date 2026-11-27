@@ -48,6 +48,15 @@ export const SCENE_TEMPLATES: ReadonlySet<string> = new Set([
   'ceiling-demand-falls',
   'quota-enlarged',
   'quota-demand-increase',
+  // k-0589 (audit k-0583 task C): scene monopoly draws these with the question's own labels, MR derived from D.
+  'monopoly',
+  'monopoly-rising-mc',
+  'monopoly-u-mc',
+  'monopoly-mc-zero',
+  'monopoly-cost-fall',
+  'monopoly-mc-rises',
+  'monopoly-same-output',
+  'monopoly-lump-sum',
 ]);
 
 /** Scenes kept for specs saved before, never offered: a newer form draws them (k-0587: ceilingDemandRise = priceCeiling, stage demandRise, binds after). */
@@ -77,7 +86,7 @@ export function sceneMenu(): string {
     const ticks = Object.entries(def.ticks).map(([id, ps]) => `${id} = ${ps!.join('..')}`).join('; ');
     const curves = new Set(def.parts.filter((p) => p.kind === 'curve').map((p) => p.id));
     const points = def.points.map((p) => `${p.id} (${p.on} ${curves.has(p.at) || p.at === 'other' ? '×' : 'at'} ${p.at})`).join(', ');
-    const two = def.type === 'priceCeiling' || def.type === 'priceFloor' || def.type === 'quota' ? ' Two states: stage (below).' : '';
+    const two = def.type === 'priceCeiling' || def.type === 'priceFloor' || def.type === 'quota' ? ' Two states: stage (below).' : def.type === 'monopoly' ? ' MC shapes, changes and their parts: MONOPOLY (below).' : '';
     return [`- ${def.type}: ${def.when}.${two}`, `  parts: ${parts}.`, `  regions: ${regions}.`, areas ? `  areas: ${areas}.` : '', `  ticks: ${ticks}.`, `  points: ${points}.`].filter(Boolean).join('\n');
   }).join('\n');
 }
@@ -94,15 +103,15 @@ DECIDE
 - kind "none": the question needs no figure (a pure definition, a calculation with no graph). Say why in "reason".
 - placement "question": the figure is printed with the question and the students read it (an MCQ's diagram, a data stimulus). Draw only what the question gives. Never draw what the student is asked to work out.
 - placement "answer": the question asks the student to draw ("with the aid of a diagram", "illustrate"). Draw the model answer the marking scheme rewards: every point it says to indicate, labelled as it names them.
-- kind "scene": a typed market diagram the editor draws exactly (below): consumer and producer surplus, a per-unit tax, a per-unit subsidy, a per-unit tax or subsidy raised, a price ceiling, a price floor or minimum wage, a quota (one state, or two states: the control lowered or raised, or demand or supply shifting under it), an externality, a cost rise and total social surplus, a tariff. ALWAYS use a scene when one draws the figure, and for every question about areas (surplus, deadweight loss, tax revenue, burdens, benefits). A control figure no scene draws (a vertical supply with a fixed price, three or more control prices, a quota with a supply shift) is kind "curves" with levels.
+- kind "scene": a typed market diagram the editor draws exactly (below): consumer and producer surplus, a per-unit tax, a per-unit subsidy, a per-unit tax or subsidy raised, a price ceiling, a price floor or minimum wage, a quota (one state, or two states: the control lowered or raised, or demand or supply shifting under it), an externality, a cost rise and total social surplus, a tariff, a monopoly firm (D, MR, MC; a change in MC or a lump-sum tax). ALWAYS use a scene when one draws the figure, and for every question about areas (surplus, deadweight loss, tax revenue, burdens, benefits). A control figure no scene draws (a vertical supply with a fixed price, three or more control prices, a quota with a supply shift) is kind "curves" with levels.
 - kind "curves": axes and straight lines you compose (below). Use it for demand and supply shifts, a movement along a curve, elasticity and revenue, fixed supply, AD-AS, the money market, an import quota at a world price, the PPC and plain graphs such as tax schedules: anything no scene draws (recipes below).
 - kind "chart": a bar, line or pie chart of figures from the question (a table as a graph, shares of a whole). chart: {type bar | line | pie, categories, series, yTitle, xTitle}; a pie has one series, its values the shares and the categories the slices' names.
 - kind "flow": boxes joined by arrows (below): a value-added chain of firms with $ on the arrows (GDP, value added), the circular flow of income, the production stages (primary, secondary, tertiary). Never template "flow".
 - kind "lorenz": Lorenz curves (below). ALWAYS for a Lorenz curve or income distribution figure.
-- kind "template": one of the editor's ready-made diagrams, by id, when neither a scene nor kind "curves" can draw it (an import quota drawn as a kinked supply, monopoly, PPF with trade). Never a data template (flow, pie, charts): those draw another question's content. Its labels are fixed: use it only when the question names no label the template lacks. Set title/xAxis/yAxis only to rename them, else leave them "".
+- kind "template": one of the editor's ready-made diagrams, by id, when neither a scene nor kind "curves" can draw it (an import quota drawn as a kinked supply, PPF with trade). Never a data template (flow, pie, charts): those draw another question's content. Its labels are fixed: use it only when the question names no label the template lacks. Set title/xAxis/yAxis only to rename them, else leave them "".
 
 KIND "scene"
-- scene: {type, market, externality, demand, supply, size, labels, areas, points, ask, gap, stage, binds}. The editor draws the curves, the shift, the price line or quota, the ticks and the regions from the type: you only choose.
+- scene: {type, market, externality, demand, supply, size, labels, areas, points, ask, gap, stage, binds, mc, given}. The editor draws the curves, the shift, the price line or quota, the ticks and the regions from the type: you only choose.
 - market: goods | labour (wage rate and labour: a minimum wage). externality (type externality only): negativeProduction (MSC above MPC) | positiveProduction (MSC below MPC) | negativeConsumption (MSB below MPB) | positiveConsumption (MSB above MPB); else "none".
 - demand, supply: normal | steep (inelastic) | flat (elastic), as the question says. size: small | normal | large (the tax, subsidy, external effect or control).
 - labels: [{part, label}]: the label the question and its key use for each part, exactly ({"part":"Pb","label":"P_1"}): a short symbol (S_2), never words in brackets ("S_2 (with tax t_2)": the stem says what a curve is). A part not listed keeps its default below; "" prints no tick. Every label the stem, the options or the key name must be on a part.
@@ -110,7 +119,7 @@ KIND "scene"
 - points: [{point, label}]: lettered corners, when the question names areas by their corners ("area efj", "fgmj") or names a point ("point e"). Put each letter the stem, the options AND the explanation use on the scene point where the explanation's geometry puts it ("D×S1" = where D meets S1; "S0 at Qt1" = on S0 directly below or above that crossing), one letter per point, and no letter the question does not use. Then areas is [] (no region letters) and the keyed option's corners must be exactly the corners of what "ask" names. Example (tax raised from t1 to t2, key "the deadweight loss increases by area fgmj", explanation "with t1 it is efj; with t2 egm"): taxChange, ask dwlChange, points e0 e, e1 f, e2 g, s0AtQt1 j, s0AtQt2 m.
 - ask: what the question asks, one of the scene's areas, regions or ticks (below), or "none". The editor works the answer out from your letters and labels: it must be the keyed option.
 - gap: true draws the shortage or surplus bracket at a price control (a model answer only); with two states, one bracket per state the control binds in.
-- stage, binds: "none", "both" except for the two-state control figures below.
+- stage, binds: "none", "both" except for the two-state control figures and the monopoly below. mc: "flat" except for a monopoly. given: [] except for a figure the student completes (below).
 - A question about areas is answered by the letters: work out which regions make up what it asks (e.g. a tax's deadweight loss = dwlBuyers + dwlSellers), letter them as the keyed option says, and letter the other regions the options name.
 
 SCENES
@@ -124,6 +133,17 @@ TWO STATES (priceCeiling, priceFloor, quota)
 - points: e0 (D × S), en (the equilibrium after); <curve>At<part>: d, s, d2, s2 with a control line or a quantity tick (dAtPc1 = where D meets Pc1, d2AtQ0 = on D2 above Q0, sAtQq2 = on S at the second quota).
 - A question of statements about the change ("the producer surplus will decrease") has ask "none": the editor works out each statement from both states, and the keyed one must hold for any slopes.
 - Label the parts as the stem names them: "from P1 to P2" puts P_1 on Pc1 and P_2 on Pc2; "from S1 to S2" S_1 on S and S_2 on S2.
+
+MONOPOLY (type monopoly)
+- The editor draws D, MR from D (same intercept, twice as steep: never draw MR yourself), MC, Qm where MR = MC with Pm read up to D, the efficient output Qc where D (= MB) meets MC, and the deadweight loss between them.
+- mc: flat (constant MC = AC, a horizontal line) | rising | zero (MC = 0: Qm where MR reaches the axis, Qc at D's own intercept; label MC "MC = 0") | uShaped, as the question's figure gives it. demand: the slope of D; supply: the slope of a rising MC.
+- stage: none | mcRise (MC rises, e.g. dearer fuel or a per-unit tax: MC to MC2, a smaller output Qm2, a higher price Pm2) | mcFall (cheaper inputs: a larger output, a lower price) | mcFallKept (MC falls but the firm keeps its price and output: HKDSE 2016) | mcRiseToPrice (MC rises to the old monopoly price, so the new efficient output is the old monopoly output: HKDSE 2025) | lumpSumTax (a lump-sum tax or a fixed cost: no curve moves; label the ticks "Q_1 = Q_2", "P_1 = P_2" as the question names them). binds "both".
+- parts: D (label "D = MB" or "D = AR" when the question does), MR, MC; MC2 with a change in MC (MC is then the MC before: label it MC_1 or MC_0 as the question does). Pm, Qm: the monopoly price and output (before); Pc, Qc: where D meets MC (the efficient or competitive price and output, Q_E, Q_c, Q*); Pm2, Qm2, Pc2, Qc2: the same after. mcRiseToPrice has no Pc2, Qc2 (they are Pm, Qm); mcFallKept no Pm2, Qm2.
+- regions, one state: cs, ps (the monopoly's surplus), dwl. With MC2: dwlKept (the loss in both states), dwlAdded (only after), dwlRemoved (only before), those the stage has. areas: dwlBefore, dwlAfter (= dwl), dwlChange. A model answer that shades the original and the new deadweight loss gives areas dwlBefore and dwlAfter in words (labels "" print the standard words, or "DWL_1", "DWL_2"): they may overlap; letters never do.
+- ticks: priceBefore, quantityBefore, priceAfter, quantityAfter, efficientQuantity (after), misallocation (the monopoly to the efficient output). A statement question ("the output will increase", "the deadweight loss will decrease") has ask "none": the editor works out each statement from both states, and the keyed one must hold for any slopes.
+
+A FIGURE THE STUDENT COMPLETES (Paper 2: "With the aid of Figure 3", "In Figure 2, indicate …")
+- given: the parts the printed figure gives, by part id (["D"], ["D","MR","MC"]); placement "question". Draw the whole model answer on it (every part, tick and area the marking scheme rewards): what given does not list is the answer layer, printed only in the marking scheme. given [] = one figure as before.
 
 KIND "flow"
 - flow: {layout, nodes, arrows, key}. nodes: {id, label, col, row, boxed}: col 0, 1, 2… left to right; row orders a column top to bottom. boxed false = bare words (a note such as "increase in inventory $50" under the box it comes from).

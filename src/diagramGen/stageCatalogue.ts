@@ -1,5 +1,6 @@
+import { isMonopolyStage, monopolyDef } from './monopoly';
 import { sceneDef, WORDS, type SceneDef, type ScenePartDef, type ScenePointDef, type SceneRegionDef } from './sceneCatalogue';
-import type { SceneAsk, SceneBinds, SceneStage, SpecScene, SpecText } from './types';
+import type { MonopolyStage, SceneAsk, SceneBinds, SceneStage, SpecScene, SpecText } from './types';
 
 /**
  * Two-state control scenes (k-0587, audit k-0583 task B). A price ceiling, a price floor or a
@@ -23,7 +24,7 @@ export type StagePlace = 'old' | 'between' | 'beyond' | 'outside';
 
 export interface StagePlan {
   control: Control;
-  stage: Exclude<SceneStage, 'none'>;
+  stage: Exclude<SceneStage, 'none' | MonopolyStage>;
   binds: SceneBinds;
   /** The control binds before / after. */
   b1: boolean;
@@ -44,6 +45,9 @@ const CONTROL_OF: Partial<Record<SpecScene['type'], Control>> = { priceCeiling: 
 export function stagePlan(scene: Pick<SpecScene, 'type' | 'stage' | 'binds'>): StagePlan | null | { error: string } {
   const stage = scene.stage ?? 'none';
   if (stage === 'none') return null;
+  // A monopoly's stages are its own (k-0589, `monopoly.ts`); a control takes none of them.
+  if (scene.type === 'monopoly') return null;
+  if (isMonopolyStage(stage)) return { error: `stage "${stage}" is for a monopoly scene; scene ${scene.type} takes stage "none" or a control stage.` };
   const control = CONTROL_OF[scene.type];
   if (!control) return { error: `stage "${stage}" is for a priceCeiling, priceFloor or quota scene; scene ${scene.type} takes stage "none".` };
   const binds = scene.binds ?? 'both';
@@ -264,7 +268,7 @@ export function stageDef(scene: SpecScene, plan: StagePlan): SceneDef {
   };
 }
 
-const STAGE_WHAT: Record<Exclude<SceneStage, 'none'>, string> = {
+const STAGE_WHAT: Record<StagePlan['stage'], string> = {
   lowered: 'the control lowered: two control lines',
   raised: 'the control raised: two control lines',
   demandRise: 'demand rises under the control',
@@ -275,6 +279,7 @@ const STAGE_WHAT: Record<Exclude<SceneStage, 'none'>, string> = {
 
 /** The catalogue entry for a scene: generated for a two-state control, the catalogue's own otherwise. */
 export function sceneDefOf(scene: SpecScene): SceneDef | undefined {
+  if (scene.type === 'monopoly') return monopolyDef(scene);
   const plan = stagePlan(scene);
   if (plan && 'error' in plan) return sceneDef(scene.type);
   return plan ? stageDef(scene, plan) : sceneDef(scene.type);
@@ -310,4 +315,10 @@ export const STAGE_PAIRS: Array<[string, string]> = [
   ['Pq1', 'Pq2'],
   ['P0', 'Pn'],
   ['Q0', 'Qn'],
+  // k-0589: a monopoly's MC change
+  ['MC', 'MC2'],
+  ['Pm', 'Pm2'],
+  ['Qm', 'Qm2'],
+  ['Pc', 'Pc2'],
+  ['Qc', 'Qc2'],
 ];

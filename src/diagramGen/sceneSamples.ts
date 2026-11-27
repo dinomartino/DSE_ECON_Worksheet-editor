@@ -67,6 +67,8 @@ export const SCENE_SAMPLES: SceneSample[] = [
   { id: 'tariff-words', type: 'Tariff (answer)', spec: worded('tariff', ['revenue', 'dwl']) },
   // k-0587 (audit k-0583 task B): two-state controls, each like the HKDSE figure it is named after.
   ...STAGE_SAMPLES(),
+  // k-0589 (audit k-0583 task C): the monopoly firm, each like the Paper 2 figure it is named after.
+  ...MONOPOLY_SAMPLES(),
 ];
 
 function pts(pairs: Array<[string, string]>) {
@@ -121,6 +123,67 @@ function STAGE_SAMPLES(): SceneSample[] {
       id: 'stage-quota-letters',
       type: 'Quota, demand rises: regions lettered A, B',
       spec: sceneSpec({ type: 'quota', stage: 'demandRise', binds: 'both', areas: [{ region: 'dwlKept', label: { en: 'A', zh: 'A' } }, { region: 'dwlAdded', label: { en: 'B', zh: 'B' } }] }),
+    },
+  ];
+}
+
+function words(region: string, en = '', zh = '') {
+  return { region, label: { en, zh } };
+}
+
+/** Monopoly scenes (k-0589), modelled on the Elective 1 questions the audit cites. */
+function MONOPOLY_SAMPLES(): SceneSample[] {
+  return [
+    { id: 'mono-letters', type: 'Monopoly, constant MC: CS, PS, DWL lettered', spec: lettered('monopoly') },
+    {
+      id: 'mono-flat-answer',
+      type: 'Monopoly, constant MC: Qm, Pm, efficient Qc, DWL (answer, like DSE2013 / DSE2020 P2)',
+      spec: sceneSpec({ type: 'monopoly', mc: 'flat', labels: lab([['Qc', 'Q_c']]), areas: [words('dwl')] }, 'answer'),
+    },
+    {
+      id: 'mono-rising-compare',
+      type: 'Monopoly against perfect competition, rising MC: Qm, Pm, Qc, Pc (answer, like DSE2014 P2 Q13)',
+      spec: sceneSpec({ type: 'monopoly', mc: 'rising', labels: lab([['Qc', 'Q_c'], ['Pc', 'P_c']]), areas: [words('dwl')] }, 'answer'),
+    },
+    {
+      id: 'mono-zero',
+      type: 'Monopoly, MC = 0: QM at MR = 0, QE at D (answer, like DSE2017 P2 Q14, DSEPP Q15)',
+      spec: sceneSpec({ type: 'monopoly', mc: 'zero', labels: lab([['D', 'D = MB'], ['Qm', 'Q_M'], ['Pm', 'P_M'], ['Qc', 'Q_E']]), areas: [words('dwl')] }, 'answer'),
+    },
+    {
+      id: 'mono-u',
+      type: 'Monopoly, U-shaped MC: Qm, Pm, DWL (answer, like DSE2016 P2 Q14(a))',
+      spec: sceneSpec({ type: 'monopoly', mc: 'uShaped', areas: [words('dwl', 'DL', 'DL')] }, 'answer'),
+    },
+    {
+      id: 'mono-mc-rise-given',
+      type: 'Given D only; the answer: MR, MC1 to MC2, QM, PM, Q2, P2, the new DWL (like DSE2018 P2 Q14)',
+      spec: sceneSpec({ type: 'monopoly', mc: 'rising', stage: 'mcRise', given: ['D'], labels: lab([['Qm', 'Q_M'], ['Pm', 'P_M']]), areas: [words('dwlAfter', 'DL', 'DL')] }),
+    },
+    {
+      id: 'mono-mc-fall-given',
+      type: 'Given D1 and MC1; the answer: MR, MC2, Q1, P1, Q2, P2, the old and new DWL hatched both ways (like DSE2019 P2 Q13)',
+      spec: sceneSpec({ type: 'monopoly', mc: 'rising', stage: 'mcFall', given: ['D', 'MC'], labels: lab([['D', 'D_1']]), areas: [words('dwlBefore'), words('dwlAfter')] }),
+    },
+    {
+      id: 'mono-same-output',
+      type: 'MC falls, the firm keeps P and Q: DL0 and the increase in DL (answer, like DSE2016 P2 Q14(b))',
+      spec: sceneSpec({ type: 'monopoly', mc: 'uShaped', stage: 'mcFallKept', labels: lab([['MC', 'MC_0'], ['MC2', 'MC_1'], ['Qm', 'Q_m'], ['Pm', 'P_m']]), areas: [words('dwlBefore', 'DL_0', 'DL_0'), words('dwlChange')] }, 'answer'),
+    },
+    {
+      id: 'mono-lump-sum',
+      type: 'A lump-sum tax: Q1 = Q2, P1 = P2, the DWL unchanged (answer, like DSE2015 / DSE2020 P2)',
+      spec: sceneSpec({ type: 'monopoly', mc: 'flat', stage: 'lumpSumTax', areas: [words('dwl', 'DWL_0 = DWL_1', 'DWL_0 = DWL_1')] }, 'answer'),
+    },
+    {
+      id: 'mono-mc-to-price',
+      type: 'MC rises to the old price: the new efficient output is Q0, the new monopoly output Q2 (answer, like DSE2025 P2 Q12)',
+      spec: sceneSpec({ type: 'monopoly', mc: 'flat', stage: 'mcRiseToPrice', given: ['D', 'MC'], labels: lab([['Qm', 'Q_0'], ['Pm', 'P_0'], ['Qc', 'Q_1']]), areas: [words('dwlBefore')] }),
+    },
+    {
+      id: 'mono-mc-fall-letters',
+      type: 'MC falls: the DWL kept, removed and added lettered A, B, C (an MCQ)',
+      spec: sceneSpec({ type: 'monopoly', mc: 'flat', stage: 'mcFall', areas: [words('dwlKept', 'A', 'A'), words('dwlRemoved', 'B', 'B'), words('dwlAdded', 'C', 'C')] }),
     },
   ];
 }

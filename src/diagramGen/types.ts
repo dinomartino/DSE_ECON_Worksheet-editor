@@ -316,7 +316,7 @@ export interface SpecLorenz {
  * works the answer out from the drawing. The catalogue (parts, regions, measures) is
  * `diagramGen/sceneCatalogue.ts`.
  */
-export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'taxChange', 'unitSubsidy', 'subsidyChange', 'priceCeiling', 'ceilingDemandRise', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff'] as const;
+export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'taxChange', 'unitSubsidy', 'subsidyChange', 'priceCeiling', 'ceilingDemandRise', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff', 'monopoly'] as const;
 export type SceneType = (typeof SCENE_TYPES)[number];
 
 /** goods: Price / Quantity; labour: Wage rate / Quantity of labour, ticks W instead of P. */
@@ -324,12 +324,25 @@ export const SCENE_MARKETS = ['goods', 'labour'] as const;
 export type SceneMarket = (typeof SCENE_MARKETS)[number];
 
 /**
+ * A monopoly's second state (k-0589, audit k-0583 task C): marginal cost rises or falls (MC₁ → MC₂,
+ * a new output where MR = MC₂), falls while the firm keeps its price and output (HKDSE 2016 P2
+ * Q14), rises to the old monopoly price so the new efficient output is the old monopoly output
+ * (2025 P2 Q12), or a lump-sum tax that changes nothing on the figure (2015, 2020 P2).
+ */
+export const MONOPOLY_STAGES = ['mcRise', 'mcFall', 'mcFallKept', 'mcRiseToPrice', 'lumpSumTax'] as const;
+export type MonopolyStage = (typeof MONOPOLY_STAGES)[number];
+
+/** A monopoly's marginal cost (k-0589): horizontal (constant AC), rising, zero (on the axis), U-shaped. */
+export const MC_SHAPES = ['flat', 'rising', 'zero', 'uShaped'] as const;
+export type McShape = (typeof MC_SHAPES)[number];
+
+/**
  * A second state on one control figure (k-0587, audit k-0583 task B): what changes while a price
  * ceiling, a price floor or a quota is in force. lowered / raised: the control itself moves (a
  * ceiling or floor price, a quota's quantity), so two control lines are drawn. demandRise …
  * supplyFall: the control stays and a curve shifts. 'none' = the one-state scene.
  */
-export const SCENE_STAGES = ['none', 'lowered', 'raised', 'demandRise', 'demandFall', 'supplyRise', 'supplyFall'] as const;
+export const SCENE_STAGES = ['none', 'lowered', 'raised', 'demandRise', 'demandFall', 'supplyRise', 'supplyFall', ...MONOPOLY_STAGES] as const;
 export type SceneStage = (typeof SCENE_STAGES)[number];
 
 /** Which of the two states the control is effective (binding) in; the editor places the lines from it. */
@@ -442,6 +455,15 @@ export interface SpecScene {
   stage?: SceneStage;
   /** k-0587: the states the control binds in (with a stage); absent = 'both'. */
   binds?: SceneBinds;
+  /** k-0589, type monopoly only: the marginal cost's shape; absent = 'flat'. */
+  mc?: McShape;
+  /**
+   * k-0589: a figure printed with the question that the student completes (Paper 2 "With the aid
+   * of Figure 3"): the parts (curves, ticks) and areas the printed figure gives. Everything else is
+   * the model answer, drawn on the same figure as its answer layer (the teacher's copy and the
+   * marking scheme only). [] / absent = one layer, as before.
+   */
+  given?: string[];
 }
 export type SpecKind = (typeof SPEC_KINDS)[number];
 

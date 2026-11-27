@@ -1,14 +1,19 @@
 import type { Diagram, DiagramAnchorRef, DiagramArea, DiagramAreaEdge, DiagramAreaPattern, DiagramArrow, DiagramCurve, DiagramPointMark, DiagramSpan } from '@/model/diagram';
+import { anchorReferences } from '@/model/diagramAnchors';
 import { areaPolygon } from '@/model/diagramAreas';
-import { resolveAnchor } from '@/model/diagramAnchors';
 import { axes, cross, curve, derived, finish, newId, point, priceLine, shiftArrow, shiftOf, span, type Pair } from '@/model/diagramTemplateKit';
+import { AX, at, band, level, MIN_GAP, on, phraseOf, resolveIn, scratchOf, tickPoint, TOP, underFromAxis, type Band, type Draft, type StageFacts, type StateFacts } from './sceneKit';
 import type { BiText } from '@/model/types';
 import { shiftArrowPlace, type Compiled } from './compile';
+import { monopolyError } from './monopoly';
+import { draftMonopoly, MONO_LAYOUTS } from './monopolyDraft';
 import { placePointLabels } from './pointLabels';
 import { defaultLabel, regionsOf, type SceneDef, type ScenePointDef } from './sceneCatalogue';
 import { grows, isPlan, sceneDefOf, stageAliases, stageParts, stagePlan, stageRegionIds, type StagePlan } from './stageCatalogue';
 import { phrase, plainOf, symbol } from './text';
-import type { CurveRole, DiagramIssue, DiagramSpec, Slope, SpecScene, SpecText } from './types';
+
+export type { StageFacts, StateFacts } from './sceneKit';
+import type { CurveRole, DiagramIssue, DiagramSpec, Slope, SpecScene } from './types';
 
 /**
  * A typed scene → an editable diagram (k-0577). The geometry is code: a tax moves supply up,
@@ -43,9 +48,6 @@ const SHIFT: Record<SpecScene['size'], number> = { small: 0.2, normal: 0.28, lar
 const CONTROL: Record<SpecScene['size'], number> = { small: 0.14, normal: 0.2, large: 0.26 };
 /** A quota's distance left of Q0. */
 const QUOTA: Record<SpecScene['size'], number> = { small: 0.14, normal: 0.18, large: 0.24 };
-/** Ticks closer than this read as one. */
-const MIN_GAP = 0.06;
-const TOP = 0.92;
 /** Where the first equilibrium sits, and how much of each size to use: the layout search tries these in turn. */
 interface Layout {
   E: Pair;
@@ -55,20 +57,6 @@ const LAYOUTS: Layout[] = [0.42, 0.5, 0.34].flatMap((x) => [0.46, 0.4, 0.52, 0.3
 
 const NO_NAME: BiText = { en: [], zh: [] };
 const PATTERNS: DiagramAreaPattern[] = ['diagonal', 'reverse', 'horizontal', 'vertical', 'cross', 'dots'];
-
-const level = (ref: DiagramAnchorRef | number): DiagramAreaEdge => ({ level: ref });
-const on = (c: DiagramCurve): DiagramAreaEdge => ({ curve: c.id });
-const at = (p: DiagramPointMark): DiagramAnchorRef => ({ point: p.id });
-
-interface Band {
-  edges: [DiagramAreaEdge, DiagramAreaEdge];
-  from: number | DiagramAnchorRef;
-  to: number | DiagramAnchorRef;
-  cap?: DiagramAreaEdge;
-}
-/** Under `d` and above `lvl`, from the y-axis: capped by d, so a steep demand that starts below the top still closes it. */
-const underFromAxis = (d: DiagramCurve, lvl: DiagramAreaEdge, to: DiagramAnchorRef): Band => ({ edges: [level(TOP), lvl], from: 0, to, cap: on(d) });
-const band = (edges: [DiagramAreaEdge, DiagramAreaEdge], from: number | DiagramAnchorRef, to: number | DiagramAnchorRef, cap?: DiagramAreaEdge): Band => ({ edges, from, to, ...(cap ? { cap } : {}) });
 
 /** A straight line of slope `m` through E, kept inside the plot (y from `floor` to `top`, x from 0 to 0.9). A falling line stops above the x-axis, so its name clears it. */
 function lineAt(E: Pair, m: number, top = TOP, floor = m < 0 ? 0.12 : 0.04, right = 0.9): Pair[] {
@@ -95,82 +83,6 @@ function shiftFor(base: number, d: number, s: number): number {
   return Math.min(0.4, Math.max(base, need));
 }
 
-/** A tick-carrying point at `ref`: dashed drops to the axes whose ticks it prints (or that bound a region). */
-function tickPoint(
-  ref: DiagramAnchorRef,
-  parts: Array<DiagramCurve | DiagramPointMark>,
-  ticks: { x?: BiText | null; y?: BiText | null },
-): DiagramPointMark {
-  const where = resolveIn(scratchOf(parts), ref);
-  const drops: Array<'x' | 'y'> = [];
-  if (ticks.x !== undefined) drops.push('x');
-  if (ticks.y !== undefined) drops.push('y');
-  return point(where.x, where.y, undefined, {
-    anchor: ref,
-    dot: false,
-    dropTo: drops,
-    ...(ticks.x ? { xTickLabel: ticks.x } : {}),
-    ...(ticks.y ? { yTickLabel: ticks.y } : {}),
-  });
-}
-
-function scratchOf(parts: Array<DiagramCurve | DiagramPointMark>): Diagram {
-  return {
-    x: {},
-    y: {},
-    curves: parts.filter((p): p is DiagramCurve => 'points' in p),
-    points: parts.filter((p): p is DiagramPointMark => 'at' in p),
-    labels: [],
-    arrows: [],
-  };
-}
-
-function resolveIn(d: Diagram, ref: DiagramAnchorRef): { x: number; y: number } {
-  const p = resolveAnchor(d, ref);
-  if (!p) throw new Error('scene anchor does not resolve');
-  return p;
-}
-
-interface Draft {
-  curves: DiagramCurve[];
-  points: DiagramPointMark[];
-  arrows: DiagramArrow[];
-  /** Shift arrows to place once every point is known (they keep clear of lettered points too). */
-  shifts?: Array<{ source: DiagramCurve; copy: DiagramCurve; by: { x: number; y: number } }>;
-  spans?: DiagramSpan[];
-  x: BiText;
-  y: BiText;
-  regions: Record<string, Band>;
-  curveRoles: Record<string, { curve: DiagramCurve; role: CurveRole }>;
-  levels: Record<string, { vertical: boolean; at: number }>;
-  /** Tick part → the point whose drop carries it (for lettered points at a tick's quantity or price). */
-  marks: Record<string, DiagramPointMark>;
-  /** Stand-ins a catalogue point may name: the externality's `other` and `private` curves. */
-  alias?: Record<string, string>;
-  /** A two-state control (k-0587): the market in each state, worked out from the geometry. */
-  stage?: StageFacts;
-}
-
-/** One state of a two-state control scene, in unit space: what a student compares. */
-export interface StateFacts {
-  /** The control is effective. */
-  binds: boolean;
-  quantity: number;
-  /** The price buyers pay (and sellers receive). */
-  price: number;
-  cs: number;
-  ps: number;
-  tss: number;
-  dwl: number;
-  shortage: number;
-  surplus: number;
-}
-export interface StageFacts {
-  plan: StagePlan;
-  before: StateFacts;
-  after: StateFacts;
-}
-
 const GAP_WORDS = {
   shortage: { en: 'Shortage', zh: '短缺' },
   surplus: { en: 'Surplus', zh: '過剩' },
@@ -181,15 +93,6 @@ const GAP_WORDS_TWO = {
   shortage: [{ en: 'Original shortage', zh: '原先的短缺' }, { en: 'New shortage', zh: '新的短缺' }],
   surplus: [{ en: 'Original surplus', zh: '原先的過剩' }, { en: 'New surplus', zh: '新的過剩' }],
   unemployment: [{ en: 'Original unemployment', zh: '原先的失業' }, { en: 'New unemployment', zh: '新的失業' }],
-};
-
-const AX = {
-  price: { en: 'Price', zh: '價格' },
-  quantity: { en: 'Quantity', zh: '數量' },
-  wage: { en: 'Wage rate', zh: '工資率' },
-  labour: { en: 'Quantity\nof labour', zh: '勞工數量' },
-  cost: { en: 'Price / cost', zh: '價格／成本' },
-  benefit: { en: 'Price / benefit', zh: '價格／利益' },
 };
 
 /** Draws one scene; `name(part)` is the part's printed label (undefined = none), `tick(part)` the same for ticks (null = drop line, no label). */
@@ -571,6 +474,9 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
         marks: { Q1: q1, Q2: q2, Q3: q3, Q4: q4 },
       };
     }
+    case 'monopoly':
+      // Drawn by `monopolyDraft.ts` (k-0589): compileScene calls it with its own layouts.
+      throw new Error('monopoly is drafted by draftMonopoly');
     case 'none':
       throw new Error('no scene');
   }
@@ -960,10 +866,6 @@ function draftStage(scene: SpecScene, plan: StagePlan, name: (part: string) => B
   };
 }
 
-function phraseOf(t: SpecText): BiText {
-  return phrase(t) ?? { en: [], zh: [] };
-}
-
 function arrowFor(source: DiagramCurve, copy: DiagramCurve, by: { x: number; y: number }, curves: DiagramCurve[], points: DiagramPointMark[]): DiagramArrow[] {
   const place = shiftArrowPlace(source, by, { curves, points, keep: [source.id, copy.id] });
   if (!place) return [];
@@ -1014,6 +916,11 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     error('scene.stage', plan.error);
     return empty();
   }
+  const monoError = monopolyError(scene);
+  if (monoError) {
+    error('scene.stage', monoError);
+    return empty();
+  }
   // A part this figure does not draw: a label on one that sits on another part moves there; an empty one is nothing to print (k-0587).
   const aliases = isPlan(plan) ? stageAliases(plan) : {};
   const sceneLabelsIn: typeof scene.labels = [];
@@ -1042,9 +949,11 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
   // The first layout whose ticks stand apart on the plot and whose regions all have area.
   let built: Draft | null = null;
   let fallback: Draft | null = null;
-  for (const layout of LAYOUTS) {
+  const sceneNow = scene;
+  const tries: Array<() => Draft> = scene.type === 'monopoly' ? MONO_LAYOUTS.map((l) => () => draftMonopoly(sceneNow, name, tick, l)) : LAYOUTS.map((l) => () => draft(sceneNow, name, tick, l));
+  for (const attempt of tries) {
     try {
-      const candidate = draft(scene, name, tick, layout);
+      const candidate = attempt();
       if (layoutOk(candidate, def.regions.map((r) => r.id))) {
         built = candidate;
         break;
@@ -1065,8 +974,10 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
 
   // Areas: each region or measure the model letters, one pattern per entry.
   const regionLabels = new Map<string, string>();
-  const plans: Array<{ regions: string[]; label?: BiText; pattern: DiagramAreaPattern; text: string }> = [];
-  const used = new Set<string>();
+  const plans: Array<{ id: string; regions: string[]; label?: BiText; pattern: DiagramAreaPattern; text: string; areas: DiagramArea[] }> = [];
+  /** Region → whether the area covering it carries a letter. */
+  const used = new Map<string, boolean>();
+  const isLetter = (text: string) => /^[A-Za-z]$/.test(text.trim());
   scene.areas.forEach((a, i) => {
     const id = a.region.trim();
     const regions = regionsOf(def, id);
@@ -1074,12 +985,6 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
       error('scene.region', `Scene ${def.type} has no region or area "${id}". Regions: ${def.regions.map((r) => r.id).join(', ')}; areas: ${Object.keys(def.measures).join(', ')}.`);
       return;
     }
-    const overlap = regions.filter((r) => used.has(r));
-    if (overlap.length) {
-      error('scene.overlap', `"${id}" covers ${overlap.join(', ')}, which another lettered area already covers: each region carries one label.`);
-      return;
-    }
-    regions.forEach((r) => used.add(r));
     const words = def.regions.find((r) => r.id === id)?.words ?? def.measureWords[id as keyof SceneDef['measureWords']] ?? (regions.length === 1 ? def.regions.find((r) => r.id === regions[0])?.words : null) ?? null;
     const given = phrase(a.label);
     const label = given ?? (words ? phrase(words) : undefined);
@@ -1088,9 +993,22 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
       return;
     }
     const text = plainOf(label) || plainOf(label, 'zh');
-    regions.forEach((r) => regionLabels.set(r, text));
-    plans.push({ regions, label, pattern: PATTERNS[i % PATTERNS.length], text });
+    // Two areas in words may overlap (k-0589: a model answer's original and new deadweight loss, hatched both ways); a letter names one area only.
+    const overlap = regions.filter((r) => used.has(r));
+    if (overlap.length && (isLetter(text) || overlap.some((r) => used.get(r)))) {
+      error('scene.overlap', `"${id}" covers ${overlap.join(', ')}, which another lettered area already covers: each region carries one label.`);
+      return;
+    }
+    regions.forEach((r) => {
+      if (!used.has(r)) {
+        used.set(r, isLetter(text));
+        regionLabels.set(r, text);
+      }
+    });
+    plans.push({ id, regions, label, pattern: PATTERNS[i % PATTERNS.length], text, areas: [] });
   });
+  /** Regions two worded areas share: their labels go on a part of their own. */
+  const shared = new Set(plans.flatMap((p) => p.regions).filter((r, i, all) => all.indexOf(r) !== i));
 
   // Lettered points (k-0577 round 2): each on its catalogue place, anchored so a drag keeps it there.
   const pointLabels = new Map<string, string>();
@@ -1180,13 +1098,13 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
         const areas: DiagramArea[] = [];
         for (const plan of plans) {
           // The label sits on the plan's largest region; the others share its hatch, unlabelled.
-          const drawn = plan.regions.map((r) => {
+          plan.areas = plan.regions.map((r) => {
             const b = built.regions[r];
             const area: DiagramArea = { id: newId(), band: { edges: b.edges, from: b.from, to: b.to, ...(b.cap ? { cap: b.cap } : {}) }, fill: 'hatch', pattern: plan.pattern };
-            regionAreas.set(r, area);
+            if (!regionAreas.has(r)) regionAreas.set(r, area);
             return area;
           });
-          areas.push(...drawn);
+          areas.push(...plan.areas);
         }
         return areas;
       },
@@ -1196,21 +1114,31 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     return empty();
   }
 
-  // Each region must have area; the label goes on the largest of its plan.
+  // Each region must have area; the label goes on the largest of its plan (of its own regions, when two plans share some).
   for (const plan of plans) {
-    const sized = plan.regions.map((r) => {
-      const area = regionAreas.get(r)!;
+    const sized = plan.regions.map((r, i) => {
+      const area = plan.areas[i];
       const poly = areaPolygon(diagram, area);
       return { r, area, size: poly ? polygonArea(poly) : 0, poly };
     });
     for (const s of sized) {
       if (s.size < 1e-4) error('scene.empty', `Region ${s.r} has no area with these choices.`);
     }
-    const largest = sized.reduce((a, b) => (b.size > a.size ? b : a));
+    const own = sized.filter((s) => !shared.has(s.r) && s.size >= 1e-4);
+    const largest = (own.length ? own : sized).reduce((a, b) => (b.size > a.size ? b : a));
     if (plan.label) largest.area.label = plan.label;
   }
   // `finish` copied the areas: write the labels into the diagram's own.
-  diagram = { ...diagram, areas: (diagram.areas ?? []).map((a) => [...regionAreas.values()].find((r) => r.id === a.id) ?? a) };
+  const planAreas = plans.flatMap((p) => p.areas);
+  diagram = { ...diagram, areas: (diagram.areas ?? []).map((a) => planAreas.find((r) => r.id === a.id) ?? a) };
+  // A figure the student completes (k-0589): what the printed figure does not give is the answer layer.
+  const given = (scene.given ?? []).map((g) => g.trim()).filter(Boolean);
+  if (given.length) {
+    const unknown = given.filter((g) => !def.parts.some((p) => p.id === g) && !def.regions.some((r) => r.id === g) && !def.measures[g as keyof SceneDef['measures']]);
+    if (unknown.length) error('scene.given', `"given" names ${unknown.join(', ')}, which scene ${def.type} does not have. Its parts are ${def.parts.map((p) => p.id).join(', ')}.`);
+    if (spec.placement !== 'question') error('scene.given', 'A figure the student completes ("given" listed) is printed with the question: set placement "question". The model answer is drawn on it as its answer layer.');
+    diagram = answerLayerOf(diagram, built, new Set(given), plans.filter((p) => !given.includes(p.id)).flatMap((p) => p.areas.map((a) => a.id)), lettered);
+  }
   // Each letter beside its own point, clear of every line, arrow, dot and label.
   if (lettered.length) diagram = placePointLabels(diagram, new Set(letteredIds.values()));
 
@@ -1222,6 +1150,37 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
   }
 
   return { diagram, issues, curveIds, roles, levels, regionAreas, regionLabels, partLabels: labels, pointLabels, pointPlaces, regionPolygons, ...(built.stage ? { stage: built.stage } : {}) };
+}
+
+/**
+ * The answer layer of a figure the student completes (k-0589): every curve whose part the printed
+ * figure does not give, every point carrying a tick it does not give, the shift arrow of an answer
+ * curve, the brackets and the areas (unless given) are flagged `answer` (`model/diagramAnswers.ts`):
+ * drawn in red in the teacher's copy and the marking scheme, left out of the students' paper with
+ * everything that leans on them.
+ */
+function answerLayerOf(diagram: Diagram, built: Draft, given: ReadonlySet<string>, answerAreas: readonly string[], lettered: readonly DiagramPointMark[]): Diagram {
+  const partOf = new Map(Object.entries(built.curveRoles).map(([part, { curve: c }]) => [c.id, part]));
+  const allGiven = [...partOf.values()].every((p) => given.has(p));
+  const answerCurves = new Set(diagram.curves.filter((c) => (partOf.has(c.id) ? !given.has(partOf.get(c.id)!) : !allGiven)).map((c) => c.id));
+  const carried = new Map<string, string[]>();
+  for (const [part, mark] of Object.entries(built.marks)) carried.set(mark.id, [...(carried.get(mark.id) ?? []), part]);
+  const letteredIds = new Set(lettered.map((l) => l.id));
+  const refs = (p: DiagramPointMark): string[] => (p.anchor ? anchorReferences(p.anchor) : []);
+  const answerPoint = (p: DiagramPointMark) => {
+    const parts = carried.get(p.id) ?? [];
+    if (parts.length) return parts.some((part) => !given.has(part)) || refs(p).some((id) => answerCurves.has(id));
+    return letteredIds.has(p.id) ? refs(p).some((id) => answerCurves.has(id)) : !allGiven;
+  };
+  const flag = <T extends object>(x: T, on: boolean): T => (on ? { ...x, answer: true as const } : x);
+  return {
+    ...diagram,
+    curves: diagram.curves.map((c) => flag(c, answerCurves.has(c.id))),
+    points: diagram.points.map((p) => flag(p, answerPoint(p))),
+    arrows: diagram.arrows.map((a) => flag(a, a.follows ? answerCurves.has(a.follows) : !allGiven)),
+    ...(diagram.spans ? { spans: diagram.spans.map((sp) => flag(sp, true)) } : {}),
+    ...(diagram.areas ? { areas: diagram.areas.map((a) => flag(a, answerAreas.includes(a.id))) } : {}),
+  };
 }
 
 /** Ticks on the plot and apart, every region with area: the layout a teacher can read. */

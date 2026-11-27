@@ -285,6 +285,46 @@ const AUDIT_CASES: GraphCase[] = [
  * binding, a minimum wage with a labour-supply fall). Invented in the HKDSE manner, our words,
  * the figure type and labels following the named question; keys are ours.
  */
+/** k-0589 (audit k-0583 task C): monopoly scenes, MR derived from D. */
+const MONOPOLY_CASES: GraphCase[] = [
+  {
+    id: 'c-mono-mc-fall',
+    type: 'Monopoly, MC falls, statements (like DSE2019 P2 Q13 as an MCQ)',
+    family: 'other',
+    stem: 'The diagram shows the demand (D), marginal revenue (MR) and marginal cost curves of a monopolist that charges a uniform price. Its marginal cost falls from MC_1 to MC_2 because components become cheaper. Which of the following will happen?',
+    options: ['The monopoly price will rise.', 'The output will increase.', 'The consumer surplus will decrease.', 'The output will remain unchanged.'],
+    answer: 1,
+    explanation: 'The monopolist produces where MR = MC. When MC falls to MC_2, MR = MC at a larger output, and the price read from D is lower (A is wrong, B is right). With a lower price and a larger output, consumer surplus rises (C is wrong). The output changes (D is wrong).',
+    figure: 'Price and Quantity. A straight D, MR below it from the same intercept, two upward-sloping MC curves MC_1 and MC_2 (MC_2 lower). No ticks. Key: B.',
+    want: 'monopoly mc rising stage mcFall; MR from D intercept twice as steep; MC_1 above MC_2; no letters',
+    labels: ['D', 'MR', 'MC_1', 'MC_2'],
+  },
+  {
+    id: 'c-mono-dwl-letters',
+    type: 'Monopoly, constant MC: deadweight loss by letters',
+    family: 'other',
+    stem: 'The diagram shows a monopolist with constant marginal cost (MC). It maximises profit and charges a uniform price. The deadweight loss is area',
+    options: ['A.', 'B.', 'C.', 'A + C.'],
+    answer: 2,
+    explanation: 'The monopolist produces where MR = MC and charges the price on D above that output. Society would want output up to where D (marginal benefit) meets MC. The triangle between D and MC from the monopoly output to the efficient output is the deadweight loss: C. A is consumer surplus and B the monopolist\'s surplus.',
+    figure: 'Price and Quantity. D, MR, a horizontal MC. Q_m and P_m marked. Area A consumer surplus, B the producer surplus rectangle, C the triangle between D and MC beyond Q_m. Key: C.',
+    want: 'monopoly flat MC; A = cs, B = ps, C = dwl; Q_m, P_m ticks',
+    labels: ['D', 'MR', 'MC', 'A', 'B', 'C'],
+  },
+  {
+    id: 'c-mono-zero',
+    type: 'Monopoly, MC = 0: profit-maximising and efficient outputs (like DSE2017 P2 Q14 as an MCQ)',
+    family: 'other',
+    stem: 'An internet service provider is a monopoly. Once its network is installed, its marginal cost of serving a customer is zero. The diagram shows its demand (D) and marginal revenue (MR) curves. Which output maximises its profit?',
+    options: ['Q_1', 'Q_2', 'zero output', 'the output where D meets MR'],
+    answer: 0,
+    explanation: 'With MC = 0, profit is greatest where MR = MC = 0: Q_1, where MR meets the quantity axis (half of the demand curve\'s quantity intercept). Q_2, where D meets the axis, is the efficient output (MB = MC = 0).',
+    figure: 'Price and Quantity. D reaching the quantity axis, MR from the same intercept reaching it halfway. MC = 0. Q_1 where MR meets the axis, Q_2 where D meets it. Key: A.',
+    want: 'monopoly mc zero; Q_1 at MR foot, Q_2 at D foot; MC = 0 named',
+    labels: ['D', 'MR', 'Q_1', 'Q_2'],
+  },
+];
+
 const STAGE_CASES: GraphCase[] = [
   {
     id: 'b-ceiling-lowered',
@@ -646,4 +686,5 @@ export const GRAPH_CASES: GraphCase[] = [
   },
   ...AUDIT_CASES,
   ...STAGE_CASES,
+  ...MONOPOLY_CASES,
 ];

@@ -1,3 +1,5 @@
+import { MONOPOLY_MENU_DEF } from './monopoly';
+import { WORDS } from './sceneKit';
 import type { Externality, SceneAsk, SceneMarket, SceneType, SpecText } from './types';
 
 /**
@@ -69,25 +71,7 @@ export interface SceneDef {
 
 const w = (en: string, zh: string): SpecText => ({ en, zh });
 
-export const WORDS = {
-  cs: w('Consumer surplus', '消費者盈餘'),
-  ps: w('Producer surplus', '生產者盈餘'),
-  tss: w('Total social surplus', '總社會盈餘'),
-  dwl: w('Deadweight loss', '效率損失'),
-  taxRevenue: w('Tax revenue', '政府稅收'),
-  buyersBurden: w("Buyers' burden", '買家負擔'),
-  sellersBurden: w("Sellers' burden", '賣家負擔'),
-  consumerBenefit: w('Consumer benefit', '消費者得益'),
-  producerBenefit: w('Producer benefit', '生產者得益'),
-  cost: w('Cost of production', '生產成本'),
-  revenue: w('Total revenue', '總收入'),
-  tssLoss: w('Decrease in total social surplus', '總社會盈餘減少'),
-  externalCost: w('External cost', '界外成本'),
-  externalBenefit: w('External benefit', '界外利益'),
-  tariffRevenue: w('Tariff revenue', '關稅收入'),
-  psGain: w('Increase in producer surplus', '生產者盈餘增加'),
-  csLoss: w('Decrease in consumer surplus', '消費者盈餘減少'),
-} as const;
+export { WORDS } from './sceneKit';
 
 const curve = (id: string, label: string, what: string, place: string): ScenePartDef => ({ id, kind: 'curve', label, what, place });
 const y = (id: string, label: string, what: string, place: string, labour?: string): ScenePartDef => ({ id, kind: 'yTick', label, what, place, ...(labour ? { labour } : {}) });
@@ -482,6 +466,8 @@ export const SCENES: SceneDef[] = [
     edges: ['Q1', 'Q2', 'Q3', 'Q4'],
     points: [pt('sAtPw', 'S', 'Pw'), pt('sAtPt', 'S', 'Pt'), pt('dAtPt', 'D', 'Pt'), pt('dAtPw', 'D', 'Pw'), pt('pwAtQ2', 'Pw', 'Q2'), pt('pwAtQ3', 'Pw', 'Q3')],
   },
+  // k-0589 (audit k-0583 task C): the monopoly firm; its MC shape and stage pick the entry (`monopoly.ts:monopolyDef`).
+  MONOPOLY_MENU_DEF,
 ];
 
 export function sceneDef(type: SceneType): SceneDef | undefined {

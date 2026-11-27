@@ -379,7 +379,8 @@ export function checkSceneLook(spec: DiagramSpec): DiagramIssue[] {
 const WORDS: Array<{ re: RegExp; ok: (s: SpecScene) => boolean; says: string }> = [
   {
     re: /\b(?:unit|per[- ]unit|specific|sales|commodity) tax\b|\btax(?:es)? (?:of|on) (?!imports?)|從量稅|徵收.{0,8}(?<!關)稅/i,
-    ok: (s) => s.type === 'unitTax' || s.type === 'taxChange' || s.type === 'tariff' || s.type === 'externality',
+    // k-0589: a per-unit tax on a monopoly raises its MC; a lump-sum tax ("a tax of $1m on the firm") moves nothing.
+    ok: (s) => s.type === 'unitTax' || s.type === 'taxChange' || s.type === 'tariff' || s.type === 'externality' || (s.type === 'monopoly' && (s.stage === 'mcRise' || s.stage === 'mcRiseToPrice' || s.stage === 'lumpSumTax')),
     says: 'a per-unit tax (scene unitTax)',
   },
   { re: /\bsubsid(?:y|ies|ise|ize)\b|津貼|補貼|資助/i, ok: (s) => s.type === 'unitSubsidy' || s.type === 'subsidyChange' || s.type === 'externality', says: 'a subsidy (scene unitSubsidy, or subsidyChange when it is raised from s1 to s2)' },
@@ -409,12 +410,40 @@ export function checkSceneWords(spec: DiagramSpec, stem: string, key: string): D
   for (const w of WORDS) {
     if (w.re.test(clean(stem)) && !w.ok(scene)) issues.push({ level: 'error', code: 'scene.policy', text: `The question has ${w.says}, but the figure is scene ${scene.type}${scene.type === 'externality' ? ` (${scene.externality})` : ''}.` });
   }
+  issues.push(...monopolyWords(scene, clean(stem)));
   for (const what of ['demand', 'supply'] as const) {
+    // A monopoly's `supply` is its MC's slope, which the question rarely calls elastic.
+    if (scene.type === 'monopoly' && what === 'supply') continue;
     const slope = scene[what];
     if (INELASTIC(what).test(text) && slope !== 'steep') issues.push({ level: 'error', code: 'scene.elasticity', text: `The question says ${what} is inelastic: set ${what} "steep".` });
     else if (ELASTIC(what).test(text) && !INELASTIC(what).test(text) && slope !== 'flat') issues.push({ level: 'error', code: 'scene.elasticity', text: `The question says ${what} is elastic: set ${what} "flat".` });
   }
   return issues;
+}
+
+const MONOPOLY = /\bmonopol|\bsole\s+(?:supplier|seller|producer|provider)|壟斷|獨家(?:供應|經營)/i;
+const LUMP_SUM = /lump[- ]sum\s+tax|定額稅|一筆過(?:的)?稅/i;
+const COST_THING = String.raw`(?:marginal\s+cost|\bMC\b|costs?|price\s+of\s+(?:fuel|oil|inputs?|raw\s+materials?|components?|electricity)|fuel\s+prices?|oil\s+prices?|wages?|成本|油價|燃料價格|工資|零件價格)`;
+const COST_UP = new RegExp(String.raw`${COST_THING}[^.。;；]{0,40}?(?:\brises?\b|\bincreases?\b|\bgo(?:es)?\s+up\b|\bhigher\b|上升|上漲|增加|提高)|(?:\brise|\bincrease)\s+in\s+(?:the\s+)?${COST_THING}`, 'i');
+const COST_DOWN = new RegExp(String.raw`${COST_THING}[^.。;；]{0,40}?(?:\bfalls?\b|\bdrops?\b|\bdecreases?\b|\blower\b|\bcheaper\b|下降|下跌|減少|降低)|(?:\bfall|\bdrop|\bdecrease)\s+in\s+(?:the\s+)?${COST_THING}|\bcheaper\b|更便宜`, 'i');
+
+/**
+ * A monopoly against its question (k-0589): a monopoly stem drawn with a market scene is looked
+ * at; a lump-sum tax is stage lumpSumTax; a cost that rises is not drawn falling, and back.
+ */
+function monopolyWords(scene: SpecScene, stem: string): DiagramIssue[] {
+  const out: DiagramIssue[] = [];
+  if (scene.type !== 'monopoly') {
+    if (MONOPOLY.test(stem)) out.push({ level: 'look', code: 'scene.policy', text: `The question is about a monopoly, but the figure is scene ${scene.type} (a market with a supply curve). A monopoly firm's D, MR and MC is scene monopoly.` });
+    return out;
+  }
+  const stage = scene.stage ?? 'none';
+  if (LUMP_SUM.test(stem) && stage !== 'lumpSumTax' && stage !== 'none') out.push({ level: 'error', code: 'scene.stage', text: `The question has a lump-sum tax: it changes no marginal cost, so the figure is stage "lumpSumTax" (Q and P unchanged), not "${stage}".` });
+  const up = COST_UP.test(stem);
+  const down = COST_DOWN.test(stem);
+  if ((stage === 'mcFall' || stage === 'mcFallKept') && up && !down) out.push({ level: 'error', code: 'scene.stage', text: `The question says a cost rises, but the figure has stage "${stage}" (MC falls): use "mcRise" (or "mcRiseToPrice").` });
+  if ((stage === 'mcRise' || stage === 'mcRiseToPrice') && down && !up) out.push({ level: 'error', code: 'scene.stage', text: `The question says a cost falls, but the figure has stage "${stage}" (MC rises): use "mcFall" (or "mcFallKept" when the firm keeps its price and output).` });
+  return out;
 }
 
 // ---- the figure in words, for the blind solve ----

@@ -165,7 +165,7 @@ export function checkCoincide(spec: DiagramSpec, diagram: Diagram | null): Diagr
   if (firm.length) {
     error(
       'curves.firm',
-      `${firm.map((c) => `"${c.label}"`).join(', ')} cannot be drawn with kind "curves": marginal revenue is worked out from demand, not drawn as a free line. A monopoly figure is one of the monopoly templates.`,
+      `${firm.map((c) => `"${c.label}"`).join(', ')} cannot be drawn with kind "curves": marginal revenue is worked out from demand, not drawn as a free line. A monopoly figure is kind "scene", type monopoly: the editor derives MR from D.`,
     );
   }
   return issues;

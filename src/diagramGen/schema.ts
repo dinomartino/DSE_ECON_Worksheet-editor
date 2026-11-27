@@ -18,6 +18,7 @@ import {
   SCENE_ASKS,
   SCENE_STAGES,
   SCENE_BINDS,
+  MC_SHAPES,
   FLOW_ROUTES,
   type SpecFlow,
   LORENZ_INEQUALITY,
@@ -131,6 +132,8 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
     gap: { type: 'boolean' },
     stage: { type: 'string', enum: [...SCENE_STAGES] },
     binds: { type: 'string', enum: [...SCENE_BINDS] },
+    mc: { type: 'string', enum: [...MC_SHAPES] },
+    given: list(str),
   }),
   flow: obj({
     layout: { type: 'string', enum: ['columns', 'grid'] },
@@ -158,7 +161,7 @@ export const EDIT_SHAPE_HINT = DIAGRAM_SHAPE_HINT.replace('changeArrows, asks, c
 const EMPTY_TEXT: SpecText = { en: '', zh: '' };
 
 export function emptyScene(): SpecScene {
-  return { type: 'none', market: 'goods', externality: 'none', demand: 'normal', supply: 'normal', size: 'normal', labels: [], areas: [], points: [], ask: 'none', gap: false, stage: 'none', binds: 'both' };
+  return { type: 'none', market: 'goods', externality: 'none', demand: 'normal', supply: 'normal', size: 'normal', labels: [], areas: [], points: [], ask: 'none', gap: false, stage: 'none', binds: 'both', mc: 'flat', given: [] };
 }
 
 export function emptyFlow(): SpecFlow {
@@ -355,6 +358,8 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
       gap: c.gap === true,
       stage: pick(c.stage, SCENE_STAGES, 'none', 'scene stage'),
       binds: pick(c.binds, SCENE_BINDS, 'both', 'scene binds'),
+      mc: pick(c.mc, MC_SHAPES, 'flat', 'scene mc'),
+      given: arr(c.given).map((g) => s(g).trim()).filter(Boolean),
     };
   }
   if (isRecord(raw.flow)) {

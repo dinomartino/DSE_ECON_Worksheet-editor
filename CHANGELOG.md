@@ -13,6 +13,15 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question studio draws the monopoly firm with the question's own labels.** Demand, marginal
+  revenue worked out from demand (same starting point, twice as steep, and it stays that way when
+  you drag demand), and a marginal cost that is constant, rising, zero or U-shaped, with the
+  profit-maximising output and price, the efficient output and the deadweight loss. It also draws a
+  change in marginal cost (the old and new output, price and deadweight loss, as in HKDSE 2018,
+  2019 and 2025 Paper 2), a cost fall where the firm keeps its price and output (2016), and a
+  lump-sum tax that changes nothing (2015, 2020). A figure the student completes prints only what
+  the question gives; the model answer is drawn on it in red for the marking scheme.
+  <!-- zh: **擬題工作室能以題目自己的標示繪畫壟斷廠商圖。** 需求、由需求計出的邊際收入（起點相同、斜率為兩倍，拖動需求時仍保持），以及固定、上升、為零或 U 形的邊際成本，並標出謀取最大利潤的產量和價格、有效率產量及效率損失。它亦能繪畫邊際成本的改變（新舊產量、價格及效率損失，如 HKDSE 2018、2019 及 2025 年 Paper 2）、成本下降但廠商維持價格及產量（2016 年），以及不改變任何曲線的定額稅（2015、2020 年）。若學生要在圖上作答，題目只印出題目提供的部分，模範答案則以紅色畫在同一圖上，供評卷參考使用。 -->
 - **The Question studio draws price controls in two states.** A price ceiling or floor lowered or
   raised (two price lines, on either side of equilibrium), a quota enlarged or cut, and demand or
   supply shifting while a ceiling, floor or quota stays, as in HKDSE 2021 Q17, 2020 Q20, 2026 Q16
