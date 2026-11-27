@@ -6,6 +6,7 @@ import {
   DIRECTIONS,
   GRAPH_RISES,
   GRAPH_SHAPES,
+  GRAPH_POINTS,
   LEVEL_KINDS,
   PLACES,
   SIZES,
@@ -60,6 +61,9 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
       label: str,
       shape: { type: 'string', enum: [...GRAPH_SHAPES] },
       rise: { type: 'string', enum: [...GRAPH_RISES] },
+      start: { type: 'string', enum: [...GRAPH_POINTS] },
+      cap: { type: 'string', enum: [...GRAPH_POINTS] },
+      through: list(str),
     }),
   ),
   shifts: list(
@@ -69,6 +73,7 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
       direction: { type: 'string', enum: [...DIRECTIONS] },
       size: { type: 'string', enum: [...SIZES] },
       label: str,
+      through: list(str),
     }),
   ),
   levels: list(
@@ -80,16 +85,18 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
       side: { type: 'string', enum: ['below', 'above'] },
       style: { type: 'string', enum: [...LEVEL_STYLES] },
       label: str,
+      through: list(str),
     }),
   ),
   points: list(obj({ a: str, b: str, name: str, yTick: str, xTick: str, dot: { type: 'boolean' } })),
   gaps: list(obj({ level: str, label: TEXT })),
+  brackets: list(obj({ from: str, to: str, label: TEXT })),
   shades: list(obj({ preset: str, label: TEXT })),
   marks: list(obj({ of: str, where: { type: 'string', enum: ['inside', 'on', 'outside'] }, label: str })),
   changeArrows: { type: 'boolean' },
   asks: obj({ what: { type: 'string', enum: [...ASKS] }, state: { type: 'string', enum: ['before', 'after'] } }),
   chart: obj({
-    type: { type: 'string', enum: ['bar', 'line'] },
+    type: { type: 'string', enum: ['bar', 'line', 'pie'] },
     categories: list(TEXT),
     series: list(obj({ label: TEXT, values: list({ type: 'number' }) })),
     yTitle: TEXT,
@@ -130,7 +137,7 @@ export const DIAGRAM_EDIT_SCHEMA: JsonSchema = {
 
 /** For the rungs that do not enforce the schema (json_object, prompt). */
 export const DIAGRAM_SHAPE_HINT =
-  'Reply with one JSON object only, with exactly these keys: kind, reason, placement, template, title, xAxis, yAxis, curves, shifts, levels, points, gaps, shades, marks, changeArrows, asks, chart, scene, lorenz (see the shape described above). Every key is always present; use "" or [] for unused ones.';
+  'Reply with one JSON object only, with exactly these keys: kind, reason, placement, template, title, xAxis, yAxis, curves, shifts, levels, points, gaps, brackets, shades, marks, changeArrows, asks, chart, scene, lorenz (see the shape described above). Every key is always present; use "" or [] for unused ones.';
 
 export const EDIT_SHAPE_HINT = DIAGRAM_SHAPE_HINT.replace('changeArrows, asks, chart, scene, lorenz', 'changeArrows, asks, chart, scene, lorenz, questionChange');
 
@@ -154,6 +161,7 @@ export function emptySpec(kind: DiagramSpec['kind'] = 'none'): DiagramSpec {
     levels: [],
     points: [],
     gaps: [],
+    brackets: [],
     shades: [],
     marks: [],
     changeArrows: false,
@@ -220,12 +228,15 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
       slope: pick(c.slope, SLOPES, 'normal', `curve ${s(c.id)} slope`),
       place: pick(c.place, PLACES, 'mid', `curve ${s(c.id)} place`),
       label: s(c.label),
+      through: crossingRef(c.through),
     };
     // A graph line's shape (k-0545); other roles carry none, and an older spec has neither key.
     if (role === 'graph') {
       curve.shape = pick(c.shape, GRAPH_SHAPES, 'origin', `curve ${s(c.id)} shape`);
       if (curve.shape === 'none') curve.shape = 'origin';
       curve.rise = pick(c.rise, GRAPH_RISES, 'rising', `curve ${s(c.id)} rise`);
+      curve.start = pick(c.start, GRAPH_POINTS, 'none', `curve ${s(c.id)} start`);
+      curve.cap = pick(c.cap, GRAPH_POINTS, 'none', `curve ${s(c.id)} cap`);
     }
     return curve;
   });
@@ -235,6 +246,7 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
     direction: pick(c.direction, DIRECTIONS, 'right', `shift ${s(c.id)} direction`),
     size: pick(c.size, SIZES, 'normal', `shift ${s(c.id)} size`),
     label: s(c.label),
+    through: crossingRef(c.through),
   }));
   spec.levels = arr(raw.levels).filter(isRecord).map((c, i) => {
     const kind = pick(c.kind, LEVEL_KINDS, 'fixed', `level ${s(c.id)} kind`);
@@ -247,6 +259,7 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
       side: pick(c.side, ['below', 'above'] as const, kind === 'floor' ? 'above' : 'below', `level ${s(c.id)} side`),
       style: pick(c.style, LEVEL_STYLES, 'line', `level ${s(c.id)} style`),
       label: s(c.label),
+      through: crossingRef(c.through),
     };
   });
   // `equilibria` is the name before k-0534; a reply (or a saved spec) using it still reads.
@@ -259,6 +272,7 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
     dot: typeof c.dot === 'boolean' ? c.dot : Boolean(s(c.name).trim()),
   }));
   spec.gaps = arr(raw.gaps).filter(isRecord).map((c) => ({ level: s(c.level).trim(), label: text(c.label) }));
+  spec.brackets = arr(raw.brackets).filter(isRecord).map((c) => ({ from: s(c.from).trim(), to: s(c.to).trim(), label: text(c.label) }));
   spec.shades = arr(raw.shades).filter(isRecord).map((c) => ({ preset: s(c.preset).trim(), label: text(c.label) }));
   spec.marks = arr(raw.marks).filter(isRecord).map((c) => ({
     of: s(c.of).trim(),
@@ -275,7 +289,7 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
   if (isRecord(raw.chart)) {
     const c = raw.chart;
     spec.chart = {
-      type: pick(c.type, ['bar', 'line'] as const, 'bar', 'chart type'),
+      type: pick(c.type, ['bar', 'line', 'pie'] as const, 'bar', 'chart type'),
       categories: arr(c.categories).map(text),
       series: arr(c.series).filter(isRecord).map((x) => ({
         label: text(x.label),

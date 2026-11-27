@@ -60,7 +60,8 @@ export function marketOfLabel(label: DiagramCurve['label']): Market | null {
     case 'MD':
       return 'md';
     case 'M':
-      return index.startsWith('s') ? 'ms' : index.startsWith('d') ? 'md' : null;
+      // M_s / M_d, and the asset and transactions demand for money (M_a, M_t; k-0586).
+      return index.startsWith('s') ? 'ms' : /^[dat]/i.test(index) ? 'md' : null;
     case 'PPC':
     case 'PPF':
     case 'PPB':
@@ -409,7 +410,7 @@ export function checkDiagram(spec: DiagramSpec, compiled: Compiled, sides: reado
       look('eq.none', 'Demand and supply are drawn, but no equilibrium is marked.');
     }
   }
-  if (spec.kind === 'chart') {
+  if (spec.kind === 'chart' && spec.chart.type !== 'pie') {
     for (const side of sides) {
       if (blank(spec.chart.yTitle, side) && blank(spec.chart.yTitle, side === 'en' ? 'zh' : 'en')) {
         look('chart.unit', 'The chart has no unit above its y-axis.');
@@ -444,8 +445,10 @@ export function checkStem(spec: DiagramSpec, compiled: Compiled, stem: string): 
   const diagram = compiled.diagram;
   if (!diagram || spec.kind !== 'curves' || !stem.trim()) return issues;
   const kinds = new Set(spec.levels.map((l) => l.kind));
+  // An import quota drawn as a bracket at the world price (k-0586 recipe) is a quota on the figure.
+  const quotaBracket = [...spec.gaps.map((g) => g.label), ...(spec.brackets ?? []).map((b) => b.label)].some((t) => /quota|配額/i.test(`${t.en} ${t.zh}`));
   for (const { kind, re } of CONTROL_WORDS) {
-    if (!re.test(stem) || kinds.has(kind)) continue;
+    if (!re.test(stem) || kinds.has(kind) || (kind === 'quota' && quotaBracket)) continue;
     const drawn = [...kinds].filter((k) => k === 'ceiling' || k === 'floor' || k === 'quota');
     issues.push({
       level: 'error',

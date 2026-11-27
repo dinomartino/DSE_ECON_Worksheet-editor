@@ -1,5 +1,5 @@
 import { compileLorenz } from './lorenz';
-import type { Diagram, DiagramAnchorRef, DiagramArea, DiagramArrow, DiagramCurve, DiagramPointMark, DiagramSpan } from '@/model/diagram';
+import type { Diagram, DiagramAnchorRef, DiagramArea, DiagramArrow, DiagramCurve, DiagramPlace, DiagramPointMark, DiagramSpan } from '@/model/diagram';
 import { MAX_CHART_CATEGORIES, MAX_CHART_SERIES } from '@/model/diagram';
 import { curveXAt, curveYAt, resolveAnchor } from '@/model/diagramAnchors';
 import { curveCrossing, revenueArea } from '@/model/diagramAreas';
@@ -33,6 +33,7 @@ import {
   type DiagramIssue,
   type DiagramSpec,
   type Direction,
+  type GraphPoint,
   type GraphRise,
   type GraphShape,
   type Place,
@@ -82,6 +83,9 @@ const LINE_STEP: Record<ShiftSize, number> = { small: 0.1, normal: 0.18, large: 
 const VERTICAL_STEP: Record<ShiftSize, number> = { small: 0.14, normal: 0.24, large: 0.32 };
 /** Room for two frontier names side by side on the x-axis. */
 const FRONTIER_STEP: Record<ShiftSize, number> = { small: 0.22, normal: 0.32, large: 0.44 };
+
+/** How far out a second bracket on a shared stretch of one axis stands (unit space): a row for its label. */
+const BRACKET_ROW = 0.09;
 
 /** How far a level sits from a crossing it is placed against, at least, and at most when it has one bound. */
 const LEVEL_MARGIN = 0.06;
@@ -149,7 +153,7 @@ function baseCurve(spec: SpecCurve): { curve: DiagramCurve; frontier?: Pair } {
       return { curve: frontierCurve(ab, name), frontier: ab };
     }
     case 'graph':
-      return { curve: graphCurve(spec.shape ?? 'none', spec.rise ?? 'rising', name) };
+      return { curve: graphCurve(spec.shape ?? 'none', spec.rise ?? 'rising', name, spec.start, spec.cap) };
   }
 }
 
@@ -171,10 +175,51 @@ export const GRAPH_LINES: Record<Exclude<GraphShape, 'none'>, Record<GraphRise, 
   zeroRisingFlat: { rising: [[0, 0], [0.26, 0], [0.52, 0.6], [0.86, 0.6]], falling: [[0, 0], [0.26, 0], [0.52, 0.6], [0.86, 0.6]] },
 };
 
-function graphCurve(shape: GraphShape, rise: GraphRise, name: DiagramCurve['label']): DiagramCurve {
+/**
+ * Where a broken tax line's allowance ends (x) and its cap sits (y), by choice (k-0586): the
+ * old and the new schedule of one question differ in these, not in the line's rate. 'mid' is
+ * the shape's own corner in `GRAPH_LINES`.
+ */
+const TAX_START: Record<Place, number> = { low: 0.16, mid: 0.26, high: 0.4 };
+const TAX_CAP: Record<Place, number> = { low: 0.44, mid: 0.6, high: 0.76 };
+
+/** A broken tax line with its own allowance and cap; null = the shape's stock line (nothing chosen). */
+function brokenLine(shape: GraphShape, start: GraphPoint, cap: GraphPoint): Pair[] | null {
+  const chosen = (v: GraphPoint) => v !== 'none' && v !== 'mid';
+  if (!chosen(start) && !chosen(cap)) return null;
+  const pick = (v: GraphPoint, table: Record<Place, number>) => table[v === 'none' ? 'mid' : v];
+  const end = 0.86;
+  switch (shape) {
+    case 'zeroThenRising': {
+      // The rate stays: a later allowance moves the rising part right, parallel.
+      const x0 = pick(start, { low: 0.18, mid: 0.3, high: 0.44 });
+      const rate = 0.72 / 0.56;
+      return [[0, 0], [x0, 0], [end, Math.min(0.86, rate * (end - x0))]];
+    }
+    case 'risingThenFlat': {
+      const y = pick(cap, { low: 0.4, mid: 0.56, high: 0.72 });
+      return [[0, 0], [y / 1.12, y], [end, y]];
+    }
+    case 'linearThenFlat': {
+      const y = pick(cap, { low: 0.44, mid: 0.58, high: 0.72 });
+      const rate = 0.34 / 0.55;
+      return [[0, 0.24], [Math.min(0.8, (y - 0.24) / rate), y], [end, y]];
+    }
+    case 'zeroRisingFlat': {
+      const x0 = pick(start, TAX_START);
+      const y = pick(cap, TAX_CAP);
+      const rate = 0.6 / 0.26;
+      return [[0, 0], [x0, 0], [Math.min(0.8, x0 + y / rate), y], [end, y]];
+    }
+    default:
+      return null;
+  }
+}
+
+function graphCurve(shape: GraphShape, rise: GraphRise, name: DiagramCurve['label'], start: GraphPoint = 'none', cap: GraphPoint = 'none'): DiagramCurve {
   const lines = GRAPH_LINES[shape === 'none' ? 'origin' : shape];
   const bent = shape === 'convex' || shape === 'concave';
-  return curve(lines[rise] ?? lines.rising, name, bent ? { shape: 'curved' } : {});
+  return curve(brokenLine(shape, start, cap) ?? lines[rise] ?? lines.rising, name, bent ? { shape: 'curved' } : {});
 }
 
 /**
@@ -315,6 +360,39 @@ function roomForLevels(spec: DiagramSpec): DiagramSpec {
   return { ...spec, shifts: spec.shifts.map((s) => (ids.has(s.id) ? { ...s, size: 'large' as const } : s)) };
 }
 
+/** Most slices a pie of the papers has (shares of GDP, of tax revenue): more do not read. */
+export const MAX_PIE_SLICES = 8;
+
+/**
+ * A pie chart (k-0586): the categories are the slices' names and the one series their shares;
+ * the editor works the percentages out from the values, as the Pie chart template does.
+ */
+function compilePie(spec: DiagramSpec, issues: DiagramIssue[], curveIds: Map<string, string>, roles: Map<string, CurveRole>, levels: Compiled['levels']): Compiled {
+  const error = (code: string, text: string) => issues.push({ level: 'error', code, text });
+  const chart = spec.chart;
+  const values = chart.series[0]?.values ?? [];
+  if (chart.series.length !== 1) error('chart.pieSeries', `A pie chart has exactly one series of shares; this one has ${chart.series.length}.`);
+  if (chart.categories.length < 2) error('chart.empty', 'A pie chart needs at least two slices.');
+  if (chart.categories.length > MAX_PIE_SLICES) error('chart.categories', `A pie chart holds at most ${MAX_PIE_SLICES} slices.`);
+  if (values.length !== chart.categories.length) error('chart.values', `The pie has ${values.length} values for ${chart.categories.length} slices.`);
+  if (values.some((v) => !Number.isFinite(v) || v < 0)) error('chart.pieValue', 'A pie slice needs a share of zero or more.');
+  if (issues.some((i) => i.level === 'error')) return { diagram: null, issues, curveIds, roles, levels };
+  const title = phrase(spec.title);
+  const diagram: Diagram = {
+    x: {},
+    y: {},
+    curves: [],
+    points: [],
+    labels: [],
+    arrows: [],
+    ...(title ? { title } : {}),
+    pie: {
+      slices: chart.categories.map((c, i) => ({ id: newId(), label: phrase(c) ?? { en: [{ text: '' }], zh: [{ text: '' }] }, value: values[i] })),
+    },
+  };
+  return { diagram, issues, curveIds, roles, levels };
+}
+
 export function compileSpec(given: DiagramSpec): Compiled {
   const spec = roomForLevels(given);
   const issues: DiagramIssue[] = [];
@@ -347,6 +425,7 @@ export function compileSpec(given: DiagramSpec): Compiled {
     return { diagram, issues, curveIds, roles, levels: levelAt };
   }
 
+  if (spec.kind === 'chart' && spec.chart.type === 'pie') return compilePie(spec, issues, curveIds, roles, levelAt);
   if (spec.kind === 'chart') {
     const chart = spec.chart;
     const categories = chart.categories.map((c) => phrase(c) ?? { en: [{ text: '' }], zh: [{ text: '' }] });
@@ -408,11 +487,29 @@ export function compileSpec(given: DiagramSpec): Compiled {
   for (const spec_ of spec.curves) {
     try {
       const built = baseCurve(spec_);
+      if (spec_.through?.length === 2 && !placeThrough(spec_, built.curve)) continue;
       add(spec_.id, built.curve, spec_.role);
       if (built.frontier) frontiers.set(spec_.id, built.frontier);
     } catch {
       error('curve.build', `Curve "${spec_.id}" could not be drawn.`);
     }
+  }
+
+  /** An upright or level line through a crossing of two lines drawn before it (k-0586): the LRAS at E₀'s output. */
+  function placeThrough(c: SpecCurve, line: DiagramCurve): boolean {
+    const upright = c.role === 'lras' || c.role === 'vertical';
+    if (!upright && c.role !== 'horizontal') {
+      error('curve.through', `"${c.id}" is a ${c.role} curve: only a vertical or horizontal line is placed through a crossing. Move a sloped curve there with a shift whose "through" names the crossing.`);
+      return false;
+    }
+    const [a, b] = [bySpecId.get(c.through![0]), bySpecId.get(c.through![1])];
+    const hit = a && b ? curveCrossing(a, b) : null;
+    if (!hit) {
+      error('curve.through', `"${c.id}" passes through where ${c.through!.join(' and ')} meet, but ${!a || !b ? `${!a ? c.through![0] : c.through![1]} is not a curve listed before it` : 'they do not cross on the diagram'}.`);
+      return false;
+    }
+    setLevel(line, upright, upright ? hit.x : hit.y);
+    return true;
   }
 
   /** Shift arrows are placed last, clear of the price lines and points (k-0534: one sat on P₁). */
@@ -442,7 +539,8 @@ export function compileSpec(given: DiagramSpec): Compiled {
       arrows.push(arrow([fx + (tx - fx) * k, fy + (ty - fy) * k], [tx - (tx - fx) * k, ty - (ty - fy) * k]));
       return;
     }
-    const by = shiftVector(s.direction, s.size);
+    const by = s.through?.length === 2 ? throughVector(s, source) : shiftVector(s.direction, s.size);
+    if (!by) return;
     if (role === 'horizontal' && by.x !== 0) look('shift.flatSideways', `"${s.id}" moves a horizontal line sideways, which changes nothing.`);
     if ((role === 'lras' || role === 'vertical') && by.y !== 0) look('shift.uprightUp', `"${s.id}" moves a vertical line up or down, which changes nothing.`);
     let copy: DiagramCurve;
@@ -455,6 +553,40 @@ export function compileSpec(given: DiagramSpec): Compiled {
     add(s.id, copy, role);
     staggerNames(source, copy, by);
     pendingArrows.push({ id: s.id, source, copy, by });
+  }
+
+  /**
+   * A shift that must pass through a crossing (k-0586): "SRAS shifts until AD meets LRAS". The
+   * distance is the one that puts the copy through the crossing of `through`'s two ids, along
+   * the shift's own direction; a crossing the other way (or none) is an error, not a guess.
+   */
+  function throughVector(s: SpecShift, source: DiagramCurve): { x: number; y: number } | null {
+    const [a, b] = [bySpecId.get(s.through![0]), bySpecId.get(s.through![1])];
+    if (!a || !b) {
+      error('shift.through', `Shift "${s.id}" must pass through where ${s.through!.join(' and ')} meet, but ${!a ? s.through![0] : s.through![1]} is not drawn before it.`);
+      return null;
+    }
+    const hit = curveCrossing(a, b);
+    if (!hit) {
+      error('shift.through', `Shift "${s.id}" must pass through where ${s.through!.join(' and ')} meet, but they do not cross on the diagram.`);
+      return null;
+    }
+    const sideways = s.direction === 'right' || s.direction === 'left' || s.direction === 'out' || s.direction === 'in';
+    const from = sideways ? curveXAt(source, hit.y) : curveYAt(source, hit.x);
+    const move = from === null ? null : (sideways ? hit.x : hit.y) - from;
+    const want = s.direction === 'right' || s.direction === 'out' || s.direction === 'up' ? 1 : -1;
+    if (move === null || Math.abs(move) < 0.02 || Math.sign(move) !== want) {
+      error(
+        'shift.through',
+        move === null
+          ? `"${s.of}" does not reach the height of the crossing of ${s.through!.join(' and ')}, so "${s.id}" cannot be moved through it.`
+          : Math.abs(move) < 0.02
+            ? `"${s.of}" already passes through where ${s.through!.join(' and ')} meet: "${s.id}" would be drawn on top of it.`
+            : `Moving "${s.of}" ${s.direction} never reaches where ${s.through!.join(' and ')} meet: that crossing is on the other side.`,
+      );
+      return null;
+    }
+    return sideways ? { x: move, y: 0 } : { x: 0, y: move };
   }
 
   // ---- levels: price lines and quotas, placed against named crossings (k-0534) ----
@@ -474,6 +606,14 @@ export function compileSpec(given: DiagramSpec): Compiled {
   const bandOf = (level: SpecLevel): { lo: number; hi: number; free: boolean } | null => {
     const vertical = level.kind === 'quota';
     const coord = (p: { x: number; y: number }) => (vertical ? p.x : p.y);
+    if (level.through?.length === 2) {
+      const p = crossingOf(level.through);
+      if (!p) {
+        error('level.ref', `"${level.id}" passes through ${level.through.join('×')}, but those two do not cross on the diagram.`);
+        return { lo: 0.4, hi: 0.4, free: false };
+      }
+      return { lo: coord(p), hi: coord(p), free: false };
+    }
     const named = (ids: string[], side: string) => {
       if (!ids.length) return undefined;
       const p = crossingOf(ids);
@@ -712,18 +852,68 @@ export function compileSpec(given: DiagramSpec): Compiled {
       error('gap.cross', `The price line "${gap.level}" does not meet both demand and supply.`);
       continue;
     }
-    const qd = reading(d, line, sub('Q', 'd'));
-    const qs = reading(s, line, sub('Q', 's'));
+    // A point already marked where the bracket ends (the model's Q₀ at D × P_w) is that end: a
+    // second reading there would print Qd over Q₀ (k-0586 live run).
+    const marked = (c: DiagramCurve) => {
+      const hit = curveCrossing(c, line);
+      return hit ? points.find((p) => Math.hypot(p.at.x - hit.x, p.at.y - hit.y) < 0.01 && plainOf(p.xTickLabel).trim()) : undefined;
+    };
+    const qdMarked = marked(d);
+    const qsMarked = marked(s);
+    const qd = qdMarked ?? reading(d, line, sub('Q', 'd'));
+    const qs = qsMarked ?? reading(s, line, sub('Q', 's'));
     const shortage = qd.at.x > qs.at.x;
     const [from, to] = shortage ? [qs, qd] : [qd, qs];
-    points.push(qs, qd);
-    parts.push(qs, qd);
+    for (const [mark, had] of [[qs, qsMarked], [qd, qdMarked]] as const) {
+      if (had) continue;
+      points.push(mark);
+      parts.push(mark);
+    }
     spans.push(
       span(at(from), at(to), 'bracket', {
         offset: line.points[0].y < 0.5 ? -0.05 : 0.04,
         label: phrase(gap.label),
       }),
     );
+  }
+
+  // ---- brackets between two ticks (k-0586): an output gap, a quota's quantity, a second shortage ----
+  /** A tick printed on the figure → its axis and where it is: a point's tick, or a price line or quota drawn with that label. */
+  const tickPlace = (raw: string): { axis: 'x' | 'y'; place: DiagramPlace; at: number } | null => {
+    const key = tickKey(raw);
+    if (!key) return null;
+    for (const axis of ['x', 'y'] as const) {
+      const mark = points.find((p) => tickKey(plainOf(axis === 'x' ? p.xTickLabel : p.yTickLabel)) === key);
+      if (mark) return { axis, place: at(mark), at: mark.at[axis] };
+    }
+    for (const level of spec.levels) {
+      const place = levelAt.get(level.id);
+      if (!place || tickKey(level.label) !== key) continue;
+      return place.vertical ? { axis: 'x', place: { x: place.at, y: 0 }, at: place.at } : { axis: 'y', place: { x: 0, y: place.at }, at: place.at };
+    }
+    return null;
+  };
+  const placedBrackets: Array<{ axis: 'x' | 'y'; lo: number; hi: number }> = [];
+  for (const b of spec.brackets ?? []) {
+    const from = tickPlace(b.from);
+    const to = tickPlace(b.to);
+    if (!from || !to) {
+      error('bracket.ref', `The bracket from "${b.from}" to "${b.to}" needs both as ticks on the figure (a point's xTick or yTick, or a price line's label); ${!from ? b.from : b.to} is not one.`);
+      continue;
+    }
+    if (from.axis !== to.axis) {
+      error('bracket.axis', `The bracket from "${b.from}" to "${b.to}" joins a quantity and a price: both ends must be on one axis.`);
+      continue;
+    }
+    if (Math.abs(from.at - to.at) < 0.03) {
+      error('bracket.empty', `"${b.from}" and "${b.to}" sit on one spot: the bracket between them has no length.`);
+      continue;
+    }
+    const [lo, hi] = from.at < to.at ? [from, to] : [to, from];
+    // Brackets that share part of one axis stand in rows, the later one further out, so neither label prints over the other.
+    const row = placedBrackets.filter((p) => p.axis === from.axis && p.lo < hi.at - 0.005 && lo.at < p.hi - 0.005).length;
+    placedBrackets.push({ axis: from.axis, lo: lo.at, hi: hi.at });
+    spans.push(span(lo.place, hi.place, 'bracket', { along: from.axis, label: phrase(b.label), ...(row ? { offset: BRACKET_ROW * row } : {}) }));
   }
 
   // ---- marks against a curve ----

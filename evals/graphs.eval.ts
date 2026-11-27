@@ -48,6 +48,7 @@ export function printedLabels(d: Diagram): string[] {
   for (const a of d.areas ?? []) add(a.label);
   for (const l of d.labels) add(l.text);
   for (const s of d.spans ?? []) add(s.label);
+  for (const s of d.pie?.slices ?? []) add(s.label);
   return out;
 }
 

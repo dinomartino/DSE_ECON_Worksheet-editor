@@ -292,6 +292,37 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
         marks: { Q0: e0, P0: e0, Q1: e1, Pb: e1, Ps: sp },
       };
     }
+    case 'subsidyChange': {
+      // Two subsidies (k-0586, HKDSE 2024 P1 Q20): s₁ moves S₀ down to S₁, s₂ = 2s₁ to S₂; room below for both.
+      const t = Math.min(0.18, shiftFor((SHIFT[scene.size] ?? 0.28) * k * 0.7, dm, sm));
+      const d = curve(lineThrough(dm), name('D'));
+      const s0 = curve(lineThrough(sm, TOP, 2 * t + 0.02), name('S0'));
+      const s1 = shiftOf(s0, 0, -t, name('S1'));
+      const s2 = shiftOf(s1, 0, -t, name('S2'));
+      const parts: Array<DiagramCurve | DiagramPointMark> = [d, s0, s1, s2];
+      const e0 = tickPoint(cross(d, s0), parts, { x: tick('Q0'), y: tick('P0') });
+      const e1 = tickPoint(cross(d, s1), parts, { x: tick('Qs1'), y: tick('Ps1') });
+      const e2 = tickPoint(cross(d, s2), parts, { x: tick('Qs2'), y: tick('Ps2') });
+      return {
+        curves: [d, s0, s1, s2],
+        points: [e0, e1, e2],
+        arrows,
+        shifts: [
+          { source: s0, copy: s1, by: { x: 0, y: -t } },
+          { source: s1, copy: s2, by: { x: 0, y: -t } },
+        ],
+        x: axisX,
+        y: axisY,
+        regions: {
+          dwlBefore: band([on(s0), on(d)], at(e0), at(e1)),
+          dwlAddUpper: band([on(s0), on(s1)], at(e1), at(e2)),
+          dwlAddLower: band([on(s1), on(d)], at(e1), at(e2)),
+        },
+        curveRoles: { D: { curve: d, role: 'demand' }, S0: { curve: s0, role: 'supply' }, S1: { curve: s1, role: 'supply' }, S2: { curve: s2, role: 'supply' } },
+        levels: {},
+        marks: { Q0: e0, P0: e0, Qs1: e1, Ps1: e1, Qs2: e2, Ps2: e2 },
+      };
+    }
     case 'priceCeiling':
     case 'priceFloor': {
       const ceiling = scene.type === 'priceCeiling';

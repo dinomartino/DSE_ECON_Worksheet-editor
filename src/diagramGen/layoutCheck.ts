@@ -15,6 +15,47 @@ import type { DiagramIssue } from './types';
 
 /** A curve's name further than this from its curve (px) no longer reads as its name. */
 const NAME_REACH = 28;
+/** Two names on one line closer than this (px) read as one label: about a word space and a half. */
+const NAME_GAP = 6;
+
+const languageOf = (sides: readonly Side[]) => (sides.includes('en') && sides.includes('zh') ? 'bilingual' : sides.includes('zh') ? 'zh' : 'en');
+
+/** Pairs of curve names (ids) whose boxes print into each other. */
+function touchingNames(diagram: Diagram, widthPx: number, sides: readonly Side[]): Array<[string, string]> {
+  const language = languageOf(sides);
+  const size = diagramSize(diagram, widthPx, language);
+  const names = diagramLabelBoxes(diagram, { ...size, language }).filter((b) => b.kind === 'curve');
+  const out: Array<[string, string]> = [];
+  for (let i = 0; i < names.length; i += 1) {
+    for (let j = i + 1; j < names.length; j += 1) {
+      const [a, b] = [names[i].box, names[j].box];
+      if (a.x0 < b.x1 + NAME_GAP && b.x0 < a.x1 + NAME_GAP && a.y0 < b.y1 - 1 && b.y0 < a.y1 - 1) out.push([names[i].id, names[j].id]);
+    }
+  }
+  return out;
+}
+
+/**
+ * A vertical line's name sits above its top; a curve ending beside that top (SRAS₀ by the LRAS)
+ * prints its name into it, "LRAS SRAS₀" (k-0583 audit). Read on the renderer's own boxes: the
+ * upright name moves left, or right, or up, whichever first leaves every name clear and still
+ * beside its line. Changes `diagram` in place; nothing when no name touches.
+ */
+export function separateNames(diagram: Diagram, widthPx: number, sides: readonly Side[]): void {
+  if (diagram.pie || diagram.flow || diagram.forum || diagram.stakeholder || diagram.chart) return;
+  const pairs = touchingNames(diagram, widthPx, sides);
+  for (const [a, b] of pairs) {
+    const upright = [a, b].map((id) => diagram.curves.find((c) => c.id === id)).find((c) => c?.derive?.kind === 'vertical' && !c.labelOffset);
+    if (!upright) continue;
+    const count = (d: Diagram) => touchingNames(d, widthPx, sides).length;
+    const before = count(diagram);
+    for (const offset of [{ x: -0.06, y: 0 }, { x: 0.06, y: 0 }, { x: 0, y: 0.05 }]) {
+      upright.labelOffset = offset;
+      if (count(diagram) < before && !checkLayout(diagram, widthPx, sides).some((i) => i.code === 'layout.nameAway' || i.code === 'layout.clipped')) break;
+      delete upright.labelOffset;
+    }
+  }
+}
 
 export function checkLayout(diagram: Diagram, widthPx: number, sides: readonly Side[]): DiagramIssue[] {
   if (diagram.pie || diagram.flow || diagram.forum || diagram.stakeholder || diagram.chart) return [];
@@ -70,6 +111,11 @@ export function checkLayout(diagram: Diagram, widthPx: number, sides: readonly S
       code: 'layout.nameAway',
       text: `The name${away.length === 1 ? '' : 's'} ${away.map((t) => `"${t}"`).join(', ')} ${away.length === 1 ? 'sits' : 'sit'} away from ${away.length === 1 ? 'its curve' : 'their curves'}: a reader may not tell which line ${away.length === 1 ? 'it names' : 'they name'}.`,
     });
+  }
+  // Two curve names printed into each other read as one word ("LRAS SRAS₀", k-0583 audit).
+  const touching = touchingNames(diagram, widthPx, sides).map(([a, b]) => `"${textOf('curve', a)}" and "${textOf('curve', b)}"`);
+  if (touching.length) {
+    issues.push({ level: 'look', code: 'layout.namesTouch', text: `The names ${touching.join(', ')} print into each other: a reader may take them for one label.` });
   }
   return issues;
 }

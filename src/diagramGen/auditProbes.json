@@ -1,0 +1,1828 @@
+[
+ {
+  "id": "e-two-brackets",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "failed",
+   "errors": [
+    "same.bracket"
+   ]
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity",
+    "zh": "數量"
+   },
+   "yAxis": {
+    "en": "Price",
+    "zh": "價格"
+   },
+   "curves": [
+    {
+     "id": "D0",
+     "role": "demand",
+     "slope": "normal",
+     "place": "mid",
+     "label": "D_0"
+    },
+    {
+     "id": "S",
+     "role": "vertical",
+     "slope": "normal",
+     "place": "mid",
+     "label": "S"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "D0",
+     "id": "D1",
+     "direction": "right",
+     "size": "normal",
+     "label": "D_1"
+    }
+   ],
+   "levels": [
+    {
+     "id": "P",
+     "kind": "fixed",
+     "above": [],
+     "below": [],
+     "side": "below",
+     "style": "line",
+     "label": "P"
+    }
+   ],
+   "gaps": [
+    {
+     "level": "P",
+     "label": {
+      "en": "ex. dd0",
+      "zh": "超額需求 0"
+     }
+    },
+    {
+     "level": "P",
+     "label": {
+      "en": "ex. dd1",
+      "zh": "超額需求 1"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "id": "e-self-adjust",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Real output",
+    "zh": "實質產出"
+   },
+   "yAxis": {
+    "en": "Price level",
+    "zh": "物價水平"
+   },
+   "curves": [
+    {
+     "id": "AD",
+     "role": "ad",
+     "slope": "normal",
+     "place": "mid",
+     "label": "AD"
+    },
+    {
+     "id": "SRAS0",
+     "role": "sras",
+     "slope": "normal",
+     "place": "mid",
+     "label": "SRAS_0"
+    },
+    {
+     "id": "LRAS",
+     "role": "lras",
+     "slope": "normal",
+     "place": "high",
+     "label": "LRAS"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "SRAS0",
+     "id": "SRAS1",
+     "direction": "right",
+     "size": "normal",
+     "label": "SRAS_1"
+    }
+   ],
+   "points": [
+    {
+     "a": "AD",
+     "b": "SRAS0",
+     "name": "E_0",
+     "yTick": "P_0",
+     "xTick": "Y_0",
+     "dot": true
+    },
+    {
+     "a": "AD",
+     "b": "SRAS1",
+     "name": "E_1",
+     "yTick": "P_1",
+     "xTick": "",
+     "dot": true
+    }
+   ]
+  }
+ },
+ {
+  "id": "f-monopoly-try",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "failed",
+   "errors": [
+    "curves.firm"
+   ]
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity",
+    "zh": "數量"
+   },
+   "yAxis": {
+    "en": "Price",
+    "zh": "價格"
+   },
+   "curves": [
+    {
+     "id": "D",
+     "role": "demand",
+     "slope": "normal",
+     "place": "mid",
+     "label": "D"
+    },
+    {
+     "id": "MR",
+     "role": "demand",
+     "slope": "steep",
+     "place": "mid",
+     "label": "MR"
+    },
+    {
+     "id": "MC",
+     "role": "horizontal",
+     "slope": "normal",
+     "place": "low",
+     "label": "MC"
+    }
+   ]
+  }
+ },
+ {
+  "id": "e-fixed-price-revenue",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "failed",
+   "errors": [
+    "shade.revenue"
+   ]
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity",
+    "zh": "數量"
+   },
+   "yAxis": {
+    "en": "Price (US$)",
+    "zh": "價格（美元）"
+   },
+   "curves": [
+    {
+     "id": "D0",
+     "role": "demand",
+     "slope": "normal",
+     "place": "mid",
+     "label": "D_0"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "D0",
+     "id": "D1",
+     "direction": "right",
+     "size": "normal",
+     "label": "D_1"
+    }
+   ],
+   "levels": [
+    {
+     "id": "P",
+     "kind": "fixed",
+     "above": [],
+     "below": [],
+     "side": "above",
+     "style": "line",
+     "label": "P"
+    }
+   ],
+   "points": [
+    {
+     "a": "D0",
+     "b": "P",
+     "name": "",
+     "yTick": "",
+     "xTick": "Q_0",
+     "dot": true
+    },
+    {
+     "a": "D1",
+     "b": "P",
+     "name": "",
+     "yTick": "",
+     "xTick": "Q_1",
+     "dot": true
+    }
+   ],
+   "shades": [
+    {
+     "preset": "revenueGain",
+     "label": {
+      "en": "Gain",
+      "zh": "增加"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "id": "g-tax-pair",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Income ($)",
+    "zh": "收入 ($)"
+   },
+   "yAxis": {
+    "en": "Tax rate (%)",
+    "zh": "稅率（%）"
+   },
+   "curves": [
+    {
+     "id": "old",
+     "role": "graph",
+     "slope": "normal",
+     "place": "mid",
+     "label": "Old tax structure",
+     "shape": "zeroRisingFlat",
+     "rise": "rising"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "old",
+     "id": "new",
+     "direction": "right",
+     "size": "small",
+     "label": "New tax structure"
+    }
+   ]
+  }
+ },
+ {
+  "id": "c-money-grid",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity of money",
+    "zh": "貨幣數量"
+   },
+   "yAxis": {
+    "en": "Nominal interest rate",
+    "zh": "名義利率"
+   },
+   "curves": [
+    {
+     "id": "Ms0",
+     "role": "vertical",
+     "slope": "normal",
+     "place": "low",
+     "label": "M_s0"
+    },
+    {
+     "id": "Md0",
+     "role": "demand",
+     "slope": "normal",
+     "place": "mid",
+     "label": "M_d0"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "Ms0",
+     "id": "Ms1",
+     "direction": "right",
+     "size": "normal",
+     "label": "M_s1"
+    },
+    {
+     "of": "Ms1",
+     "id": "Ms2",
+     "direction": "right",
+     "size": "normal",
+     "label": "M_s2"
+    },
+    {
+     "of": "Md0",
+     "id": "Md1",
+     "direction": "right",
+     "size": "small",
+     "label": "M_d1"
+    },
+    {
+     "of": "Md1",
+     "id": "Md2",
+     "direction": "right",
+     "size": "small",
+     "label": "M_d2"
+    }
+   ],
+   "points": [
+    {
+     "a": "Md0",
+     "b": "Ms0",
+     "name": "A",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    },
+    {
+     "a": "Md1",
+     "b": "Ms1",
+     "name": "B",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    },
+    {
+     "a": "Md2",
+     "b": "Ms2",
+     "name": "C",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    },
+    {
+     "a": "Md0",
+     "b": "Ms2",
+     "name": "D",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    },
+    {
+     "a": "Md2",
+     "b": "Ms0",
+     "name": "E",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    }
+   ]
+  }
+ },
+ {
+  "id": "b-movement-along",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity",
+    "zh": "數量"
+   },
+   "yAxis": {
+    "en": "Price",
+    "zh": "價格"
+   },
+   "curves": [
+    {
+     "id": "D",
+     "role": "demand",
+     "slope": "normal",
+     "place": "mid",
+     "label": "D"
+    }
+   ],
+   "levels": [
+    {
+     "id": "PX",
+     "kind": "fixed",
+     "above": [],
+     "below": [],
+     "side": "above",
+     "style": "guide",
+     "label": "P_X"
+    },
+    {
+     "id": "PY",
+     "kind": "fixed",
+     "above": [],
+     "below": [],
+     "side": "below",
+     "style": "guide",
+     "label": "P_Y"
+    }
+   ],
+   "points": [
+    {
+     "a": "D",
+     "b": "PX",
+     "name": "X",
+     "yTick": "P_X",
+     "xTick": "Q_X",
+     "dot": true
+    },
+    {
+     "a": "D",
+     "b": "PY",
+     "name": "Y",
+     "yTick": "P_Y",
+     "xTick": "Q_Y",
+     "dot": true
+    }
+   ]
+  }
+ },
+ {
+  "id": "x-marks-along",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "failed",
+   "errors": [
+    "same.spot"
+   ]
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity",
+    "zh": ""
+   },
+   "yAxis": {
+    "en": "Price",
+    "zh": ""
+   },
+   "curves": [
+    {
+     "id": "D",
+     "role": "demand",
+     "slope": "normal",
+     "place": "mid",
+     "label": "D"
+    }
+   ],
+   "marks": [
+    {
+     "of": "D",
+     "where": "on",
+     "label": "A"
+    },
+    {
+     "of": "D",
+     "where": "on",
+     "label": "B"
+    }
+   ]
+  }
+ },
+ {
+  "id": "x-selfadj-large",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Real output",
+    "zh": "實質產出"
+   },
+   "yAxis": {
+    "en": "Price level",
+    "zh": "物價水平"
+   },
+   "curves": [
+    {
+     "id": "AD",
+     "role": "ad",
+     "slope": "normal",
+     "place": "mid",
+     "label": "AD"
+    },
+    {
+     "id": "SRAS0",
+     "role": "sras",
+     "slope": "normal",
+     "place": "mid",
+     "label": "SRAS_0"
+    },
+    {
+     "id": "LRAS",
+     "role": "lras",
+     "slope": "normal",
+     "place": "high",
+     "label": "LRAS"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "SRAS0",
+     "id": "SRAS1",
+     "direction": "right",
+     "size": "large",
+     "label": "SRAS_1"
+    }
+   ],
+   "points": [
+    {
+     "a": "AD",
+     "b": "SRAS0",
+     "name": "E_0",
+     "yTick": "P_0",
+     "xTick": "Y_0",
+     "dot": true
+    },
+    {
+     "a": "AD",
+     "b": "SRAS1",
+     "name": "E_1",
+     "yTick": "P_1",
+     "xTick": "",
+     "dot": true
+    }
+   ]
+  }
+ },
+ {
+  "id": "x-tmpl-flow",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "failed",
+   "errors": [
+    "template.data"
+   ]
+  },
+  "spec": {
+   "kind": "template",
+   "template": "flow"
+  }
+ },
+ {
+  "id": "x-tmpl-pie",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "failed",
+   "errors": [
+    "template.data"
+   ]
+  },
+  "spec": {
+   "kind": "template",
+   "template": "pie"
+  }
+ },
+ {
+  "id": "x-fixedrev-horizS",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity",
+    "zh": ""
+   },
+   "yAxis": {
+    "en": "Price",
+    "zh": ""
+   },
+   "curves": [
+    {
+     "id": "D0",
+     "role": "demand",
+     "slope": "normal",
+     "place": "mid",
+     "label": "D_0"
+    },
+    {
+     "id": "S",
+     "role": "horizontal",
+     "slope": "normal",
+     "place": "mid",
+     "label": "P"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "D0",
+     "id": "D1",
+     "direction": "right",
+     "size": "normal",
+     "label": "D_1"
+    }
+   ],
+   "points": [
+    {
+     "a": "D0",
+     "b": "S",
+     "name": "",
+     "yTick": "P",
+     "xTick": "Q_0",
+     "dot": false
+    },
+    {
+     "a": "D1",
+     "b": "S",
+     "name": "",
+     "yTick": "",
+     "xTick": "Q_1",
+     "dot": false
+    }
+   ],
+   "shades": [
+    {
+     "preset": "revenueGain",
+     "label": {
+      "en": "Gain",
+      "zh": "增加"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "id": "x-taxpair-two",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "failed",
+   "errors": [
+    "same.line"
+   ]
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Income ($)",
+    "zh": ""
+   },
+   "yAxis": {
+    "en": "Tax rate (%)",
+    "zh": ""
+   },
+   "curves": [
+    {
+     "id": "old",
+     "role": "graph",
+     "slope": "normal",
+     "place": "low",
+     "label": "Old tax structure",
+     "shape": "zeroRisingFlat",
+     "rise": "rising"
+    },
+    {
+     "id": "new",
+     "role": "graph",
+     "slope": "steep",
+     "place": "high",
+     "label": "New tax structure",
+     "shape": "zeroRisingFlat",
+     "rise": "rising"
+    }
+   ]
+  }
+ },
+ {
+  "id": "x-taxpair-flat",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "failed",
+   "errors": [
+    "same.line"
+   ]
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Income ($)",
+    "zh": ""
+   },
+   "yAxis": {
+    "en": "Tax rate (%)",
+    "zh": ""
+   },
+   "curves": [
+    {
+     "id": "old",
+     "role": "graph",
+     "slope": "flat",
+     "place": "mid",
+     "label": "Old tax structure",
+     "shape": "zeroRisingFlat",
+     "rise": "rising"
+    },
+    {
+     "id": "new",
+     "role": "graph",
+     "slope": "steep",
+     "place": "mid",
+     "label": "New tax structure",
+     "shape": "zeroRisingFlat",
+     "rise": "rising"
+    }
+   ]
+  }
+ },
+ {
+  "id": "y-move-blank",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity",
+    "zh": ""
+   },
+   "yAxis": {
+    "en": "Price",
+    "zh": ""
+   },
+   "curves": [
+    {
+     "id": "S",
+     "role": "supply",
+     "slope": "normal",
+     "place": "mid",
+     "label": "S"
+    }
+   ],
+   "levels": [
+    {
+     "id": "h1",
+     "kind": "fixed",
+     "above": [],
+     "below": [],
+     "side": "above",
+     "style": "guide",
+     "label": ""
+    },
+    {
+     "id": "h2",
+     "kind": "fixed",
+     "above": [],
+     "below": [],
+     "side": "below",
+     "style": "guide",
+     "label": ""
+    }
+   ],
+   "points": [
+    {
+     "a": "S",
+     "b": "h1",
+     "name": "B",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    },
+    {
+     "a": "S",
+     "b": "h2",
+     "name": "A",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    }
+   ]
+  }
+ },
+ {
+  "id": "y-iq-brace-nopts",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity",
+    "zh": ""
+   },
+   "yAxis": {
+    "en": "Price",
+    "zh": ""
+   },
+   "curves": [
+    {
+     "id": "D",
+     "role": "demand",
+     "slope": "normal",
+     "place": "mid",
+     "label": "D"
+    },
+    {
+     "id": "S",
+     "role": "supply",
+     "slope": "normal",
+     "place": "mid",
+     "label": "S"
+    }
+   ],
+   "levels": [
+    {
+     "id": "Pw",
+     "kind": "world",
+     "above": [],
+     "below": [],
+     "side": "below",
+     "style": "guide",
+     "label": "P_w"
+    }
+   ],
+   "gaps": [
+    {
+     "level": "Pw",
+     "label": {
+      "en": "Import quota",
+      "zh": ""
+     }
+    }
+   ]
+  }
+ },
+ {
+  "id": "y-lorenz-place",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "failed",
+   "errors": [
+    "same.line"
+   ]
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "% of households",
+    "zh": ""
+   },
+   "yAxis": {
+    "en": "% of income",
+    "zh": ""
+   },
+   "curves": [
+    {
+     "id": "eq",
+     "role": "graph",
+     "slope": "normal",
+     "place": "mid",
+     "label": "",
+     "shape": "origin",
+     "rise": "rising"
+    },
+    {
+     "id": "a",
+     "role": "graph",
+     "slope": "normal",
+     "place": "low",
+     "label": "A",
+     "shape": "convex",
+     "rise": "rising"
+    },
+    {
+     "id": "b",
+     "role": "graph",
+     "slope": "steep",
+     "place": "high",
+     "label": "B",
+     "shape": "convex",
+     "rise": "rising"
+    }
+   ]
+  }
+ },
+ {
+  "id": "y-chart-pie",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "chart",
+   "chart": {
+    "type": "pie",
+    "categories": [
+     {
+      "en": "Direct tax",
+      "zh": ""
+     },
+     {
+      "en": "Indirect tax",
+      "zh": ""
+     },
+     {
+      "en": "Other",
+      "zh": ""
+     }
+    ],
+    "series": [
+     {
+      "label": {
+       "en": "2008-09",
+       "zh": ""
+      },
+      "values": [
+       46.2,
+       22.8,
+       31
+      ]
+     }
+    ],
+    "yTitle": {
+     "en": "",
+     "zh": ""
+    },
+    "xTitle": {
+     "en": "",
+     "zh": ""
+    }
+   }
+  }
+ },
+ {
+  "id": "y-md-shift",
+  "from": "k-0583 audit probe",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity of money",
+    "zh": ""
+   },
+   "yAxis": {
+    "en": "Interest rate",
+    "zh": ""
+   },
+   "curves": [
+    {
+     "id": "Ma1",
+     "role": "demand",
+     "slope": "normal",
+     "place": "mid",
+     "label": "M_{a1}"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "Ma1",
+     "id": "Ma2",
+     "direction": "right",
+     "size": "normal",
+     "label": "M_{a2}"
+    }
+   ]
+  }
+ },
+ {
+  "id": "n-self-adjust-through",
+  "from": "k-0586",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Real output",
+    "zh": "實質產出"
+   },
+   "yAxis": {
+    "en": "Price level",
+    "zh": "物價水平"
+   },
+   "curves": [
+    {
+     "id": "AD",
+     "role": "ad",
+     "slope": "normal",
+     "place": "mid",
+     "label": "AD"
+    },
+    {
+     "id": "SRAS0",
+     "role": "sras",
+     "slope": "normal",
+     "place": "mid",
+     "label": "SRAS_0"
+    },
+    {
+     "id": "LRAS",
+     "role": "lras",
+     "slope": "normal",
+     "place": "high",
+     "label": "LRAS"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "SRAS0",
+     "id": "SRAS1",
+     "direction": "right",
+     "size": "normal",
+     "label": "SRAS_1",
+     "through": [
+      "AD",
+      "LRAS"
+     ]
+    }
+   ],
+   "points": [
+    {
+     "a": "AD",
+     "b": "SRAS0",
+     "name": "E_0",
+     "yTick": "P_0",
+     "xTick": "Y_0",
+     "dot": true
+    },
+    {
+     "a": "AD",
+     "b": "SRAS1",
+     "name": "E_1",
+     "yTick": "P_1",
+     "xTick": "Y_f",
+     "dot": true
+    }
+   ]
+  }
+ },
+ {
+  "id": "n-output-gap",
+  "from": "k-0586",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "placement": "answer",
+   "xAxis": {
+    "en": "Real output",
+    "zh": "實質產出"
+   },
+   "yAxis": {
+    "en": "Price level",
+    "zh": "物價水平"
+   },
+   "curves": [
+    {
+     "id": "AD",
+     "role": "ad",
+     "slope": "normal",
+     "place": "mid",
+     "label": "AD"
+    },
+    {
+     "id": "SRAS",
+     "role": "sras",
+     "slope": "normal",
+     "place": "mid",
+     "label": "SRAS"
+    },
+    {
+     "id": "LRAS",
+     "role": "lras",
+     "slope": "normal",
+     "place": "high",
+     "label": "LRAS"
+    }
+   ],
+   "points": [
+    {
+     "a": "AD",
+     "b": "SRAS",
+     "name": "E_0",
+     "yTick": "P_0",
+     "xTick": "Y_0",
+     "dot": true
+    },
+    {
+     "a": "AD",
+     "b": "LRAS",
+     "name": "",
+     "yTick": "",
+     "xTick": "Y_f",
+     "dot": false
+    }
+   ],
+   "brackets": [
+    {
+     "from": "Y_0",
+     "to": "Y_f",
+     "label": {
+      "en": "Deflationary gap",
+      "zh": "通縮缺口"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "id": "n-two-shortages",
+  "from": "k-0586",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity",
+    "zh": "數量"
+   },
+   "yAxis": {
+    "en": "Price",
+    "zh": "價格"
+   },
+   "curves": [
+    {
+     "id": "D0",
+     "role": "demand",
+     "slope": "normal",
+     "place": "mid",
+     "label": "D_0"
+    },
+    {
+     "id": "S",
+     "role": "vertical",
+     "slope": "normal",
+     "place": "mid",
+     "label": "S"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "D0",
+     "id": "D1",
+     "direction": "right",
+     "size": "normal",
+     "label": "D_1"
+    }
+   ],
+   "levels": [
+    {
+     "id": "P",
+     "kind": "fixed",
+     "above": [],
+     "below": [],
+     "side": "below",
+     "style": "line",
+     "label": "P"
+    }
+   ],
+   "points": [
+    {
+     "a": "S",
+     "b": "P",
+     "name": "",
+     "yTick": "",
+     "xTick": "Q_s",
+     "dot": false
+    },
+    {
+     "a": "D0",
+     "b": "P",
+     "name": "",
+     "yTick": "",
+     "xTick": "Q_d0",
+     "dot": false
+    },
+    {
+     "a": "D1",
+     "b": "P",
+     "name": "",
+     "yTick": "",
+     "xTick": "Q_d1",
+     "dot": false
+    }
+   ],
+   "brackets": [
+    {
+     "from": "Q_s",
+     "to": "Q_d0",
+     "label": {
+      "en": "ex. dd0",
+      "zh": "超額需求 0"
+     }
+    },
+    {
+     "from": "Q_s",
+     "to": "Q_d1",
+     "label": {
+      "en": "ex. dd1",
+      "zh": "超額需求 1"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "id": "n-tax-pair-startcap",
+  "from": "k-0586",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Income ($)",
+    "zh": "收入 ($)"
+   },
+   "yAxis": {
+    "en": "Tax payment ($)",
+    "zh": "稅款 ($)"
+   },
+   "curves": [
+    {
+     "id": "old",
+     "role": "graph",
+     "slope": "normal",
+     "place": "mid",
+     "label": "Old",
+     "shape": "zeroRisingFlat",
+     "rise": "rising",
+     "start": "mid",
+     "cap": "mid"
+    },
+    {
+     "id": "new",
+     "role": "graph",
+     "slope": "normal",
+     "place": "mid",
+     "label": "New",
+     "shape": "zeroRisingFlat",
+     "rise": "rising",
+     "start": "high",
+     "cap": "high"
+    }
+   ]
+  }
+ },
+ {
+  "id": "n-tax-pair-allowance",
+  "from": "k-0586",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Income ($)",
+    "zh": "收入 ($)"
+   },
+   "yAxis": {
+    "en": "Tax payment ($)",
+    "zh": "稅款 ($)"
+   },
+   "curves": [
+    {
+     "id": "old",
+     "role": "graph",
+     "slope": "normal",
+     "place": "mid",
+     "label": "Old",
+     "shape": "zeroThenRising",
+     "rise": "rising",
+     "start": "low"
+    },
+    {
+     "id": "new",
+     "role": "graph",
+     "slope": "normal",
+     "place": "mid",
+     "label": "New",
+     "shape": "zeroThenRising",
+     "rise": "rising",
+     "start": "high"
+    }
+   ]
+  }
+ },
+ {
+  "id": "n-pie",
+  "from": "k-0586",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "sides": [
+   "en",
+   "zh"
+  ],
+  "spec": {
+   "kind": "chart",
+   "chart": {
+    "type": "pie",
+    "categories": [
+     {
+      "en": "Direct tax",
+      "zh": "直接稅"
+     },
+     {
+      "en": "Indirect tax",
+      "zh": "間接稅"
+     },
+     {
+      "en": "Other revenue",
+      "zh": "其他收入"
+     }
+    ],
+    "series": [
+     {
+      "label": {
+       "en": "2008-09",
+       "zh": "2008-09"
+      },
+      "values": [
+       46.2,
+       22.8,
+       31
+      ]
+     }
+    ],
+    "yTitle": {
+     "en": "",
+     "zh": ""
+    },
+    "xTitle": {
+     "en": "",
+     "zh": ""
+    }
+   }
+  }
+ },
+ {
+  "id": "n-subsidy-change",
+  "from": "k-0586",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "scene",
+   "scene": {
+    "type": "subsidyChange",
+    "ask": "dwlChange",
+    "points": [
+     {
+      "point": "e0",
+      "label": "e"
+     },
+     {
+      "point": "e1",
+      "label": "f"
+     },
+     {
+      "point": "e2",
+      "label": "g"
+     },
+     {
+      "point": "s0AtQs1",
+      "label": "h"
+     },
+     {
+      "point": "s0AtQs2",
+      "label": "i"
+     }
+    ]
+   }
+  }
+ },
+ {
+  "id": "n-level-through",
+  "from": "k-0586",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity",
+    "zh": "數量"
+   },
+   "yAxis": {
+    "en": "Price",
+    "zh": "價格"
+   },
+   "curves": [
+    {
+     "id": "D1",
+     "role": "demand",
+     "slope": "normal",
+     "place": "mid",
+     "label": "D_1"
+    },
+    {
+     "id": "S",
+     "role": "supply",
+     "slope": "normal",
+     "place": "mid",
+     "label": "S"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "D1",
+     "id": "D2",
+     "direction": "right",
+     "size": "normal",
+     "label": "D_2"
+    }
+   ],
+   "levels": [
+    {
+     "id": "P1",
+     "kind": "ceiling",
+     "above": [],
+     "below": [],
+     "side": "below",
+     "style": "line",
+     "label": "P_1",
+     "through": [
+      "D1",
+      "S"
+     ]
+    }
+   ],
+   "points": [
+    {
+     "a": "D2",
+     "b": "S",
+     "name": "",
+     "yTick": "P_2",
+     "xTick": "Q_2",
+     "dot": false
+    }
+   ]
+  }
+ },
+ {
+  "id": "n-money-lattice",
+  "from": "k-0586",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Quantity of money",
+    "zh": "貨幣數量"
+   },
+   "yAxis": {
+    "en": "Nominal interest rate",
+    "zh": "名義利率"
+   },
+   "curves": [
+    {
+     "id": "Ms0",
+     "role": "vertical",
+     "slope": "normal",
+     "place": "low",
+     "label": "M_s0"
+    },
+    {
+     "id": "Md0",
+     "role": "demand",
+     "slope": "normal",
+     "place": "mid",
+     "label": "M_d0"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "Ms0",
+     "id": "Ms1",
+     "direction": "right",
+     "size": "normal",
+     "label": "M_s1"
+    },
+    {
+     "of": "Md0",
+     "id": "Md1",
+     "direction": "right",
+     "size": "normal",
+     "label": "M_d1"
+    }
+   ],
+   "points": [
+    {
+     "a": "Md0",
+     "b": "Ms0",
+     "name": "A",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    },
+    {
+     "a": "Md1",
+     "b": "Ms1",
+     "name": "B",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    },
+    {
+     "a": "Md0",
+     "b": "Ms1",
+     "name": "C",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    },
+    {
+     "a": "Md1",
+     "b": "Ms0",
+     "name": "D",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    }
+   ]
+  }
+ },
+ {
+  "id": "n-through-wrong-way",
+  "from": "k-0586",
+  "expect": {
+   "status": "failed",
+   "errors": [
+    "shift.through"
+   ]
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Real output",
+    "zh": "實質產出"
+   },
+   "yAxis": {
+    "en": "Price level",
+    "zh": "物價水平"
+   },
+   "curves": [
+    {
+     "id": "AD",
+     "role": "ad",
+     "slope": "normal",
+     "place": "mid",
+     "label": "AD"
+    },
+    {
+     "id": "SRAS0",
+     "role": "sras",
+     "slope": "normal",
+     "place": "mid",
+     "label": "SRAS_0"
+    },
+    {
+     "id": "LRAS",
+     "role": "lras",
+     "slope": "normal",
+     "place": "high",
+     "label": "LRAS"
+    }
+   ],
+   "shifts": [
+    {
+     "of": "SRAS0",
+     "id": "SRAS1",
+     "direction": "left",
+     "size": "normal",
+     "label": "SRAS_1",
+     "through": [
+      "AD",
+      "LRAS"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "id": "n-adas-lattice",
+  "from": "k-0586",
+  "expect": {
+   "status": "ok",
+   "errors": []
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Real output",
+    "zh": "實質產出"
+   },
+   "yAxis": {
+    "en": "Price level",
+    "zh": "物價水平"
+   },
+   "curves": [
+    {
+     "id": "AD0",
+     "role": "ad",
+     "slope": "normal",
+     "place": "mid",
+     "label": "AD_0"
+    },
+    {
+     "id": "SRAS0",
+     "role": "sras",
+     "slope": "normal",
+     "place": "mid",
+     "label": "SRAS_0"
+    },
+    {
+     "id": "LRAS0",
+     "role": "lras",
+     "slope": "normal",
+     "place": "mid",
+     "label": "LRAS_0",
+     "through": [
+      "AD0",
+      "SRAS0"
+     ]
+    }
+   ],
+   "shifts": [
+    {
+     "of": "AD0",
+     "id": "AD1",
+     "direction": "left",
+     "size": "normal",
+     "label": "AD_1"
+    },
+    {
+     "of": "AD0",
+     "id": "AD2",
+     "direction": "right",
+     "size": "normal",
+     "label": "AD_2"
+    },
+    {
+     "of": "SRAS0",
+     "id": "SRAS2",
+     "direction": "right",
+     "size": "normal",
+     "label": "SRAS_2",
+     "through": [
+      "AD1",
+      "LRAS0"
+     ]
+    },
+    {
+     "of": "SRAS0",
+     "id": "SRAS1",
+     "direction": "left",
+     "size": "normal",
+     "label": "SRAS_1",
+     "through": [
+      "AD2",
+      "LRAS0"
+     ]
+    }
+   ],
+   "points": [
+    {
+     "a": "AD0",
+     "b": "SRAS0",
+     "name": "E_0",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    },
+    {
+     "a": "AD2",
+     "b": "SRAS1",
+     "name": "E_1",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    },
+    {
+     "a": "AD2",
+     "b": "SRAS0",
+     "name": "E_2",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    },
+    {
+     "a": "AD1",
+     "b": "SRAS0",
+     "name": "E_3",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    },
+    {
+     "a": "AD1",
+     "b": "SRAS2",
+     "name": "E_4",
+     "yTick": "",
+     "xTick": "",
+     "dot": true
+    }
+   ]
+  }
+ },
+ {
+  "id": "n-curve-through-sloped",
+  "from": "k-0586",
+  "expect": {
+   "status": "failed",
+   "errors": [
+    "curve.through"
+   ]
+  },
+  "spec": {
+   "kind": "curves",
+   "xAxis": {
+    "en": "Real output",
+    "zh": "實質產出"
+   },
+   "yAxis": {
+    "en": "Price level",
+    "zh": "物價水平"
+   },
+   "curves": [
+    {
+     "id": "AD",
+     "role": "ad",
+     "slope": "normal",
+     "place": "mid",
+     "label": "AD"
+    },
+    {
+     "id": "LRAS",
+     "role": "lras",
+     "slope": "normal",
+     "place": "mid",
+     "label": "LRAS"
+    },
+    {
+     "id": "SRAS",
+     "role": "sras",
+     "slope": "normal",
+     "place": "mid",
+     "label": "SRAS",
+     "through": [
+      "AD",
+      "LRAS"
+     ]
+    }
+   ]
+  }
+ }
+]

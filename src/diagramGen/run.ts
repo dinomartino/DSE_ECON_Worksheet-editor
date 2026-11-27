@@ -15,7 +15,8 @@ import { checkLabels } from './labels';
 import { solveKey } from './solve';
 import type { DiagramGenDeps, DiagramGenInput, DiagramGenOutcome, DiagramIssue, DiagramSpec, SolvedKey } from './types';
 import { checkDiagram, checkStem } from './validate';
-import { checkLayout } from './layoutCheck';
+import { checkLayout, separateNames } from './layoutCheck';
+import { checkCoincide } from './coincide';
 import { checkLorenz, lorenzWidth } from './lorenz';
 import type { SceneBuilt } from './scene';
 import { checkCornerLettersDrawn, checkSceneCorners, checkSceneKey, checkSceneLook, checkSceneWords, cornerLettersIn } from './sceneCheck';
@@ -70,6 +71,7 @@ export function evaluateSpec(spec: DiagramSpec, input: Pick<DiagramGenInput, 'si
   // The figure as it prints, at its width (u-ewel): nothing cut off, every name by its curve.
   const diagram = evaluated.compiled.diagram;
   if (diagram && !errors(evaluated.issues)) {
+    separateNames(diagram, input.widthPx ?? naturalWidth(spec, diagram), input.sides);
     evaluated.issues.push(...checkLayout(diagram, input.widthPx ?? naturalWidth(spec, diagram), input.sides));
   }
   return evaluated;
@@ -90,7 +92,7 @@ function evaluateDrawing(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides'
     if (!compiled.diagram && !errors(issues)) issues.push({ level: 'error', code: 'diagram.empty', text: 'Nothing could be drawn from that diagram.' });
     return { spec, compiled, issues, solved, questionChange: '' };
   }
-  const issues = [...parseIssues, ...compiled.issues, ...checkDiagram(spec, compiled, input.sides, input.key)];
+  const issues = [...parseIssues, ...compiled.issues, ...checkDiagram(spec, compiled, input.sides, input.key), ...checkCoincide(spec, compiled.diagram)];
   let solved: SolvedKey | null = null;
   if (compiled.diagram && input.mcq && spec.placement === 'question') {
     issues.push(

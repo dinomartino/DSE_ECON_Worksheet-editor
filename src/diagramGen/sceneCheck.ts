@@ -381,7 +381,7 @@ const WORDS: Array<{ re: RegExp; ok: (s: SpecScene) => boolean; says: string }> 
     ok: (s) => s.type === 'unitTax' || s.type === 'taxChange' || s.type === 'tariff' || s.type === 'externality',
     says: 'a per-unit tax (scene unitTax)',
   },
-  { re: /\bsubsid(?:y|ies|ise|ize)\b|津貼|補貼|資助/i, ok: (s) => s.type === 'unitSubsidy' || s.type === 'externality', says: 'a subsidy (scene unitSubsidy)' },
+  { re: /\bsubsid(?:y|ies|ise|ize)\b|津貼|補貼|資助/i, ok: (s) => s.type === 'unitSubsidy' || s.type === 'subsidyChange' || s.type === 'externality', says: 'a subsidy (scene unitSubsidy, or subsidyChange when it is raised from s1 to s2)' },
   { re: /price ceiling|maximum price|rent control|最高價格|價格上限|租金管制/i, ok: (s) => s.type === 'priceCeiling' || s.type === 'ceilingDemandRise', says: 'a price ceiling (scene priceCeiling, or ceilingDemandRise when demand rises to D2)' },
   { re: /price floor|minimum price|minimum wage|最低價格|價格下限|最低工資/i, ok: (s) => s.type === 'priceFloor', says: 'a price floor or minimum wage (scene priceFloor)' },
   { re: /\btariff|關稅/i, ok: (s) => s.type === 'tariff', says: 'a tariff (scene tariff)' },

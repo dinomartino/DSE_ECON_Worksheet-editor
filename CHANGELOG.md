@@ -13,6 +13,16 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question studio draws more HKDSE figures, and no longer passes a figure that hides what the
+  question asks.** It now draws the money market with the question's own labels (Ms and Md lines
+  with lettered crossings, or one money-demand curve shifting with no supply line), two lettered
+  points on one curve, an import quota marked as a bracket at the world price, AD–AS figures where
+  SRAS shifts until the economy is back on the LRAS, an output-gap bracket between Y and Yf, old and
+  new tax schedules whose allowance and cap change separately, pie charts, and a per-unit subsidy
+  raised from one amount to another with corner letters. A figure that draws two things on the
+  same spot (two brackets, two points, two lines that look like one) or a stock example in place
+  of the question's own data is fixed before you see it.
+  <!-- zh: **擬題工作室能繪畫更多 HKDSE 圖表，亦不會再讓蓋住題目重點的圖表通過檢查。** 現在可按題目自己的標示繪畫貨幣市場（貨幣供應及貨幣需求線，交點以字母標示；或只有一條移動的貨幣需求曲線、沒有供應線）、同一曲線的兩個以字母標示的點、在世界價格以括號標示的進口配額、SRAS 移動至經濟回到 LRAS 的 AD–AS 圖、Y 與 Yf 之間的產出缺口括號、免稅額與上限各自改變的新舊稅制圖、圓形圖，以及每單位津貼由一個金額提高至另一金額並以角位字母標示的圖。若圖中兩樣東西畫在同一位置（兩個括號、兩個點、兩條看似一條的線），或以範例圖代替題目自己的數據，擬題工作室會在你看到前修正。 -->
 - **The Question studio draws Lorenz curves the way HKDSE prints them.** A question comparing two
   economies gets one square box per economy, titled as the stem names them; a question about a
   change gets both curves in one box, lettered by the curves, with the key beside the box. The

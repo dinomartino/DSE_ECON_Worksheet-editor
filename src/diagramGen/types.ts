@@ -59,7 +59,23 @@ export interface SpecCurve {
   /** Role 'graph' only (k-0545): the line's shape and which way it goes; absent in a spec saved before = 'none' / 'rising'. */
   shape?: GraphShape;
   rise?: GraphRise;
+  /**
+   * A broken tax line only (k-0586): where the tax-free allowance ends (`start`) and how high
+   * the cap sits (`cap`), so an old and a new schedule can differ in one and not the other.
+   * 'none' / absent = the shape's own (mid).
+   */
+  start?: GraphPoint;
+  cap?: GraphPoint;
+  /**
+   * An upright or level line only (lras, vertical, horizontal; k-0586): two ids drawn before it
+   * whose crossing it passes through (the LRAS at the first equilibrium's output). [] / absent = `place`.
+   */
+  through?: string[];
 }
+
+/** Where a broken tax line's allowance ends or its cap sits (k-0586); 'none' = the shape's own. */
+export const GRAPH_POINTS = ['none', 'low', 'mid', 'high'] as const;
+export type GraphPoint = (typeof GRAPH_POINTS)[number];
 
 /**
  * out / in: a frontier's both intercepts (for a line: right / left). right / left on a
@@ -79,6 +95,12 @@ export interface SpecShift {
   direction: Direction;
   size: ShiftSize;
   label: string;
+  /**
+   * Two drawn ids whose crossing the copy must pass through (k-0586): "SRAS shifts until AD
+   * meets LRAS" is SRAS1 = SRAS0 moved right through ["AD","LRAS"]. The size is then worked
+   * out, not chosen. [] / absent = `size`.
+   */
+  through?: string[];
 }
 
 /**
@@ -110,6 +132,8 @@ export interface SpecLevel {
   side: 'below' | 'above';
   style: LevelStyle;
   label: string;
+  /** Exactly at the height (a quota: the x) of the crossing of these two ids (k-0586); [] / absent = placed by above / below / side. */
+  through?: string[];
 }
 
 /**
@@ -163,6 +187,18 @@ export interface SpecGap {
   label: SpecText;
 }
 
+/**
+ * A bracket between two ticks along an axis (k-0586): the output gap Y₀ → Y_f, the quantity a
+ * quota allows, a shortage after a shift (Q_s → Q_d1). `from` and `to` are tick labels already
+ * on the figure (a point's xTick or yTick, or a price line's label); both on the x-axis or both
+ * on the y-axis.
+ */
+export interface SpecBracket {
+  from: string;
+  to: string;
+  label: SpecText;
+}
+
 /** Revenue areas between the first two equilibria, besides every Shade-menu preset id. */
 export const REVENUE_SHADES = ['revenueGain', 'revenueLoss'] as const;
 
@@ -187,7 +223,8 @@ export interface SpecSeries {
 
 /** A bar or line chart of figures: the "table as a graph" stimulus. */
 export interface SpecChart {
-  type: 'bar' | 'line';
+  /** pie (k-0586): one series, its values the slices' shares, the categories their names. */
+  type: 'bar' | 'line' | 'pie';
   categories: SpecText[];
   series: SpecSeries[];
   yTitle: SpecText;
@@ -236,7 +273,7 @@ export interface SpecLorenz {
  * works the answer out from the drawing. The catalogue (parts, regions, measures) is
  * `diagramGen/sceneCatalogue.ts`.
  */
-export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'taxChange', 'unitSubsidy', 'priceCeiling', 'ceilingDemandRise', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff'] as const;
+export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'taxChange', 'unitSubsidy', 'subsidyChange', 'priceCeiling', 'ceilingDemandRise', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff'] as const;
 export type SceneType = (typeof SCENE_TYPES)[number];
 
 /** goods: Price / Quantity; labour: Wage rate / Quantity of labour, ticks W instead of P. */
@@ -366,6 +403,8 @@ export interface DiagramSpec {
   /** Marked points (was `equilibria`; a reply using that name still reads). */
   points: SpecPoint[];
   gaps: SpecGap[];
+  /** Brackets between two ticks (k-0586); absent in a spec saved before = []. */
+  brackets?: SpecBracket[];
   shades: SpecShade[];
   marks: SpecMark[];
   /** Arrows along the axes from the first equilibrium's P and Q to the second's. */
