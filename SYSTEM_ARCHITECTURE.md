@@ -1625,6 +1625,14 @@ diagram) — after the owner's text and before its dotted lines.
 QAB numbers 1..14 across three sections, so the marks cannot ride on a restart-bearing
 element. The QAB's sections set `restartNumbering: false`.
 
+Both headings build that line in `src/render/worksheet.ts:markedHeading` (u-d4n6). The
+suffix run copies the formatting of the last visible authored run (not its `vertAlign` or
+`fraction`), so a heading resized by selecting its words takes its marks along; a heading
+sized as a whole needs nothing, since every backend applies `format` to every run. The
+node carries `segments` beside `edit`: the page's editable field holds the authored text
+alone and the total prints beside it. Without them the field held the printed line and the
+first keystroke stored the total into the heading.
+
 ### Fill-to-page: the count is the paginator's output
 
 `answerSpace.fill` inverts the sizing: `lines` becomes the **resolved** value the
