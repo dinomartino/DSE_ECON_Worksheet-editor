@@ -322,10 +322,12 @@ function withoutCodes(tags: readonly string[], codes: ReadonlySet<string>): stri
 export function withViewCodes(tags: readonly string[], want: readonly string[]): string[] {
   const codes: string[] = [];
   const keys: string[] = [];
+  const patterns: string[] = [];
   for (const code of new Set(want)) {
     const node = viewTopicOf(code);
     if (!node) {
       if (topicOf(code)) codes.push(code);
+      else if (isPatternTag(code)) patterns.push(code);
       continue;
     }
     if (node.kind === 'mcq') {
@@ -349,7 +351,8 @@ export function withViewCodes(tags: readonly string[], want: readonly string[]):
     if (isPatternTag(tag)) return finalCodes.includes(parsePatternTag(tag)!.topic);
     return true;
   });
-  return [...new Set([...finalCodes, ...mcqTags, ...rest])];
+  const kept = patterns.filter((tag) => finalCodes.includes(parsePatternTag(tag)!.topic));
+  return [...new Set([...finalCodes, ...mcqTags, ...kept, ...rest])];
 }
 
 /**
