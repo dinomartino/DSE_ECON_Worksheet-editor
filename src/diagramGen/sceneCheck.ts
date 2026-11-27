@@ -70,6 +70,25 @@ export function cornerLettersIn(text: string): string[] {
   return [...out];
 }
 
+/**
+ * The corner-named areas and letters a question really uses (k-0577 round 3, after the review):
+ * an area an option names always counts; one named only in the stem or explanation counts when
+ * it shares two letters with the options' areas or is named twice. "The area gained by
+ * consumers" or "the area left of S" once in an explanation is English, not corners.
+ */
+export function namedCorners(mcq: { stem: string; statements: readonly string[]; options: readonly string[] }, explanation: string): { areas: string[]; letters: string[] } {
+  const fromOptions = [...new Set(mcq.options.flatMap(cornerAreasIn))];
+  const optionLetters = new Set(fromOptions.flatMap((a) => [...a]));
+  const others = [mcq.stem, ...mcq.statements, explanation];
+  const seen = new Map<string, number>();
+  for (const t of [...mcq.options, ...others]) for (const a of cornerAreasIn(t)) seen.set(a, (seen.get(a) ?? 0) + (t.split(a).length - 1));
+  const extra = [...new Set(others.flatMap(cornerAreasIn))].filter((a) => !fromOptions.includes(a) && ([...a].filter((l) => optionLetters.has(l)).length >= 2 || (seen.get(a) ?? 0) >= 2));
+  const areas = [...fromOptions, ...extra];
+  const letters = new Set(areas.flatMap((a) => [...a]));
+  for (const t of [...mcq.options, ...others]) for (const re of [POINT_LETTER_EN, POINT_LETTER_ZH]) for (const m of t.matchAll(re)) for (const l of (m[1] ?? m[2] ?? '').match(/[a-z]/g) ?? []) letters.add(l);
+  return { areas, letters: [...letters] };
+}
+
 type Pt = { x: number; y: number };
 
 function hull(points: Pt[]): Pt[] {
@@ -176,8 +195,8 @@ export function checkSceneCorners(spec: DiagramSpec, built: SceneBuilt, mcq: Mcq
   const issues: DiagramIssue[] = [];
   const scene = spec.scene!;
   const def = sceneDef(scene.type);
-  const texts = [mcq.stem, ...mcq.statements, ...mcq.options, explanation];
-  const named = [...new Set(texts.flatMap(cornerLettersIn))];
+  const corners = namedCorners(mcq, explanation);
+  const named = corners.letters;
   const keyedCorners = optionCorners(mcq.options[mcq.answer] ?? '');
   const used = named.length > 0;
   if (!def || !used) return { issues, solved: null, used };
@@ -185,7 +204,7 @@ export function checkSceneCorners(spec: DiagramSpec, built: SceneBuilt, mcq: Mcq
   const letterAt = new Map([...built.pointLabels].map(([id, l]) => [l, id]));
   const missing = named.filter((l) => !letterAt.has(l));
   if (missing.length) {
-    const areas = texts.flatMap(cornerAreasIn).filter((a, i, all) => all.indexOf(a) === i);
+    const areas = corners.areas;
     error(
       'scene.cornerMissing',
       `The question names ${areas.length ? `area${areas.length > 1 ? 's' : ''} ${areas.join(', ')}` : 'points'} by corner letters, but ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} on no point of the figure. Letter every corner the stem, options and explanation use on the scene point where the explanation's geometry puts it (scene.points: [{point, label}]; points: ${def.points.map((p) => p.id).join(', ')}).`,
@@ -194,7 +213,7 @@ export function checkSceneCorners(spec: DiagramSpec, built: SceneBuilt, mcq: Mcq
   // Each named area is a real area of the figure: every edge runs along a drawn line (u-fbsp v2: m and j on the wrong points made "efj" a triangle no line bounds).
   if (!missing.length && built.diagram) {
     const lines = figureLines(built.diagram);
-    for (const area of [...new Set(texts.flatMap(cornerAreasIn))]) {
+    for (const area of corners.areas) {
       const pts = [...area].map((l) => ({ l, at: built.pointPlaces.get(letterAt.get(l) ?? '') })).filter((p): p is { l: string; at: Pt } => Boolean(p.at));
       if (pts.length !== area.length) continue;
       const shape = hull(pts.map((p) => p.at));
@@ -254,8 +273,8 @@ export function checkSceneCorners(spec: DiagramSpec, built: SceneBuilt, mcq: Mcq
  * uses (k-0577 round 3): every letter must be printed on it. On develop a curves figure for
  * HKDSE 2023 P1 Q21 passed with b missing, since only scenes checked their corners.
  */
-export function checkCornerLettersDrawn(diagram: Diagram, texts: readonly string[]): DiagramIssue[] {
-  const named = [...new Set(texts.flatMap(cornerLettersIn))];
+export function checkCornerLettersDrawn(diagram: Diagram, mcq: McqWords, explanation: string): DiagramIssue[] {
+  const named = namedCorners(mcq, explanation).letters;
   if (!named.length) return [];
   const printed = new Set<string>();
   for (const p of diagram.points) for (const side of ['en', 'zh'] as const) p.label?.[side].forEach((r) => printed.add(r.text.trim()));

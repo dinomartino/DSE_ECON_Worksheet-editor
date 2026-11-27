@@ -82,7 +82,7 @@ function evaluateDrawing(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides'
     issues.push(
       ...checkLabels(input.mcq, compiled.diagram),
       ...checkStem(spec, compiled, [input.mcq.stem, ...input.mcq.statements].join('\n')),
-      ...checkCornerLettersDrawn(compiled.diagram, [input.mcq.stem, ...input.mcq.statements, ...input.mcq.options, input.key]),
+      ...checkCornerLettersDrawn(compiled.diagram, input.mcq, input.key),
     );
     const solvedKey = solveKey(spec, compiled, input.mcq);
     solved = solvedKey.solved;
