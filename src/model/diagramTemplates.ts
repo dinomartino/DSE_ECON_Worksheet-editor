@@ -232,6 +232,84 @@ const ORIGINAL_TEMPLATES: DiagramTemplate[] = [
     },
   },
   {
+    id: 'circular-flow',
+    group: 'data',
+    name: bi('Circular flow', '經濟活動的循環流程'),
+    hint: bi(
+      'Households and firms, real flows solid and money flows dashed, with a key.',
+      '住戶與廠商：實質流程用實線，貨幣流程用虛線，附圖例。',
+    ),
+    // The two-sector loop the papers draw (HKDSE 2026 P1 Q5): two loops over the top and
+    // two underneath, inner first (`route`, k-0588), the money flows dashed, and the key.
+    // Invented wording: the paper letters its flows "Flow X", "Flow Y".
+    build: () => {
+      const households = newId();
+      const firms = newId();
+      return {
+        x: {},
+        y: {},
+        curves: [],
+        points: [],
+        labels: [],
+        arrows: [],
+        flow: {
+          nodes: [
+            { id: households, label: bi('Households', '住戶'), col: 0, row: 0 },
+            { id: firms, label: bi('Firms', '廠商'), col: 1, row: 0 },
+          ],
+          arrows: [
+            { id: newId(), from: households, to: firms, route: 'above', label: bi('factor services', '生產要素服務') },
+            { id: newId(), from: firms, to: households, route: 'above', dashed: true, label: bi('factor incomes', '生產要素收入') },
+            { id: newId(), from: firms, to: households, route: 'below', labelBelow: bi('goods and services', '物品和服務') },
+            { id: newId(), from: households, to: firms, route: 'below', dashed: true, labelBelow: bi('consumption expenditure', '消費開支') },
+          ],
+          key: { dashed: bi('Money flow', '貨幣流程'), solid: bi('Real flow', '實質流程') },
+        },
+      };
+    },
+  },
+  {
+    id: 'production-stages',
+    group: 'data',
+    name: bi('Production stages', '生產層次'),
+    hint: bi(
+      'Primary, secondary and tertiary production in a triangle, joined by pairs of arrows.',
+      '一級、二級及三級生產排成三角形，以成對箭嘴連接。',
+    ),
+    // The triangle of HKDSE 2014 P1 Q10 and 2024 P1 Q6: the grid layout puts primary
+    // production over the gap between the other two (k-0588), and each link is a pair of
+    // one-way arrows drawn side by side. The letters are the teacher's to choose.
+    build: () => {
+      const primary = newId();
+      const secondary = newId();
+      const tertiary = newId();
+      return {
+        x: {},
+        y: {},
+        curves: [],
+        points: [],
+        labels: [],
+        arrows: [],
+        flow: {
+          layout: 'grid',
+          nodes: [
+            { id: primary, label: bi('Primary\nproduction', '一級生產'), col: 1, row: 0 },
+            { id: secondary, label: bi('Secondary\nproduction', '二級生產'), col: 0, row: 1 },
+            { id: tertiary, label: bi('Tertiary\nproduction', '三級生產'), col: 2, row: 1 },
+          ],
+          arrows: [
+            { id: newId(), from: secondary, to: primary, label: bi('X', 'X') },
+            { id: newId(), from: primary, to: secondary },
+            { id: newId(), from: primary, to: tertiary, label: bi('Y', 'Y') },
+            { id: newId(), from: tertiary, to: primary },
+            { id: newId(), from: secondary, to: tertiary },
+            { id: newId(), from: tertiary, to: secondary },
+          ],
+        },
+      };
+    },
+  },
+  {
     id: 'pie',
     group: 'data',
     name: bi('Pie chart', '圓形圖'),

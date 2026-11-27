@@ -238,6 +238,31 @@ export const FLOW_CANVAS_MESSAGES = defineMessages({
     en: 'Drag a box to move it between columns. Past the outermost column starts a new one. Double-click any text to retype it. Pick ',
     zh: '拖曳方框可在直欄之間移動，拖到最外側直欄之外會開新直欄。按兩下任何文字可重新輸入。選擇',
   },
+  // k-0588: dashed and routed arrows, the grid layout, the key.
+  dashed: { en: 'Dashed line', zh: '虛線' },
+  route: { en: 'Path', zh: '路線' },
+  routeStraight: { en: 'Straight', zh: '直線' },
+  routeAbove: { en: 'Loop over the top', zh: '從上方繞過' },
+  routeBelow: { en: 'Loop underneath', zh: '從下方繞過' },
+  chartSettings: { en: 'Chart', zh: '流程圖' },
+  layout: { en: 'Layout', zh: '排列' },
+  layoutColumns: { en: 'Columns', zh: '直欄' },
+  layoutGrid: { en: 'Grid', zh: '格網' },
+  layoutColumnsNote: {
+    en: 'Each column stacks its boxes, centred. For chains of stages.',
+    zh: '每個直欄的方框上下排列並置中，適用於生產鏈。',
+  },
+  layoutGridNote: {
+    en: 'Rows line up across columns, so a box can sit above the gap between two others, as in a triangle of production stages.',
+    zh: '各直欄的橫行對齊，方框可放在另外兩個方框之間的上方，例如三角形的生產層次圖。',
+  },
+  hintSelectGrid: {
+    en: 'Drag a box into any row and column; onto another box swaps them. Click to select and edit. Double-click text to retype it.',
+    zh: '把方框拖到任何橫行及直欄；拖到另一方框上會互換位置。按一下可選取並編輯。按兩下文字可重新輸入。',
+  },
+  showKey: { en: 'Key for dashed and solid lines', zh: '虛線及實線的圖例' },
+  keyDashed: { en: 'Dashed line means', zh: '虛線代表' },
+  keySolid: { en: 'Solid line means', zh: '實線代表' },
   helpPost: {
     en: ' and drag box-to-box to connect stages; release on empty paper for an open-ended stub. ⌫ deletes the selection.',
     zh: '後，在方框之間拖曳即可連接各階段；在空白處放開，可畫出開口端的短箭頭。按 ⌫ 可刪除所選項目。',

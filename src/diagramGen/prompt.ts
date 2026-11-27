@@ -79,6 +79,7 @@ DECIDE
 - kind "scene": a typed market diagram the editor draws exactly (below): consumer and producer surplus, a per-unit tax, a per-unit subsidy, a price ceiling, a price floor or minimum wage, a quota, an externality, a cost rise and total social surplus, a tariff. ALWAYS use a scene for these, and for every question about areas (surplus, deadweight loss, tax revenue, burdens, benefits); never compose them from curves.
 - kind "curves": axes and straight lines you compose (below). Use it for demand and supply shifts, elasticity and revenue, fixed supply, AD-AS, the PPC and plain graphs: anything no scene draws.
 - kind "chart": a bar or line chart of figures from the question (a table as a graph).
+- kind "flow": boxes joined by arrows (below): a value-added chain of firms with $ on the arrows (GDP, value added), the circular flow of income, the production stages (primary, secondary, tertiary). Never template "flow".
 - kind "template": one of the editor's ready-made diagrams, by id, when neither a scene nor kind "curves" can draw it (an import quota, monopoly, money market, Lorenz curve, PPF with trade). Its labels are fixed: use it only when the question names no label the template lacks. Set title/xAxis/yAxis only to rename them, else leave them "".
 
 KIND "scene"
@@ -95,6 +96,13 @@ KIND "scene"
 SCENES
 ${'${SCENES}'}
 
+KIND "flow"
+- flow: {layout, nodes, arrows, key}. nodes: {id, label, col, row, boxed}: col 0, 1, 2… left to right; row orders a column top to bottom. boxed false = bare words (a note such as "increase in inventory $50" under the box it comes from).
+- arrows: {from, to, label, labelBelow, dashed, route}: from and to are node ids; "" = an open end (raw materials entering: from ""; exports leaving: to ""). label sits over the shaft, labelBelow under it: the $ amount and the goods ("$400", "Flour ($25 000)"), or the letter the question asks about ("Flow X", "E"). Draw only the transactions the question gives, never the value added it asks for.
+- The circular flow: households col 0, firms col 1, the same row; route "above" / "below" loops over / under the boxes (the first listed on a side runs inside); dashed true for money flows, false for real flows; key {dashed: "Money flow" 貨幣流程, solid: "Real flow" 實質流程}.
+- Production stages in a triangle: layout "grid" (row is shared by every column): primary col 1 row 0, secondary col 0 row 1, tertiary col 2 row 1; two arrows between two boxes are drawn side by side, one each way.
+- Otherwise layout "columns", every route "straight", dashed false, key words "".
+
 KIND "curves"
 - curves: {id, role, slope, place, label, shape, rise}. role: demand | supply | ad | sras | lras | vertical (fixed supply) | horizontal (perfectly elastic) | frontier (PPC) | graph (a plain line against two named axes, below). slope: normal | steep (inelastic) | flat (elastic). place (vertical, horizontal, frontier only): low | mid | high. shape and rise: "none" and "rising" except on a graph.
 - role "graph": the line of a plain graph such as "tax payment against taxable income", "average tax rate against income", "average cost against output". Name the axes exactly in xAxis and yAxis; the label may be "". shape: origin (straight from the origin) | linear (straight from a point on the y-axis) | convex (bending upward: rising faster and faster, or falling more and more slowly) | concave (bending downward: rising more and more slowly, or falling faster and faster) | flat (horizontal) | zeroThenRising (zero along the x-axis up to a value, e.g. a tax-free allowance, then rising straight) | risingThenFlat (rising straight from the origin, then horizontal beyond a value, e.g. capped at a standard rate) | linearThenFlat (rising straight from a point on the y-axis, then horizontal) | zeroRisingFlat (zero, then rising, then horizontal: an allowance and a cap). rise: rising | falling (the broken shapes always rise). Pick the shape the note describes, part by part; never "flat" for a line that is only partly horizontal. In a set, options or cells that should differ must not be drawn alike. Taxes: a proportional tax is tax payment straight from the origin and a flat average rate; a progressive tax is tax payment convex and rising, and a rising average rate; a regressive tax is tax payment concave (or flat, a lump sum), and a falling average rate.
@@ -109,7 +117,7 @@ KIND "curves"
 - changeArrows: true draws arrows along both axes from the first equilibrium's P and Q to the second's.
 - asks: {what, state}: what the question asks the student to find, so the editor can work the answer out again from your drawing. what: quantityTransacted | quantityDemanded | quantitySupplied | shortage | surplus | marketPrice | buyersPay | sellersGet | none (anything else: a PPC point, a reason, a shaded area). state: before | after the change (after = every curve replaced by its last shift). The editor reads the tick at that answer: it must be the label of the keyed option.
 - ids are short and unique ("D", "S", "D1", "Pc"); every entry refers to ids defined before it.
-- For kind "scene", "curves", "shifts", "levels", "points", "gaps", "shades", "marks" are []: the scene draws them. For any other kind, scene.type is "none".
+- For kind "scene", "curves", "shifts", "levels", "points", "gaps", "shades", "marks" are []: the scene draws them. For any other kind, scene.type is "none". flow.nodes and flow.arrows are [] unless kind is "flow".
 
 A QUESTION'S FIGURE (placement "question")
 - Draw exactly what the question and its options name: every label in the stem or an option (Q1, Q2, Q3, Q4, P1, S1, S2, D1, area A, point B) is on the figure, and nothing the student is asked to find is said in words on it.

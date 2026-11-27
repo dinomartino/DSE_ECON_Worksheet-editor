@@ -1,13 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { FlowChart, FlowNode } from '@/model/diagram';
-import { addFlowNode, connectFlow, moveNodeToSlot, removeFlowNode } from '@/model/flowEdits';
-import { emptyBiText, isBiTextEmpty, parseRuns, plain, serializeRuns } from '@/model/text';
+import type { FlowArrow, FlowChart, FlowNode } from '@/model/diagram';
+import {
+  addFlowNode,
+  connectFlow,
+  moveNodeToCell,
+  moveNodeToSlot,
+  removeFlowNode,
+  setFlowLayout,
+} from '@/model/flowEdits';
+import { bi, emptyBiText, isBiTextEmpty, parseRuns, plain, serializeRuns } from '@/model/text';
 import type { BiText, DiagramBlock, FontPair, LanguageMode } from '@/model/types';
 import {
   diagramSize,
   diagramSvg,
+  distToFlowArrow,
   flowChartLayout,
   type FlowArrowLayout,
   type FlowBoxLayout,
@@ -54,6 +62,8 @@ type FlowEditing =
 interface SlotTarget {
   col: number;
   index: number;
+  /** Grid layout (k-0588): the row the box lands in; `index` is then unused. */
+  row?: number;
   /** Indicator rectangle, natural units. */
   x: number;
   y: number;
@@ -61,18 +71,33 @@ interface SlotTarget {
   h: number;
 }
 
-/** Distance from a point to the arrow's segment, for shaft hit-testing. */
-function distToSegment(p: { x: number; y: number }, seg: FlowArrowLayout): number {
-  const dx = seg.x2 - seg.x1;
-  const dy = seg.y2 - seg.y1;
-  const lengthSq = dx * dx + dy * dy || 1;
-  const t = Math.max(0, Math.min(1, ((p.x - seg.x1) * dx + (p.y - seg.y1) * dy) / lengthSq));
-  return Math.hypot(p.x - (seg.x1 + t * dx), p.y - (seg.y1 + t * dy));
+/** A drawn arrow's corners: a straight shaft's two ends, or a routed loop's points. */
+function segPoints(seg: FlowArrowLayout): Array<{ x: number; y: number }> {
+  return seg.points ?? [
+    { x: seg.x1, y: seg.y1 },
+    { x: seg.x2, y: seg.y2 },
+  ];
 }
 
+/** Where an arrow's words go when it has none yet: the middle of its run (a loop's lane). */
+function segMiddle(seg: FlowArrowLayout): { x: number; y: number } {
+  const points = segPoints(seg);
+  const [a, b] = points.length === 4 ? [points[1], points[2]] : [points[0], points[points.length - 1]];
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+/** Drop the keys set to undefined, so an untouched field stays absent in the file. */
+function withoutUndefined<T extends object>(value: T): T {
+  return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as T;
+}
+
+/** The money / real flow key's default words, printed text (k-0588). */
+const DEFAULT_KEY = { dashed: bi('Money flow', '貨幣流程'), solid: bi('Real flow', '實質流程') };
+
 /** What an arrow endpoint select calls a box: its own words, or a positional name. */
-function nodeName(node: FlowNode, index: number, m: { box: (n: number) => string }): string {
-  return plain(node.label.en).trim() || plain(node.label.zh).trim() || m.box(index + 1);
+function nodeName(node: FlowNode, index: number, m: { box: (n: number) => string }, side: 'en' | 'zh' = 'en'): string {
+  const other = side === 'en' ? 'zh' : 'en';
+  return plain(node.label[side]).trim() || plain(node.label[other]).trim() || m.box(index + 1);
 }
 
 export function FlowCanvas({
@@ -181,7 +206,7 @@ export function FlowCanvas({
 
   const arrowAt = useCallback(
     (p: { x: number; y: number }): FlowArrowLayout | undefined =>
-      layout.arrows.find((seg) => distToSegment(p, seg) < 7),
+      layout.arrows.find((seg) => distToFlowArrow(p, seg) < 7),
     [layout],
   );
 
@@ -193,6 +218,43 @@ export function FlowCanvas({
   const slotAt = useCallback(
     (p: { x: number; y: number }, dragId: string): SlotTarget => {
       const dragged = layout.boxes.find((b) => b.node.id === dragId)!;
+      if (flow.layout === 'grid') {
+        // Grid (k-0588): the nearest column and the nearest row, each by its drawn centre;
+        // past the outermost one on either axis starts a new one. The indicator is the cell.
+        const others = layout.boxes.filter((b) => b.node.id !== dragId && b.node.id !== '__empty');
+        const lines = (axis: 'col' | 'row') => {
+          const byValue = new Map<number, FlowBoxLayout[]>();
+          for (const box of others) byValue.set(box.node[axis], [...(byValue.get(box.node[axis]) ?? []), box]);
+          return [...byValue.entries()]
+            .map(([value, boxes]) => ({
+              value,
+              center:
+                boxes.reduce((sum, b) => sum + (axis === 'col' ? b.x + b.w / 2 : b.y + b.h / 2), 0) / boxes.length,
+              lo: Math.min(...boxes.map((b) => (axis === 'col' ? b.x : b.y))),
+              hi: Math.max(...boxes.map((b) => (axis === 'col' ? b.x + b.w : b.y + b.h))),
+            }))
+            .sort((a, b) => a.center - b.center);
+        };
+        const pick = (axis: 'col' | 'row', at: number) => {
+          const list = lines(axis);
+          if (list.length === 0) return { value: dragged.node[axis], center: at };
+          if (at < list[0].lo - NEW_COLUMN_REACH) return { value: Math.min(...list.map((l) => l.value)) - 1, center: at };
+          if (at > list[list.length - 1].hi + NEW_COLUMN_REACH)
+            return { value: Math.max(...list.map((l) => l.value)) + 1, center: at };
+          return list.reduce((best, l) => (Math.abs(l.center - at) < Math.abs(best.center - at) ? l : best));
+        };
+        const col = pick('col', p.x);
+        const row = pick('row', p.y);
+        return {
+          col: col.value,
+          row: row.value,
+          index: 0,
+          x: col.center - dragged.w / 2,
+          y: row.center - dragged.h / 2,
+          w: dragged.w,
+          h: dragged.h,
+        };
+      }
       const groups = new Map<number, FlowBoxLayout[]>();
       for (const box of layout.boxes) {
         if (box.node.id === dragId || box.node.id === '__empty') continue;
@@ -262,7 +324,7 @@ export function FlowCanvas({
         h: dragged.h,
       };
     },
-    [layout],
+    [layout, flow.layout],
   );
 
   const doDelete = useCallback(() => {
@@ -424,7 +486,11 @@ export function FlowCanvas({
       return;
     }
     const slot = slotAt(p, g.nodeId);
-    commit(moveNodeToSlot(flow, g.nodeId, slot.col, slot.index));
+    commit(
+      slot.row !== undefined
+        ? moveNodeToCell(flow, g.nodeId, slot.col, slot.row)
+        : moveNodeToSlot(flow, g.nodeId, slot.col, slot.index),
+    );
     // A drag lets go of what it moved, so the next click starts clean.
     setSelection(null);
   };
@@ -472,7 +538,13 @@ export function FlowCanvas({
     editing?.kind === 'arrow' ? flow.arrows.find((a) => a.id === editing.id) : undefined;
 
   const hint =
-    tool === 'arrow' ? m.hintArrowTool : flow.nodes.length === 0 ? m.hintEmpty : m.hintSelect;
+    tool === 'arrow'
+      ? m.hintArrowTool
+      : flow.nodes.length === 0
+        ? m.hintEmpty
+        : flow.layout === 'grid'
+          ? m.hintSelectGrid
+          : m.hintSelect;
 
   const surface = (
     <div
@@ -642,14 +714,15 @@ export function FlowCanvas({
                 />
               )}
               {selectedSeg && (
-                <line
-                  x1={selectedSeg.x1}
-                  y1={selectedSeg.y1}
-                  x2={selectedSeg.x2}
-                  y2={selectedSeg.y2}
+                <polyline
+                  points={segPoints(selectedSeg)
+                    .map((point) => `${point.x},${point.y}`)
+                    .join(' ')}
+                  fill="none"
                   stroke="#0284c7"
                   strokeWidth={4 / zoom}
                   strokeLinecap="round"
+                  strokeLinejoin="round"
                   opacity={0.45}
                 />
               )}
@@ -719,10 +792,8 @@ export function FlowCanvas({
                   const below = editing.kind === 'arrow' && editing.side === 'below';
                   const placed = below ? seg.labelBelow : seg.label;
                   if (placed) return { x: placed.x, y: placed.y - 4 };
-                  return {
-                    x: (seg.x1 + seg.x2) / 2,
-                    y: (seg.y1 + seg.y2) / 2 + (below ? 10 : -10),
-                  };
+                  const middle = segMiddle(seg);
+                  return { x: middle.x, y: middle.y + (below ? 10 : -10) };
                 })()}
                 value={
                   editingNode
@@ -769,6 +840,7 @@ export function FlowCanvas({
             onChange={commit}
             onSelect={setSelection}
             onDelete={doDelete}
+            side={language === 'zh' ? 'zh' : 'en'}
           />
         </aside>
       </div>
@@ -863,12 +935,15 @@ function FlowInspector({
   onChange,
   onSelect,
   onDelete,
+  side,
 }: {
   flow: FlowChart;
   selection: FlowSelection;
   onChange: (flow: FlowChart) => void;
   onSelect: (selection: FlowSelection) => void;
   onDelete: () => void;
+  /** The paper's side: the index names boxes and arrows in the words the chart prints. */
+  side: 'en' | 'zh';
 }) {
   const m = useMessages(FLOW_CANVAS_MESSAGES);
   const common = useMessages(DIAGRAM_COMMON_MESSAGES);
@@ -894,7 +969,7 @@ function FlowInspector({
       });
     return (
       <div>
-        {header(nodeName(node, flow.nodes.indexOf(node), m))}
+        {header(nodeName(node, flow.nodes.indexOf(node), m, side))}
         <div className="space-y-2">
           <BiTextField
             label={m.text}
@@ -915,14 +990,16 @@ function FlowInspector({
   }
 
   if (arrow) {
-    const patch = (change: Partial<typeof arrow>) =>
+    // A field set to undefined is removed, not stored as undefined: an untouched field
+    // stays absent in the file, as every build before it wrote it.
+    const patch = (change: Partial<FlowArrow>) =>
       onChange({
         ...flow,
-        arrows: flow.arrows.map((a) => (a.id === arrow.id ? { ...a, ...change } : a)),
+        arrows: flow.arrows.map((a) => (a.id === arrow.id ? withoutUndefined({ ...a, ...change }) : a)),
       });
     const options = [
       { value: '', label: m.openEnd },
-      ...flow.nodes.map((n, index) => ({ value: n.id, label: nodeName(n, index, m) })),
+      ...flow.nodes.map((n, index) => ({ value: n.id, label: nodeName(n, index, m, side) })),
     ];
     return (
       <div>
@@ -940,6 +1017,25 @@ function FlowInspector({
             options={options}
             onChange={(value) => patch({ to: value === '' ? undefined : String(value) })}
           />
+          <CheckField
+            label={m.dashed}
+            checked={arrow.dashed === true}
+            onChange={(dashed) => patch({ dashed: dashed ? true : undefined })}
+          />
+          {arrow.from && arrow.to && (
+            <SelectField
+              label={m.route}
+              value={arrow.route ?? ''}
+              options={[
+                { value: '', label: m.routeStraight },
+                { value: 'above', label: m.routeAbove },
+                { value: 'below', label: m.routeBelow },
+              ]}
+              onChange={(value) =>
+                patch({ route: value === 'above' || value === 'below' ? value : undefined })
+              }
+            />
+          )}
           {/* Two slots, as the reference charts use them: flow4's stub carries "$200"
               above the shaft and "raw materials" below it, at once. */}
           <BiTextField
@@ -966,8 +1062,57 @@ function FlowInspector({
   // Nothing selected: the chart's index, with every row a way in — an arrow buried
   // under another is reachable here by name when it cannot be clicked.
   const colValues = [...new Set(flow.nodes.map((n) => n.col))].sort((a, b) => a - b);
+  const setKey = (key: FlowChart['key']) => {
+    const { key: _old, ...rest } = flow;
+    void _old;
+    onChange(key ? { ...rest, key } : rest);
+  };
   return (
     <div>
+      {/* The chart's own settings (k-0588): the grid draws a triangle of stages; the key
+          explains dashed and solid arrows (a circular flow's money and real flows). */}
+      <div className="mb-4 space-y-2 border-b border-line pb-4">
+        <Eyebrow>{m.chartSettings}</Eyebrow>
+        <SelectField
+          label={m.layout}
+          value={flow.layout === 'grid' ? 'grid' : 'columns'}
+          options={[
+            { value: 'columns', label: m.layoutColumns },
+            { value: 'grid', label: m.layoutGrid },
+          ]}
+          onChange={(value) => onChange(setFlowLayout(flow, value === 'grid' ? 'grid' : 'columns'))}
+        />
+        <p className="text-[11px] leading-relaxed text-ink-muted">
+          {flow.layout === 'grid' ? m.layoutGridNote : m.layoutColumnsNote}
+        </p>
+        <CheckField
+          label={m.showKey}
+          checked={!!flow.key}
+          onChange={(on) => setKey(on ? DEFAULT_KEY : undefined)}
+        />
+        {flow.key && (
+          <>
+            <BiTextField
+              translate={{ kind: 'flowNode', fallsBack: true }}
+              label={m.keyDashed}
+              value={flow.key.dashed ?? emptyBiText()}
+              rows={1}
+              onChange={(text) =>
+                setKey(withoutUndefined({ ...flow.key, dashed: isBiTextEmpty(text) ? undefined : text }))
+              }
+            />
+            <BiTextField
+              translate={{ kind: 'flowNode', fallsBack: true }}
+              label={m.keySolid}
+              value={flow.key.solid ?? emptyBiText()}
+              rows={1}
+              onChange={(text) =>
+                setKey(withoutUndefined({ ...flow.key, solid: isBiTextEmpty(text) ? undefined : text }))
+              }
+            />
+          </>
+        )}
+      </div>
       <Eyebrow>{m.onChart}</Eyebrow>
       {flow.nodes.length === 0 ? (
         <p className="mt-2 text-xs leading-relaxed text-ink-muted">
@@ -994,7 +1139,7 @@ function FlowInspector({
                         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft"
                       >
                         <span className="truncate font-medium">
-                          {nodeName(n, flow.nodes.indexOf(n), m)}
+                          {nodeName(n, flow.nodes.indexOf(n), m, side)}
                         </span>
                         <span className="flex-1" />
                         <span className="shrink-0 text-[10px] uppercase tracking-wide text-ink-subtle">
@@ -1020,8 +1165,8 @@ function FlowInspector({
                       className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-ink transition-colors duration-150 ease-out-soft hover:bg-accent-soft"
                     >
                       <span className="truncate font-medium">
-                        {plain(a.label?.en ?? []) ||
-                          plain(a.labelBelow?.en ?? []) ||
+                        {plain(a.label?.[side] ?? []) ||
+                          plain(a.labelBelow?.[side] ?? []) ||
                           m.arrowN(index + 1)}
                       </span>
                       <span className="flex-1" />

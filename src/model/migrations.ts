@@ -55,6 +55,17 @@ const V3_DIAGRAM_VERSION = 3;
  */
 const V4_FIGURE_GRID_VERSION = 4;
 
+/**
+ * Also v4 (k-0588; no release had written 4 yet, so it gains a second reason instead of a
+ * fifth version): a flow chart using what earlier builds cannot draw — a dashed arrow (the
+ * circular flow's money flow), a routed loop (`route`), the grid layout (the production-
+ * stage triangle) or the money / real key. 0.10.x and older open the file read-only under
+ * the "newer version" bar and draw the chart as best they can (solid, straight, in
+ * columns, no key) with every word kept; writing it back would lose the meaning, so they
+ * may not. A document using none of them is not marked (`hasV4Flow`).
+ */
+const V4_FLOW_VERSION = V4_FIGURE_GRID_VERSION;
+
 type RawDoc = Record<string, unknown>;
 
 /**
@@ -241,6 +252,7 @@ export function serializeWorksheet(worksheet: Worksheet): Record<string, unknown
 export function writtenSchemaVersion(version: number, doc: unknown): number {
   if (version > CURRENT_SCHEMA_VERSION) return version;
   if (hasFigureGrid(doc)) return V4_FIGURE_GRID_VERSION;
+  if (hasV4Flow(doc)) return V4_FLOW_VERSION;
   if (hasV3Diagram(doc)) return V3_DIAGRAM_VERSION;
   if (isRecord(doc) && (doc.answerKeyLayout !== undefined || hasAnswerAnySection(doc.layout) || hasEssayAnswer(doc.questions))) {
     return ANSWER_LAYER_VERSION;
@@ -300,6 +312,23 @@ function hasFigureGrid(value: unknown): boolean {
   if (!isRecord(value)) return false;
   if (value.kind === 'figureGrid') return true;
   return Object.values(value).some(hasFigureGrid);
+}
+
+/** A flow chart anywhere in `value` (a block's or a saved graph's) using a v4 flow field (§ V4_FLOW_VERSION). */
+function hasV4Flow(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasV4Flow);
+  if (!isRecord(value)) return false;
+  if (isRecord(value.diagram) && isRecord(value.diagram.flow) && flowNeedsV4(value.diagram.flow)) return true;
+  return Object.values(value).some(hasV4Flow);
+}
+
+function flowNeedsV4(flow: RawDoc): boolean {
+  if (flow.layout === 'grid') return true;
+  if (isRecord(flow.key) && (hasWords(flow.key.dashed) || hasWords(flow.key.solid))) return true;
+  return (
+    Array.isArray(flow.arrows) &&
+    flow.arrows.some((arrow) => isRecord(arrow) && (arrow.dashed === true || arrow.route === 'above' || arrow.route === 'below'))
+  );
 }
 
 /** Any diagram anywhere in `value` that is a stakeholder diagram or a data chart (§ V3_DIAGRAM_VERSION). */

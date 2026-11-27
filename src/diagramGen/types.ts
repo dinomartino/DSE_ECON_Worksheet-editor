@@ -194,7 +194,50 @@ export interface SpecChart {
   xTitle: SpecText;
 }
 
-export const SPEC_KINDS = ['none', 'curves', 'chart', 'template', 'scene'] as const;
+export const SPEC_KINDS = ['none', 'curves', 'chart', 'template', 'scene', 'flow'] as const;
+
+/**
+ * A box of a flow chart (k-0588): a stage of a value-added chain ("Local importers"), a
+ * sector of the circular flow, or a bare note under a branch ("increase in inventory $50",
+ * `boxed` false). Placed by column and row, never by position (`model/diagram.ts:FlowNode`).
+ */
+export interface SpecFlowNode {
+  id: string;
+  label: SpecText;
+  col: number;
+  row: number;
+  boxed: boolean;
+}
+
+export const FLOW_ROUTES = ['straight', 'above', 'below'] as const;
+export type SpecFlowRoute = (typeof FLOW_ROUTES)[number];
+
+/** An arrow between two boxes; '' at one end is an open end (raw materials entering, exports leaving). */
+export interface SpecFlowArrow {
+  from: string;
+  to: string;
+  /** Over the shaft (or its right, on a vertical one): "$400", "Flow X". */
+  label: SpecText;
+  /** Under the shaft. */
+  labelBelow: SpecText;
+  /** The circular flow's money flow; false = solid. */
+  dashed: boolean;
+  /** above / below: a right-angle loop over / under the chart (the circular flow). */
+  route: SpecFlowRoute;
+}
+
+/**
+ * A flow chart (k-0588, audit k-0583 D1/D2): the value-added chain (6 HKDSE papers), the
+ * circular flow and the production-stage charts, compiled to the editor's own flow chart.
+ * layout grid lines rows up across columns (a triangle of stages); key: the words beside a
+ * dashed and a solid sample arrow ('' = none).
+ */
+export interface SpecFlow {
+  layout: 'columns' | 'grid';
+  nodes: SpecFlowNode[];
+  arrows: SpecFlowArrow[];
+  key: { dashed: SpecText; solid: SpecText };
+}
 
 /**
  * A typed market scene (k-0577): the topic-E diagrams (surplus areas, tax and subsidy
@@ -344,6 +387,8 @@ export interface DiagramSpec {
   chart: SpecChart;
   /** kind 'scene' (k-0577); absent in a spec saved before = type 'none'. */
   scene?: SpecScene;
+  /** kind 'flow' (k-0588); absent in a spec saved before = no boxes. */
+  flow?: SpecFlow;
 }
 
 /**

@@ -54,6 +54,8 @@ export function addFlowNode(flow: FlowChart, col: number): { flow: FlowChart; no
  */
 export function removeFlowNode(flow: FlowChart, nodeId: string): FlowChart {
   return {
+    // The chart's own settings (layout, key) stay with it (k-0588).
+    ...flow,
     nodes: flow.nodes.filter((node) => node.id !== nodeId),
     arrows: flow.arrows
       .map((arrow) => ({
@@ -81,4 +83,49 @@ export function connectFlow(
     flow: { ...flow, arrows: [...flow.arrows, { id: arrowId, from, to }] },
     arrowId,
   };
+}
+
+/**
+ * Grid layout (k-0588): move a box into the cell (`col`, `row`). A box already there trades
+ * places with it, so a drag can never stack two boxes in one cell. Values stay free
+ * integers (a new row above everything is `minRow - 1`); the layout compacts them.
+ */
+export function moveNodeToCell(flow: FlowChart, nodeId: string, col: number, row: number): FlowChart {
+  const node = flow.nodes.find((n) => n.id === nodeId);
+  if (!node || (node.col === col && node.row === row)) return flow;
+  const occupant = flow.nodes.find((n) => n.id !== nodeId && n.col === col && n.row === row);
+  return {
+    ...flow,
+    nodes: flow.nodes.map((n) =>
+      n.id === nodeId
+        ? { ...n, col, row }
+        : occupant && n.id === occupant.id
+          ? { ...n, col: node.col, row: node.row }
+          : n,
+    ),
+  };
+}
+
+/**
+ * Switch between stacked columns and the grid (k-0588), keeping each column's order. Into
+ * the grid, each column's boxes take rows 0, 1, 2… from the top (in columns, `row` only
+ * ordered a column, so two columns' values meant nothing to each other). Back to columns,
+ * the rows already order each column and are kept.
+ */
+export function setFlowLayout(flow: FlowChart, layout: 'columns' | 'grid'): FlowChart {
+  if (layout === 'columns') {
+    if (flow.layout !== 'grid') return flow;
+    const { layout: _grid, ...rest } = flow;
+    void _grid;
+    return rest;
+  }
+  if (flow.layout === 'grid') return flow;
+  const rank = new Map<string, number>();
+  for (const col of new Set(flow.nodes.map((n) => n.col))) {
+    flow.nodes
+      .filter((n) => n.col === col)
+      .sort((a, b) => a.row - b.row)
+      .forEach((n, index) => rank.set(n.id, index));
+  }
+  return { ...flow, layout: 'grid', nodes: flow.nodes.map((n) => ({ ...n, row: rank.get(n.id)! })) };
 }

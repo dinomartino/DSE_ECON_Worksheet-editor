@@ -71,6 +71,12 @@ export function diagramLabels(diagram: Diagram): Set<string> {
     if (text) out.add(tickKey(text));
   }
   for (const s of diagram.spans ?? []) add(s.label);
+  // A flow chart's words (k-0588): its letters are read by `flow.ts:checkFlow`.
+  for (const n of diagram.flow?.nodes ?? []) add(n.label);
+  for (const a of diagram.flow?.arrows ?? []) {
+    add(a.label);
+    add(a.labelBelow);
+  }
   return out;
 }
 

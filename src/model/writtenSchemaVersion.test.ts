@@ -134,6 +134,11 @@ describe('the version a document is written at', () => {
         expect(writtenSchemaVersion(1, { kind: 'diagram', diagram })).toBe(3);
         continue;
       }
+      // The circular flow and the stage triangle use the v4 flow fields (k-0588) and draw no answer layer.
+      if (template.id === 'circular-flow' || template.id === 'production-stages') {
+        expect(writtenSchemaVersion(1, { kind: 'diagram', diagram })).toBe(4);
+        continue;
+      }
       expect(writtenSchemaVersion(1, { kind: 'diagram', diagram })).toBe(1);
       for (const id of elementIds(diagram)) {
         const flagged = setAnswer(diagram, [id], true);

@@ -1,0 +1,1160 @@
+{
+  "schemaVersion": 4,
+  "id": "v4-flow-figures-corpus",
+  "title": {
+    "en": [
+      {
+        "text": "MC practice: flow figures"
+      }
+    ],
+    "zh": [
+      {
+        "text": "多項選擇題練習：流程圖"
+      }
+    ]
+  },
+  "instructions": {
+    "en": [
+      {
+        "text": "Answer ALL questions."
+      }
+    ],
+    "zh": [
+      {
+        "text": "回答全部問題。"
+      }
+    ]
+  },
+  "fonts": {
+    "latin": "Times New Roman",
+    "eastAsia": "PMingLiU"
+  },
+  "pageSetup": {
+    "paper": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 1440,
+      "right": 1440,
+      "bottom": 1440,
+      "left": 1440
+    }
+  },
+  "header": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": []
+  },
+  "footer": {
+    "enabled": true,
+    "rule": false,
+    "showOnFirstPage": true,
+    "bands": [
+      {
+        "id": "990pORpStb",
+        "zones": {
+          "left": [],
+          "center": [
+            {
+              "kind": "pageNumber",
+              "id": "dXeQZowVoZ"
+            }
+          ],
+          "right": []
+        }
+      }
+    ]
+  },
+  "questions": [
+    {
+      "id": "q-circular",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "q-circular-stem",
+          "text": {
+            "en": [
+              {
+                "text": "The diagram below shows the circular flow of a two-sector economy. Which of the following correctly describes Flow X and Flow Y?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "下圖顯示一個兩部門經濟的循環流程。以下哪項正確描述流量 X 和流量 Y？"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "diagram",
+          "id": "q-circular-figure",
+          "diagram": {
+            "x": {},
+            "y": {},
+            "curves": [],
+            "points": [],
+            "labels": [],
+            "arrows": [],
+            "flow": {
+              "nodes": [
+                {
+                  "id": "h",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Households"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "住戶"
+                      }
+                    ]
+                  },
+                  "col": 0,
+                  "row": 0
+                },
+                {
+                  "id": "f",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Firms"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "廠商"
+                      }
+                    ]
+                  },
+                  "col": 1,
+                  "row": 0
+                }
+              ],
+              "arrows": [
+                {
+                  "id": "y",
+                  "from": "f",
+                  "to": "h",
+                  "route": "above",
+                  "labelBelow": {
+                    "en": [
+                      {
+                        "text": "Flow Y"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "流量 Y"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "x",
+                  "from": "h",
+                  "to": "f",
+                  "route": "above",
+                  "dashed": true,
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Flow X"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "流量 X"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "real2",
+                  "from": "h",
+                  "to": "f",
+                  "route": "below"
+                },
+                {
+                  "id": "money2",
+                  "from": "f",
+                  "to": "h",
+                  "route": "below",
+                  "dashed": true
+                }
+              ],
+              "key": {
+                "dashed": {
+                  "en": [
+                    {
+                      "text": "Money flow"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "貨幣流程"
+                    }
+                  ]
+                },
+                "solid": {
+                  "en": [
+                    {
+                      "text": "Real flow"
+                    }
+                  ],
+                  "zh": [
+                    {
+                      "text": "實質流程"
+                    }
+                  ]
+                }
+              }
+            },
+            "templateId": "flow"
+          },
+          "widthPx": 460,
+          "heightPx": 324,
+          "altText": {
+            "en": [
+              {
+                "text": "Flow chart"
+              }
+            ],
+            "zh": [
+              {
+                "text": "流程圖"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "q-circular-o0",
+          "text": {
+            "en": [
+              {
+                "text": "X: factor payments; Y: goods and services"
+              }
+            ],
+            "zh": [
+              {
+                "text": "X：生產要素收入；Y：物品和服務"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q-circular-o1",
+          "text": {
+            "en": [
+              {
+                "text": "X: consumption expenditure; Y: goods and services"
+              }
+            ],
+            "zh": [
+              {
+                "text": "X：消費開支；Y：物品和服務"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q-circular-o2",
+          "text": {
+            "en": [
+              {
+                "text": "X: factor payments; Y: factor services"
+              }
+            ],
+            "zh": [
+              {
+                "text": "X：生產要素收入；Y：生產要素服務"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q-circular-o3",
+          "text": {
+            "en": [
+              {
+                "text": "X: consumption expenditure; Y: factor services"
+              }
+            ],
+            "zh": [
+              {
+                "text": "X：消費開支；Y：生產要素服務"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 1
+    },
+    {
+      "id": "q-stages",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "q-stages-stem",
+          "text": {
+            "en": [
+              {
+                "text": "Which of the following correctly describes the flows E and F?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "以下哪項正確描述流量 E 和 F？"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "diagram",
+          "id": "q-stages-figure",
+          "diagram": {
+            "x": {},
+            "y": {},
+            "curves": [],
+            "points": [],
+            "labels": [],
+            "arrows": [],
+            "flow": {
+              "layout": "grid",
+              "nodes": [
+                {
+                  "id": "p",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Primary\nProduction"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "一級生產"
+                      }
+                    ]
+                  },
+                  "col": 1,
+                  "row": 0
+                },
+                {
+                  "id": "s",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Secondary\nProduction"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "二級生產"
+                      }
+                    ]
+                  },
+                  "col": 0,
+                  "row": 1
+                },
+                {
+                  "id": "t",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Tertiary\nProduction"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "三級生產"
+                      }
+                    ]
+                  },
+                  "col": 2,
+                  "row": 1
+                }
+              ],
+              "arrows": [
+                {
+                  "id": "e1",
+                  "from": "s",
+                  "to": "p",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "E"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "E"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "e2",
+                  "from": "p",
+                  "to": "s"
+                },
+                {
+                  "id": "f1",
+                  "from": "p",
+                  "to": "t",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "F"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "F"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "f2",
+                  "from": "t",
+                  "to": "p"
+                },
+                {
+                  "id": "st",
+                  "from": "s",
+                  "to": "t"
+                },
+                {
+                  "id": "ts",
+                  "from": "t",
+                  "to": "s"
+                }
+              ]
+            },
+            "templateId": "flow"
+          },
+          "widthPx": 460,
+          "heightPx": 189,
+          "altText": {
+            "en": [
+              {
+                "text": "Flow chart"
+              }
+            ],
+            "zh": [
+              {
+                "text": "流程圖"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "q-stages-o0",
+          "text": {
+            "en": [
+              {
+                "text": "E only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 E"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q-stages-o1",
+          "text": {
+            "en": [
+              {
+                "text": "F only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 F"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q-stages-o2",
+          "text": {
+            "en": [
+              {
+                "text": "Both E and F"
+              }
+            ],
+            "zh": [
+              {
+                "text": "E 和 F"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q-stages-o3",
+          "text": {
+            "en": [
+              {
+                "text": "Neither E nor F"
+              }
+            ],
+            "zh": [
+              {
+                "text": "E 和 F 皆不是"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 2
+    },
+    {
+      "id": "q-households",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "q-households-stem",
+          "text": {
+            "en": [
+              {
+                "text": "Refer to the diagram. Which of the following could be P and Q?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "參閱上圖。以下哪項可以是 P 和 Q？"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "diagram",
+          "id": "q-households-figure",
+          "diagram": {
+            "x": {},
+            "y": {},
+            "curves": [],
+            "points": [],
+            "labels": [],
+            "arrows": [],
+            "flow": {
+              "layout": "grid",
+              "nodes": [
+                {
+                  "id": "h",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Households"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "住戶"
+                      }
+                    ]
+                  },
+                  "col": 1,
+                  "row": 0
+                },
+                {
+                  "id": "p",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Primary Production"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "一級生產"
+                      }
+                    ]
+                  },
+                  "col": 1,
+                  "row": 1
+                },
+                {
+                  "id": "s",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Secondary Production"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "二級生產"
+                      }
+                    ]
+                  },
+                  "col": 0,
+                  "row": 2
+                },
+                {
+                  "id": "t",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Tertiary Production"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "三級生產"
+                      }
+                    ]
+                  },
+                  "col": 2,
+                  "row": 2
+                }
+              ],
+              "arrows": [
+                {
+                  "id": "ph",
+                  "from": "p",
+                  "to": "h"
+                },
+                {
+                  "id": "P",
+                  "from": "s",
+                  "to": "h",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "P"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "P"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "th",
+                  "from": "t",
+                  "to": "h"
+                },
+                {
+                  "id": "sp",
+                  "from": "s",
+                  "to": "p"
+                },
+                {
+                  "id": "ps",
+                  "from": "p",
+                  "to": "s"
+                },
+                {
+                  "id": "Q",
+                  "from": "t",
+                  "to": "p",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Q"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "Q"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "pt",
+                  "from": "p",
+                  "to": "t"
+                },
+                {
+                  "id": "ts",
+                  "from": "t",
+                  "to": "s"
+                },
+                {
+                  "id": "st",
+                  "from": "s",
+                  "to": "t"
+                }
+              ]
+            },
+            "templateId": "flow"
+          },
+          "widthPx": 460,
+          "heightPx": 175,
+          "altText": {
+            "en": [
+              {
+                "text": "Flow chart"
+              }
+            ],
+            "zh": [
+              {
+                "text": "流程圖"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "q-households-o0",
+          "text": {
+            "en": [
+              {
+                "text": "(1) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 (1)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q-households-o1",
+          "text": {
+            "en": [
+              {
+                "text": "(2) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 (2)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q-households-o2",
+          "text": {
+            "en": [
+              {
+                "text": "(1) and (3) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 (1) 和 (3)"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q-households-o3",
+          "text": {
+            "en": [
+              {
+                "text": "(2) and (3) only"
+              }
+            ],
+            "zh": [
+              {
+                "text": "只有 (2) 和 (3)"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    },
+    {
+      "id": "q-chain",
+      "type": "mcq",
+      "blocks": [
+        {
+          "kind": "paragraph",
+          "id": "q-chain-stem",
+          "text": {
+            "en": [
+              {
+                "text": "Refer to the chain below. What is the total value added?"
+              }
+            ],
+            "zh": [
+              {
+                "text": "參閱下面的生產鏈。總增加價值是多少？"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "diagram",
+          "id": "q-chain-figure",
+          "diagram": {
+            "x": {},
+            "y": {},
+            "curves": [],
+            "points": [],
+            "labels": [],
+            "arrows": [],
+            "flow": {
+              "nodes": [
+                {
+                  "id": "imp",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Local importers"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "本地進口商"
+                      }
+                    ]
+                  },
+                  "col": 0,
+                  "row": 0
+                },
+                {
+                  "id": "farm",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Local farmers"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "本地農民"
+                      }
+                    ]
+                  },
+                  "col": 0,
+                  "row": 1
+                },
+                {
+                  "id": "inv",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "increase in inventory\n$50"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "存貨增加\n$50"
+                      }
+                    ]
+                  },
+                  "col": 0,
+                  "row": 2,
+                  "boxed": false
+                },
+                {
+                  "id": "sup",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Local supermarkets"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "本地超級市場"
+                      }
+                    ]
+                  },
+                  "col": 1,
+                  "row": 0
+                },
+                {
+                  "id": "con",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Local consumers"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "本地消費者"
+                      }
+                    ]
+                  },
+                  "col": 2,
+                  "row": 0
+                },
+                {
+                  "id": "tour",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "Foreign tourists"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "外國遊客"
+                      }
+                    ]
+                  },
+                  "col": 2,
+                  "row": 1
+                }
+              ],
+              "arrows": [
+                {
+                  "id": "raw",
+                  "to": "imp",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "$200"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "$200"
+                      }
+                    ]
+                  },
+                  "labelBelow": {
+                    "en": [
+                      {
+                        "text": "raw materials"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "原料"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "a400",
+                  "from": "imp",
+                  "to": "sup",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "$400"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "$400"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "a600",
+                  "from": "farm",
+                  "to": "sup",
+                  "labelBelow": {
+                    "en": [
+                      {
+                        "text": "$600"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "$600"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "a50",
+                  "from": "farm",
+                  "to": "inv"
+                },
+                {
+                  "id": "a1200",
+                  "from": "sup",
+                  "to": "con",
+                  "label": {
+                    "en": [
+                      {
+                        "text": "$1 200\n($100 sales tax inclusive)"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "$1 200\n（包括 $100 銷售稅）"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "a500",
+                  "from": "sup",
+                  "to": "tour",
+                  "labelBelow": {
+                    "en": [
+                      {
+                        "text": "$500"
+                      }
+                    ],
+                    "zh": [
+                      {
+                        "text": "$500"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "templateId": "flow"
+          },
+          "widthPx": 460,
+          "heightPx": 103,
+          "altText": {
+            "en": [
+              {
+                "text": "Flow chart"
+              }
+            ],
+            "zh": [
+              {
+                "text": "流程圖"
+              }
+            ]
+          }
+        }
+      ],
+      "marks": 1,
+      "options": [
+        {
+          "id": "q-chain-o0",
+          "text": {
+            "en": [
+              {
+                "text": "$1 450"
+              }
+            ],
+            "zh": [
+              {
+                "text": "$1 450"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q-chain-o1",
+          "text": {
+            "en": [
+              {
+                "text": "$1 550"
+              }
+            ],
+            "zh": [
+              {
+                "text": "$1 550"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q-chain-o2",
+          "text": {
+            "en": [
+              {
+                "text": "$1 650"
+              }
+            ],
+            "zh": [
+              {
+                "text": "$1 650"
+              }
+            ]
+          }
+        },
+        {
+          "id": "q-chain-o3",
+          "text": {
+            "en": [
+              {
+                "text": "$1 750"
+              }
+            ],
+            "zh": [
+              {
+                "text": "$1 750"
+              }
+            ]
+          }
+        }
+      ],
+      "answerIndex": 0
+    }
+  ],
+  "layout": [
+    {
+      "kind": "section",
+      "id": "vdsDp1VU8g",
+      "text": {
+        "en": [
+          {
+            "text": "Section A: Multiple Choice"
+          }
+        ],
+        "zh": [
+          {
+            "text": "甲部：多項選擇題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    },
+    {
+      "kind": "section",
+      "id": "ksepcrU5wR",
+      "text": {
+        "en": [
+          {
+            "text": "Section B: Structured Questions"
+          }
+        ],
+        "zh": [
+          {
+            "text": "乙部：結構性問題"
+          }
+        ]
+      },
+      "restartNumbering": true
+    }
+  ],
+  "flow": [
+    {
+      "type": "question",
+      "id": "q-circular"
+    },
+    {
+      "type": "question",
+      "id": "q-stages"
+    },
+    {
+      "type": "question",
+      "id": "q-households"
+    },
+    {
+      "type": "question",
+      "id": "q-chain"
+    }
+  ],
+  "createdAt": "2026-11-27T00:00:00.000Z",
+  "updatedAt": "2026-11-27T00:00:00.000Z"
+}

@@ -364,6 +364,8 @@ export const KEPT_KEYS: ReadonlySet<string> = new Set([
   'instructionMarker', 'labelAt', 'labelPlacement', 'labelSide', 'leader', 'links', 'lqLayout', 'mcLayout',
   'optionAlign', 'optionLayout', 'orientation', 'paper', 'pattern', 'preset', 'questionSourceFormat', 'shading', 'shape', 'sharedAs', 'slot',
   'statementAlign', 'stroke', 'style', 'tableSide', 'titleAt', 'titlePlacement', 'vAlign', 'vertAlign', 'fraction', 'width',
+  // A flow chart's loop side and layout (k-0588).
+  'route', 'layout',
   // Formatting.
   'color', 'latin', 'eastAsia',
 ]);

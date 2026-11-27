@@ -31,6 +31,8 @@ const STILL_DOUBLE_CLICK: Record<string, string> = {
     'the flow chart canvas adds a stage on a double-click of the empty box (FlowCanvas onDoubleClick)',
   'components/editor/diagramEditing.messages.ts:hintSelect':
     'the flow chart canvas retypes a box on a double-click (FlowCanvas onDoubleClick)',
+  'components/editor/diagramEditing.messages.ts:hintSelectGrid':
+    'the flow chart canvas retypes a box on a double-click (FlowCanvas onDoubleClick), grid layout too (k-0588)',
   'components/editor/diagramEditing.messages.ts:emptyPost':
     'the flow chart canvas adds a stage on a double-click of the empty box (FlowCanvas onDoubleClick)',
   'components/editor/diagramEditing.messages.ts:helpPre':

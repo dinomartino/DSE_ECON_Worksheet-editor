@@ -45,7 +45,19 @@ export function describeDiagram(diagram: Diagram): string {
     return lines.join('\n');
   }
   if (diagram.flow) {
-    lines.push(`A flow chart of ${diagram.flow.nodes.length} stages: ${diagram.flow.nodes.map((n) => plainOf(n.label)).join(' → ')}.`);
+    // Boxes by place and every arrow with its words (k-0588), so a reference chain can be
+    // read back into kind "flow" with this question's own stages and amounts.
+    const flow = diagram.flow;
+    const name = (id: string | undefined) => {
+      const node = id ? flow.nodes.find((n) => n.id === id) : undefined;
+      return node ? q(plainOf(node.label).replace(/\n/g, ' ')) : '(open end)';
+    };
+    lines.push(`A flow chart${flow.layout === 'grid' ? ' (grid layout)' : ''} of ${flow.nodes.length} boxes: ${flow.nodes.map((n) => `${q(plainOf(n.label).replace(/\n/g, ' '))} at column ${n.col}, row ${n.row}${n.boxed === false ? ' (no box)' : ''}`).join('; ')}.`);
+    for (const a of flow.arrows) {
+      const words = [a.label, a.labelBelow].map((t) => plainOf(t).replace(/\n/g, ' ').trim()).filter(Boolean);
+      lines.push(`Arrow ${name(a.from)} → ${name(a.to)}${words.length ? `: ${words.map(q).join(' / ')}` : ''}${a.dashed ? ', dashed' : ''}${a.route ? `, looping ${a.route}` : ''}.`);
+    }
+    if (flow.key) lines.push(`Key: dashed = ${q(plainOf(flow.key.dashed))}, solid = ${q(plainOf(flow.key.solid))}.`);
     return lines.join('\n');
   }
   if (diagram.stakeholder) {

@@ -23,6 +23,7 @@ import { createSamplePaper } from '@/model/samplePaper';
 import { migrate } from '@/model/migrations';
 import v3Corpus from '@/test/corpus/v3-stakeholder.json';
 import v4GridCorpus from '@/test/corpus/v4-figure-grid.json';
+import v4FlowCorpus from '@/test/corpus/v4-flow-figures.json';
 import { OPTION_LAYOUT_CHOICES, withOptionLayouts } from '@/registry/mcqLayouts';
 import type { LanguageMode, OutputMode, StructuredQuestion, Worksheet } from '@/model/types';
 import { presetFor } from '@/ai/providers';
@@ -312,6 +313,15 @@ it('emits MC questions with a stem figure grid (1)-(4) and option diagrams (k-05
     planPaper(worksheet, { language, version: 'student' }, `${OUT}/figure-grid-${language}-student.docx`);
   }
   planPaper(worksheet, { language: 'bilingual', version: 'teacher' }, `${OUT}/figure-grid-bilingual-teacher.docx`);
+});
+
+it('emits the flow figures: circular flow, stage charts, a value-added chain (k-0588)', () => {
+  mkdirSync(OUT, { recursive: true });
+  const worksheet = migrate(structuredClone(v4FlowCorpus));
+  for (const language of ['en', 'zh'] as const) {
+    planPaper(worksheet, { language, version: 'student' }, `${OUT}/flow-figures-${language}-student.docx`);
+  }
+  planPaper(worksheet, { language: 'bilingual', version: 'teacher' }, `${OUT}/flow-figures-bilingual-teacher.docx`);
 });
 
 it('emits a DRQ from the panel\'s DRQ starter: Sources A–D and parts (a)–(e) (k-0474)', () => {

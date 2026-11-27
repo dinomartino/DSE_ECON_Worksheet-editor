@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { FlowChart } from './diagram';
 import { bi } from './text';
-import { addFlowNode, connectFlow, moveNodeToSlot, removeFlowNode } from './flowEdits';
+import { addFlowNode, connectFlow, moveNodeToCell, moveNodeToSlot, removeFlowNode, setFlowLayout } from './flowEdits';
 
 /**
  * The flow editor's verbs (§ the flow variant). Slot moves renumber the touched
@@ -70,5 +70,52 @@ describe('flow chart edit verbs', () => {
 
     expect(connectFlow(chart(), undefined, undefined)).toBeNull();
     expect(connectFlow(chart(), 'a', 'a')).toBeNull();
+  });
+});
+
+describe('grid layout, dashed and routed arrows (k-0588)', () => {
+  it('a delete keeps the chart’s layout and key', () => {
+    const flow: FlowChart = { ...chart(), layout: 'grid', key: { dashed: bi('Money flow', '貨幣流程') } };
+    const next = removeFlowNode(flow, 'd');
+    expect(next.layout).toBe('grid');
+    expect(next.key).toEqual(flow.key);
+  });
+
+  it('a delete keeps an arrow’s dash and route', () => {
+    const flow: FlowChart = {
+      ...chart(),
+      arrows: [{ id: 'r', from: 'a', to: 'c', dashed: true, route: 'above' }, { id: 's', from: 'b', to: 'd' }],
+    };
+    expect(removeFlowNode(flow, 'b').arrows[0]).toEqual({ id: 'r', from: 'a', to: 'c', dashed: true, route: 'above' });
+  });
+
+  it('into the grid, each column’s boxes take rows 0, 1… from the top; back, the order is kept', () => {
+    const flow: FlowChart = {
+      ...chart(),
+      nodes: [
+        { id: 'a', label: bi('A', 'A'), col: 0, row: 5 },
+        { id: 'b', label: bi('B', 'B'), col: 0, row: -2 },
+        { id: 'c', label: bi('C', 'C'), col: 1, row: 9 },
+      ],
+    };
+    const grid = setFlowLayout(flow, 'grid');
+    expect(grid.layout).toBe('grid');
+    expect(grid.nodes.map((n) => [n.id, n.row])).toEqual([['a', 1], ['b', 0], ['c', 0]]);
+    const back = setFlowLayout(grid, 'columns');
+    expect('layout' in back).toBe(false);
+    expect(back.nodes).toEqual(grid.nodes);
+    expect(setFlowLayout(flow, 'columns')).toBe(flow);
+    expect(setFlowLayout(grid, 'grid')).toBe(grid);
+  });
+
+  it('a grid move lands in the cell, and trades places with a box already there', () => {
+    const flow: FlowChart = { ...chart(), layout: 'grid' };
+    const moved = moveNodeToCell(flow, 'a', 1, -1);
+    expect(moved.nodes.find((n) => n.id === 'a')).toMatchObject({ col: 1, row: -1 });
+    const swapped = moveNodeToCell(flow, 'a', 2, 1);
+    expect(swapped.nodes.find((n) => n.id === 'a')).toMatchObject({ col: 2, row: 1 });
+    expect(swapped.nodes.find((n) => n.id === 'd')).toMatchObject({ col: 0, row: 0 });
+    expect(moveNodeToCell(flow, 'a', 0, 0)).toBe(flow);
+    expect(moveNodeToCell(flow, 'nope', 0, 0)).toBe(flow);
   });
 });

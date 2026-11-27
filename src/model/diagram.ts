@@ -410,6 +410,16 @@ export interface FlowNode {
 }
 
 /**
+ * Where a routed arrow runs (k-0588). Absent is the straight shaft every build draws.
+ * `above` leaves the top of its `from` box, runs over the chart in a lane and comes down
+ * into the top of its `to` box; `below` does the same underneath — the right-angle loops
+ * of the circular flow (HKDSE 2026 P1 Q5: households and firms, two loops over the top
+ * and two underneath). Lanes are derived: arrows on one side nest, the narrower span
+ * inside, so no stored position can go stale.
+ */
+export type FlowRoute = 'above' | 'below';
+
+/**
  * One arrow of the flow, with the payment or goods labels riding on it.
  *
  * Endpoints are node **ids**, not positions — the layout owns where boxes sit, so an
@@ -430,6 +440,24 @@ export interface FlowArrow {
   label?: BiText;
   /** Printed below the shaft's midpoint. */
   labelBelow?: BiText;
+  /**
+   * A dashed shaft (k-0588): the circular flow draws the money flow dashed and the real
+   * flow solid. Absent is solid. Builds before it draw it solid, which is why a chart
+   * using it is written at schema 4 (`migrations.ts:V4_VERSION`).
+   */
+  dashed?: boolean;
+  /** Absent: straight. Ignored on a stub (one end open). § `FlowRoute`. */
+  route?: FlowRoute;
+}
+
+/**
+ * The key a circular flow prints in its corner (HKDSE 2026 P1 Q5: "◀- - - Money flow",
+ * "◀—— Real flow"): a dashed and a solid sample arrow, each with its words. Either line
+ * may be absent; a key with neither prints nothing.
+ */
+export interface FlowKey {
+  dashed?: BiText;
+  solid?: BiText;
 }
 
 /**
@@ -442,6 +470,16 @@ export interface FlowArrow {
 export interface FlowChart {
   nodes: FlowNode[];
   arrows: FlowArrow[];
+  /**
+   * How `col`/`row` place the boxes (k-0588). Absent: each column is its own stack, `row`
+   * only orders a column and the stack is centred — every build before it. `grid`: `row`
+   * is a row shared by every column (values compacted like columns), so a box can sit
+   * above the gap between two others — the triangle of the production-stage charts
+   * (HKDSE 2014 P1 Q10, 2024 P1 Q6), which a column layout can only draw as one row.
+   */
+  layout?: 'grid';
+  /** The money / real flow key (k-0588). § `FlowKey`. */
+  key?: FlowKey;
 }
 
 /**
