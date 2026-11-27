@@ -237,8 +237,17 @@ for (const lang of ['en', 'zh']) {
         expect(start, `no words to find the Elasticity question by (${words.slice(0, 80)})`);
         const target = page.getByText(start).first();
         await target.waitFor({ timeout: 40_000 });
-        await target.scrollIntoViewIfNeeded();
-        await target.click();
+        // The paginator may still be laying the pages out (iPad width) and redraw the text.
+        for (let attempt = 0; ; attempt += 1) {
+          try {
+            await target.scrollIntoViewIfNeeded({ timeout: 5_000 });
+            await target.click({ timeout: 5_000 });
+            break;
+          } catch (err) {
+            if (attempt >= 4) throw err;
+            await page.waitForTimeout(800);
+          }
+        }
         await page.waitForTimeout(1200);
         // The Content tab's tag lines name the MCQ topics too.
         const outline = await page.evaluate(() => document.body.innerText);
