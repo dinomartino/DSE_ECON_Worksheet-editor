@@ -205,7 +205,7 @@ export const SPEC_KINDS = ['none', 'curves', 'chart', 'template', 'scene'] as co
  * works the answer out from the drawing. The catalogue (parts, regions, measures) is
  * `diagramGen/sceneCatalogue.ts`.
  */
-export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'taxChange', 'unitSubsidy', 'priceCeiling', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff'] as const;
+export const SCENE_TYPES = ['none', 'surplus', 'unitTax', 'taxChange', 'unitSubsidy', 'priceCeiling', 'ceilingDemandRise', 'priceFloor', 'quota', 'externality', 'costRise', 'tariff'] as const;
 export type SceneType = (typeof SCENE_TYPES)[number];
 
 /** goods: Price / Quantity; labour: Wage rate / Quantity of labour, ticks W instead of P. */

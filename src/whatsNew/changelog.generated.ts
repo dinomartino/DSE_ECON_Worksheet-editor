@@ -282,6 +282,15 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **The Question studio draws a price ceiling that binds when demand rises.** A question like
+  HKDSE 2023 Paper 1 Q21 (a ceiling at P1, demand rises from D1 to D2, “under-production … area
+  abc”) now gets the paper's diagram on the first draft: D1, D2 and S, the ceiling as a dashed line
+  through the old equilibrium, a dashed line from b down to a, and the letters a, b, c and f on the
+  right points, each above its point as the paper prints them. Two options that name the same area
+  but differ in their words are no longer taken as two answers. A price-ceiling question whose
+  options name a fourth quantity (Q4) now gets it on the diagram, and a diagram missing a corner
+  letter the question uses is fixed before you see it.
+  <!-- zh: **擬題工作室能畫出需求上升後才生效的價格上限。** 類似 HKDSE 2023 Paper 1 第 21 題的題目（價格上限設於 P1，需求由 D1 增至 D2，「生產不足……面積 abc」）現在第一稿便得到與試卷相同的圖表：D1、D2 及 S，價格上限是穿過原均衡點的虛線，由 b 至 a 有一條虛線，字母 a、b、c、f 在正確的點上，並如試卷般標在點的上方。兩個選項指同一面積但文字不同時，不再被當作兩個答案。選項提到第四個數量（Q4）的價格上限題目，圖上現在會畫出 Q4；圖表缺少題目用到的角點字母時，會在你看到前修正。 -->
 - **The Question studio letters the corners of an area where the answer needs them.** A question
   that names areas by their corners (“the deadweight loss increases by area fgmj”, as HKDSE 2018
   Paper 1 Q22 does) now gets every letter its options and explanation use, each on the right point:

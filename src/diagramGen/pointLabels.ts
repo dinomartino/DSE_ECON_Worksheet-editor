@@ -25,7 +25,36 @@ const FONT = 10 * (96 / 72);
 const LETTER = { w: FONT * 0.62, h: FONT * 0.78 };
 /** Air wanted between a letter and anything else, px. */
 const AIR = 3.5;
-const RADII = [10, 12.5, 15, 18, 22];
+const RADII = [10, 12.5, 15, 18, 22, 25];
+/** HKDSE prints a point's letter above it where there is room (2023 P1 Q21: a, b, c, f all above): a spot below counts this much further away, px. */
+const BELOW = 16;
+/** A letter inside the shape its own lettered points enclose sits in a named area (abc, acf): counted this much further away, px. */
+const INSIDE = 12;
+
+function hullOf(points: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> {
+  const ps = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
+  if (ps.length < 3) return [];
+  const cross = (o: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const half = (list: typeof ps) => {
+    const out: typeof ps = [];
+    for (const p of list) {
+      while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], p) <= 0) out.pop();
+      out.push(p);
+    }
+    return out.slice(0, -1);
+  };
+  return [...half(ps), ...half([...ps].reverse())];
+}
+
+function inside(p: { x: number; y: number }, poly: ReadonlyArray<{ x: number; y: number }>): boolean {
+  let inner = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) {
+    const a = poly[i];
+    const b = poly[j];
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y || 1e-12) + a.x) inner = !inner;
+  }
+  return inner;
+}
 const ANGLES = Array.from({ length: 16 }, (_, i) => (i * Math.PI) / 8);
 
 function segBoxDistance([a, b]: Seg, box: Box): number {
@@ -126,7 +155,8 @@ function labelBox(p: DiagramPointMark, proj: Projection, text: string): Box {
 
 /**
  * Sets `labelOffset` on each point in `ids` (each a one-letter label): the nearest spot round
- * its dot with `AIR` clear of everything, nearer its own dot than any other lettered dot; when
+ * its dot with `AIR` clear of everything (a spot below the dot counted `BELOW` further, one
+ * inside the shape the lettered points enclose `INSIDE` further), nearer its own dot than any other lettered dot; when
  * nothing is that clear, the spot with the most room. Points are placed most-crowded first, and
  * each placed letter is an obstacle for the next.
  */
@@ -136,6 +166,7 @@ export function placePointLabels(diagram: Diagram, ids: ReadonlySet<string>): Di
   const { segs, boxes } = obstacles(diagram, proj, ids);
   const targets = diagram.points.filter((p) => ids.has(p.id));
   const dots = targets.map((p) => ({ id: p.id, x: proj.px(p.at.x), y: proj.py(p.at.y) }));
+  const enclosed = hullOf(dots);
   const placed: Box[] = [];
   const offsets = new Map<string, { x: number; y: number }>();
 
@@ -148,7 +179,7 @@ export function placePointLabels(diagram: Diagram, ids: ReadonlySet<string>): Di
   const candidates = (p: DiagramPointMark) => {
     const cx = proj.px(p.at.x);
     const cy = proj.py(p.at.y);
-    const out: Array<{ x: number; y: number; r: number; room: number; box: Box }> = [];
+    const out: Array<{ x: number; y: number; r: number; cost: number; room: number; box: Box }> = [];
     for (const r of RADII) {
       for (const a of ANGLES) {
         const x = cx + r * Math.cos(a);
@@ -158,7 +189,7 @@ export function placePointLabels(diagram: Diagram, ids: ReadonlySet<string>): Di
         // Read as this dot's letter: nearer it than any other lettered dot.
         const own = Math.hypot(x - cx, y - cy);
         if (dots.some((d) => d.id !== p.id && Math.hypot(x - d.x, y - d.y) < own + 2)) continue;
-        out.push({ x, y, r, room: room(box), box });
+        out.push({ x, y, r, cost: r + (Math.sin(a) < -0.01 ? BELOW : 0) + (enclosed.length && inside({ x, y }, enclosed) ? INSIDE : 0), room: room(box), box });
       }
     }
     return out;
@@ -169,8 +200,8 @@ export function placePointLabels(diagram: Diagram, ids: ReadonlySet<string>): Di
     const list = candidates(p);
     if (!list.length) continue;
     const clear = list.filter((c) => c.room >= AIR);
-    // The nearest clear spot (then the roomiest); else the roomiest spot of all.
-    const pick = clear.length ? clear.sort((a, b) => a.r - b.r || b.room - a.room)[0] : list.sort((a, b) => b.room - a.room || a.r - b.r)[0];
+    // The nearest clear spot, above before below (then the roomiest); else the roomiest spot of all.
+    const pick = clear.length ? clear.sort((a, b) => a.cost - b.cost || b.room - a.room)[0] : list.sort((a, b) => b.room - a.room || a.r - b.r)[0];
     placed.push(pick.box);
     offsets.set(p.id, { x: (pick.x - proj.px(p.at.x)) / plotSpanX(proj), y: -(pick.y - proj.py(p.at.y)) / plotSpanY(proj) });
   }

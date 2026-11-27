@@ -1,7 +1,7 @@
 import type { Diagram, DiagramAnchorRef, DiagramArea, DiagramAreaEdge, DiagramAreaPattern, DiagramArrow, DiagramCurve, DiagramPointMark, DiagramSpan } from '@/model/diagram';
 import { areaPolygon } from '@/model/diagramAreas';
 import { resolveAnchor } from '@/model/diagramAnchors';
-import { axes, cross, curve, finish, newId, point, priceLine, shiftArrow, shiftOf, span, type Pair } from '@/model/diagramTemplateKit';
+import { axes, cross, curve, derived, finish, newId, point, priceLine, shiftArrow, shiftOf, span, type Pair } from '@/model/diagramTemplateKit';
 import type { BiText } from '@/model/types';
 import { shiftArrowPlace, type Compiled } from './compile';
 import { placePointLabels } from './pointLabels';
@@ -68,12 +68,12 @@ const underFromAxis = (d: DiagramCurve, lvl: DiagramAreaEdge, to: DiagramAnchorR
 const band = (edges: [DiagramAreaEdge, DiagramAreaEdge], from: number | DiagramAnchorRef, to: number | DiagramAnchorRef, cap?: DiagramAreaEdge): Band => ({ edges, from, to, ...(cap ? { cap } : {}) });
 
 /** A straight line of slope `m` through E, kept inside the plot (y from `floor` to `top`, x from 0 to 0.9). A falling line stops above the x-axis, so its name clears it. */
-function lineAt(E: Pair, m: number, top = TOP, floor = m < 0 ? 0.12 : 0.04): Pair[] {
+function lineAt(E: Pair, m: number, top = TOP, floor = m < 0 ? 0.12 : 0.04, right = 0.9): Pair[] {
   const [ex, ey] = E;
   const yAt = (x: number) => ey + m * (x - ex);
   const xAt = (y: number) => ex + (y - ey) / m;
   const ends: Pair[] = [];
-  for (const xEnd of [0, 0.9]) {
+  for (const xEnd of [0, right]) {
     let px = xEnd;
     let py = yAt(px);
     if (py > top) [px, py] = [xAt(top), top];
@@ -306,6 +306,13 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
       const qs = tickPoint(cross(s, line), parts, { x: tick('Qs') });
       const qd = tickPoint(cross(d, line), parts, { x: tick('Qd') });
       const points = [e0, qs, qd];
+      // A fourth quantity only a distractor names ("Q₃Q₄"): on D, one step further below the ceiling.
+      const marks: Record<string, DiagramPointMark> = { Q0: e0, P0: e0, Qs: qs, Qd: qd };
+      if (ceiling && tick('Qx') !== undefined) {
+        const qx = tickPoint({ on: d.id, y: Math.max(0.13, y - Math.max(0.07, c * 0.6)) }, parts, { x: tick('Qx') });
+        points.push(qx);
+        marks.Qx = qx;
+      }
       const spans: DiagramSpan[] = [];
       if (scene.gap) {
         const words = ceiling ? GAP_WORDS.shortage : labour ? GAP_WORDS.unemployment : GAP_WORDS.surplus;
@@ -346,7 +353,44 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
         regions,
         curveRoles: { D: { curve: d, role: 'demand' }, S: { curve: s, role: 'supply' }, [lineId]: { curve: line, role: 'horizontal' } },
         levels: { [lineId]: { vertical: false, at: y } },
-        marks: { Q0: e0, P0: e0, Qs: qs, Qd: qd },
+        marks,
+      };
+    }
+    case 'ceilingDemandRise': {
+      // HKDSE 2023 P1 Q21: D₁ meets S at a, on the ceiling P₁; D₂ = D₁ moved right meets S at c,
+      // P₁ at f, and stands at b above a. The loss abc is bounded on the left by a dashed line b–a.
+      // Q₁ to Q₂ is h·|d|/(s+|d|) and Q₂ to Q₃ is h·s/(s+|d|): each kept clear of the next.
+      // b, h·|d| above a, stays under the top of the plot.
+      const h = Math.min(0.34, (TOP - 0.04 - E[1]) / Math.abs(dm), Math.max(0.2 * k + 0.04, (MIN_GAP * 1.2 * (sm + Math.abs(dm))) / Math.min(sm, Math.abs(dm))));
+      const s = curve(room(TOP), name('S'));
+      const d1 = curve(lineAt(E, dm, TOP, 0.12, 0.9 - h), name('D1'));
+      const d2 = shiftOf(d1, h, 0, name('D2'));
+      const line = derived({ kind: 'level', y: E[1], from: 0, to: Math.min(0.9, E[0] + h + 0.16) }, [], name('Pc') ?? NO_NAME, { labelAt: 'start', weight: 0.8, stroke: 'dashed' });
+      const parts: Array<DiagramCurve | DiagramPointMark> = [d1, d2, s, line];
+      const e1 = tickPoint(cross(d1, s), parts, { x: tick('Qs') });
+      const e2 = tickPoint(cross(d2, s), parts, { x: tick('Q2'), y: tick('P2') });
+      const qd = tickPoint(cross(d2, line), parts, { x: tick('Qd') });
+      const curves = [d1, d2, s, line];
+      // b–a, the loss's left side, when an area is lettered and Q₁ has no drop of its own to carry it.
+      if ((scene.areas.length || scene.points?.length) && tick('Qs') === undefined) {
+        const b = resolveIn(scratchOf([...parts, e1]), { on: d2.id, x: at(e1) });
+        curves.push(derived({ kind: 'vertical', x: at(e1), from: E[1], to: b.y }, [...parts, e1], undefined, { stroke: 'dashed', weight: 0.8 }));
+      }
+      return {
+        curves,
+        points: [e1, e2, qd],
+        arrows,
+        x: axisX,
+        y: axisY,
+        regions: {
+          dwl: band([on(d2), on(s)], at(e1), at(e2)),
+          shortfall: band([on(s), level(at(e1))], at(e1), at(qd), on(d2)),
+          csAfter: underFromAxis(d2, level(at(e1)), at(e1)),
+          psAfter: band([level(0), level(at(e1))], 0, at(e1), on(s)),
+        },
+        curveRoles: { D1: { curve: d1, role: 'demand' }, D2: { curve: d2, role: 'demand' }, S: { curve: s, role: 'supply' }, Pc: { curve: line, role: 'horizontal' } },
+        levels: { Pc: { vertical: false, at: E[1] } },
+        marks: { Qs: e1, Q2: e2, P2: e2, Qd: qd },
       };
     }
     case 'quota': {

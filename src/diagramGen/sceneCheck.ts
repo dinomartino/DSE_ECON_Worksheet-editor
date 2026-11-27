@@ -231,8 +231,14 @@ export function checkSceneCorners(spec: DiagramSpec, built: SceneBuilt, mcq: Mcq
   }
   const options = mcq.options.map(optionCorners);
   const option = keyedRight ? mcq.answer : -1;
+  // Two options naming one area are twins only when nothing else tells them apart (HKDSE 2023 P1 Q21: "over-production … area abc" / "under-production … area abc").
+  const rest = (o: string) => {
+    let out = o.replace(new RegExp(AREA_WORD_EN, 'g'), ' ').replace(/面積|區域/g, ' ');
+    for (const a of cornerAreasIn(o)) out = out.replace(new RegExp(String.raw`(?<![A-Za-z])${a}(?![A-Za-z])`, 'g'), ' ');
+    return out.replace(/[^\p{L}\p{N}]+/gu, ' ').trim().toLowerCase();
+  };
   const twins = options
-    .map((c, i) => (c && i !== mcq.answer ? i : -1))
+    .map((c, i) => (c && i !== mcq.answer && rest(mcq.options[i]) === rest(mcq.options[mcq.answer] ?? '') ? i : -1))
     .filter((i) => i >= 0)
     .filter((i) => {
       const shape = areaOf(options[i]!);
@@ -241,6 +247,29 @@ export function checkSceneCorners(spec: DiagramSpec, built: SceneBuilt, mcq: Mcq
   if (twins.length) error('scene.twoKeys', `Options ${[mcq.answer, ...twins].map((i) => 'ABCD'[i]).join(' and ')} both name ${scene.ask}.`);
   const solved: SolvedKey = { labels: [keyedCorners], option, why: `${scene.ask} is ${regions.join(' + ')}, the area with corners ${wantLetters.join(', ')}` };
   return { issues, solved, used };
+}
+
+/**
+ * A figure drawn from curves or a template (no scene) against the corner letters its question
+ * uses (k-0577 round 3): every letter must be printed on it. On develop a curves figure for
+ * HKDSE 2023 P1 Q21 passed with b missing, since only scenes checked their corners.
+ */
+export function checkCornerLettersDrawn(diagram: Diagram, texts: readonly string[]): DiagramIssue[] {
+  const named = [...new Set(texts.flatMap(cornerLettersIn))];
+  if (!named.length) return [];
+  const printed = new Set<string>();
+  for (const p of diagram.points) for (const side of ['en', 'zh'] as const) p.label?.[side].forEach((r) => printed.add(r.text.trim()));
+  for (const l of diagram.labels) for (const side of ['en', 'zh'] as const) l.text?.[side].forEach((r) => printed.add(r.text.trim()));
+  const missing = named.filter((l) => !printed.has(l));
+  return missing.length
+    ? [
+        {
+          level: 'error',
+          code: 'figure.cornerMissing',
+          text: `The question names areas or points by corner letters, but ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not on the figure. Use a scene that has the points (scene.points: a tax raised from t1 to t2 is taxChange, a ceiling made effective by a rise in demand is ceilingDemandRise), or name each point where the explanation puts it.`,
+        },
+      ]
+    : [];
 }
 
 export interface McqWords {
@@ -334,7 +363,7 @@ const WORDS: Array<{ re: RegExp; ok: (s: SpecScene) => boolean; says: string }> 
     says: 'a per-unit tax (scene unitTax)',
   },
   { re: /\bsubsid(?:y|ies|ise|ize)\b|津貼|補貼|資助/i, ok: (s) => s.type === 'unitSubsidy' || s.type === 'externality', says: 'a subsidy (scene unitSubsidy)' },
-  { re: /price ceiling|maximum price|rent control|最高價格|價格上限|租金管制/i, ok: (s) => s.type === 'priceCeiling', says: 'a price ceiling (scene priceCeiling)' },
+  { re: /price ceiling|maximum price|rent control|最高價格|價格上限|租金管制/i, ok: (s) => s.type === 'priceCeiling' || s.type === 'ceilingDemandRise', says: 'a price ceiling (scene priceCeiling, or ceilingDemandRise when demand rises to D2)' },
   { re: /price floor|minimum price|minimum wage|最低價格|價格下限|最低工資/i, ok: (s) => s.type === 'priceFloor', says: 'a price floor or minimum wage (scene priceFloor)' },
   { re: /\btariff|關稅/i, ok: (s) => s.type === 'tariff', says: 'a tariff (scene tariff)' },
   { re: /(?<!import )\bquota\b|(?<!進口)配額/i, ok: (s) => s.type === 'quota' || s.type === 'tariff', says: 'a quota (scene quota)' },

@@ -45,6 +45,17 @@ export const SCENE_SAMPLES: SceneSample[] = [
   { id: 'subsidy-words', type: 'Unit subsidy (answer)', spec: worded('unitSubsidy', ['consumerBenefit', 'producerBenefit', 'dwl']) },
   { id: 'ceiling-letters', type: 'Price ceiling: DWL, transfer', spec: lettered('priceCeiling') },
   { id: 'ceiling-shortage', type: 'Price ceiling: shortage (answer)', spec: sceneSpec({ type: 'priceCeiling', gap: true }, 'answer') },
+  {
+    id: 'ceiling-q4',
+    type: 'Price ceiling: shortage, with a fourth quantity for a distractor',
+    spec: sceneSpec({ type: 'priceCeiling', labels: [{ part: 'P0', label: '' }, { part: 'Pc', label: 'P_1' }, { part: 'Qs', label: 'Q_1' }, { part: 'Q0', label: 'Q_2' }, { part: 'Qd', label: 'Q_3' }, { part: 'Qx', label: 'Q_4' }], ask: 'shortage' }),
+  },
+  { id: 'ceiling-rise-letters', type: 'Ceiling made effective by a demand rise: regions', spec: lettered('ceilingDemandRise') },
+  {
+    id: 'ceiling-rise-corners',
+    type: 'Ceiling made effective by a demand rise: corner letters (HKDSE 2023 P1 Q21)',
+    spec: sceneSpec({ type: 'ceilingDemandRise', ask: 'dwl', points: [{ point: 'e1', label: 'a' }, { point: 'd2AtQs', label: 'b' }, { point: 'e2', label: 'c' }, { point: 'd2AtPc', label: 'f' }] }),
+  },
   { id: 'floor-letters', type: 'Price floor: DWL, transfer', spec: lettered('priceFloor') },
   { id: 'min-wage', type: 'Minimum wage: unemployment (answer)', spec: sceneSpec({ type: 'priceFloor', market: 'labour', gap: true }, 'answer') },
   { id: 'quota-letters', type: 'Quota: price, DWL', spec: lettered('quota') },

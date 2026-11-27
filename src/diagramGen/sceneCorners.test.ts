@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { blockOf, evaluateSpec } from './run';
 import { letterRoom } from './pointLabels';
+import { Q21_KEY, Q21_MCQ, Q21_POINTS, q21Scene } from './q21.fixture';
 import { Q22_KEY, Q22_MCQ, Q22_POINTS, q22Scene } from './q22.fixture';
 import { cornerAreasIn, cornerLettersIn, optionCorners, checkSceneLook } from './sceneCheck';
 import { SCENES } from './sceneCatalogue';
@@ -113,5 +114,109 @@ describe('curve names', () => {
     const spec = q22Scene(Q22_POINTS, { labels: [{ part: 'S2', label: 'S_2 (with tax = t_2)' }] });
     expect(checkSceneLook(spec).map((i) => i.code)).toEqual(['scene.longName']);
     expect(checkSceneLook(q22Scene(Q22_POINTS))).toEqual([]);
+  });
+});
+
+describe('HKDSE 2023 P1 Q21: a ceiling made effective by a rise in demand (k-0577 round 3, u-kmdo)', () => {
+  const run21 = (points: SpecScene['points'], extra: Partial<SpecScene> = {}, mcq = Q21_MCQ) => evaluateSpec(q21Scene(points, extra), { sides: ['en', 'zh'], key: Q21_KEY, mcq });
+  const errors = (e: ReturnType<typeof run21>) => e.issues.filter((i) => i.level === 'error').map((i) => i.code);
+
+  it('passes with a, b, c, f where the paper puts them, and works the key out from the corners', () => {
+    const e = run21(Q21_POINTS);
+    expect(e.issues.filter((i) => i.level === 'error')).toEqual([]);
+    expect(e.solved?.option).toBe(2);
+    expect(e.solved?.labels).toEqual(['abc']);
+  });
+
+  it('does not call A and C two keys: they name one area but differ in over- or under-production', () => {
+    expect(errors(run21(Q21_POINTS))).not.toContain('scene.twoKeys');
+    const same = { ...Q21_MCQ, options: ['Area abc.', 'Area acf.', 'area abc', 'Area bcf.'] };
+    expect(errors(run21(Q21_POINTS, {}, same))).toContain('scene.twoKeys');
+  });
+
+  it('fails b on D1 instead of D2 (no line runs from it to c)', () => {
+    const moved = Q21_POINTS.map((p) => (p.label === 'b' ? { ...p, point: 'd1AtQ2' } : p));
+    expect(errors(run21(moved))).toContain('scene.cornerEdge');
+  });
+
+  it('fails c and f swapped (abc is then not the deadweight loss)', () => {
+    const swapped = Q21_POINTS.map((p) => (p.label === 'c' ? { ...p, point: 'd2AtPc' } : p.label === 'f' ? { ...p, point: 'e2' } : p));
+    const codes = errors(run21(swapped));
+    expect(codes.some((c) => c === 'scene.cornerKey' || c === 'scene.cornerEdge')).toBe(true);
+  });
+
+  it('draws the figure as the paper does: P1 a dashed line, a dashed line from b down to a, no quantity ticks', () => {
+    const d = blockOf(run21(Q21_POINTS), ['en', 'zh'])!.diagram;
+    const dashed = d.curves.filter((c) => c.stroke === 'dashed');
+    expect(dashed.map((c) => c.label?.en.map((r) => r.text).join('') ?? '')).toEqual(['P1', '']);
+    const upright = dashed.find((c) => c.derive?.kind === 'vertical')!;
+    const at = (l: string) => d.points.find((p) => p.label?.en.map((r) => r.text).join('') === l)!.at;
+    expect(upright.points[0].x).toBeCloseTo(at('a').x, 6);
+    expect(Math.min(...upright.points.map((p) => p.y))).toBeCloseTo(at('a').y, 6);
+    expect(Math.max(...upright.points.map((p) => p.y))).toBeCloseTo(at('b').y, 6);
+    expect(d.points.some((p) => p.xTickLabel)).toBe(false);
+    expect(d.arrows).toHaveLength(0);
+  });
+
+  it('puts every letter above its dot and clear of every line, as the paper prints them', () => {
+    for (const demand of ['normal', 'steep', 'flat'] as const) {
+      for (const supply of ['normal', 'steep', 'flat'] as const) {
+        const d = run21(Q21_POINTS, { demand, supply }).compiled.diagram!;
+        const ids = new Set(d.points.filter((p) => p.label && p.dot !== false).map((p) => p.id));
+        expect(ids.size, `${demand}/${supply}`).toBe(4);
+        for (const [, room] of letterRoom(d, ids)) expect(room, `${demand}/${supply}`).toBeGreaterThanOrEqual(2);
+        if (demand === 'normal' && supply === 'normal') for (const p of d.points.filter((q) => ids.has(q.id))) expect(p.labelOffset!.y, p.id).toBeGreaterThan(0);
+      }
+    }
+  });
+});
+
+describe('a price ceiling’s fourth quantity (the shortage case’s distractor Q4)', () => {
+  it('carries Q4 on D below the ceiling, so an option naming it is on the figure', () => {
+    const spec = emptySpec('scene');
+    spec.scene = {
+      ...spec.scene!,
+      type: 'priceCeiling',
+      ask: 'shortage',
+      labels: [
+        { part: 'P0', label: '' },
+        { part: 'Pc', label: 'P_1' },
+        { part: 'Qs', label: 'Q_1' },
+        { part: 'Q0', label: 'Q_2' },
+        { part: 'Qd', label: 'Q_3' },
+        { part: 'Qx', label: 'Q_4' },
+      ],
+    };
+    const mcq = { stem: 'The government sets a maximum price of P_1 for good X. Refer to the diagram. What is the shortage?', statements: [], options: ['Q_1Q_2', 'Q_1Q_3', 'Q_2Q_3', 'Q_3Q_4'], answer: 1 };
+    const e = evaluateSpec(spec, { sides: ['en', 'zh'], key: 'At P_1 quantity supplied is Q_1 and quantity demanded is Q_3: the shortage is Q_1Q_3.', mcq });
+    expect(e.issues.filter((i) => i.level === 'error')).toEqual([]);
+    expect(e.solved?.option).toBe(1);
+    const xs = e.compiled.diagram!.points.filter((p) => p.xTickLabel).map((p) => p.at.x).sort((a, b) => a - b);
+    expect(xs).toHaveLength(4);
+  });
+});
+
+describe('a figure drawn from curves against its corner letters', () => {
+  it('fails the develop drawing of 2023 P1 Q21 from curves: b is not on it', () => {
+    const spec = emptySpec('curves');
+    spec.xAxis = { en: 'Quantity', zh: '數量' };
+    spec.yAxis = { en: 'Price', zh: '價格' };
+    Object.assign(spec, {
+      curves: [
+        { id: 'D1', role: 'demand', slope: 'normal', place: 'mid', label: 'D_1', shape: 'none', rise: 'rising' },
+        { id: 'S', role: 'supply', slope: 'normal', place: 'mid', label: 'S', shape: 'none', rise: 'rising' },
+      ],
+      shifts: [{ of: 'D1', id: 'D2', direction: 'right', size: 'normal', label: 'D_2' }],
+      levels: [{ id: 'P1', kind: 'ceiling', above: [], below: [], side: 'below', style: 'guide', label: 'P_1' }],
+      points: [
+        { a: 'D1', b: 'S', name: 'a', xTick: '', yTick: '', dot: true },
+        { a: 'D2', b: 'S', name: 'c', xTick: '', yTick: '', dot: true },
+        { a: 'D2', b: 'P1', name: 'f', xTick: '', yTick: '', dot: true },
+      ],
+    });
+    const e = evaluateSpec(spec, { sides: ['en', 'zh'], key: Q21_KEY, mcq: Q21_MCQ });
+    const issue = e.issues.find((i) => i.code === 'figure.cornerMissing');
+    expect(issue?.text).toMatch(/\bb is not on the figure/);
+    expect(issue?.text).toMatch(/ceilingDemandRise/);
   });
 });

@@ -16,7 +16,7 @@ import type { DiagramGenDeps, DiagramGenInput, DiagramGenOutcome, DiagramIssue, 
 import { checkDiagram, checkStem } from './validate';
 import { checkLayout } from './layoutCheck';
 import type { SceneBuilt } from './scene';
-import { checkSceneCorners, checkSceneKey, checkSceneLook, checkSceneWords, cornerLettersIn } from './sceneCheck';
+import { checkCornerLettersDrawn, checkSceneCorners, checkSceneKey, checkSceneLook, checkSceneWords, cornerLettersIn } from './sceneCheck';
 
 /**
  * Question + key (+ a reference figure) → an editable diagram. Pure over injected deps,
@@ -79,7 +79,11 @@ function evaluateDrawing(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides'
   const issues = [...parseIssues, ...compiled.issues, ...checkDiagram(spec, compiled, input.sides, input.key)];
   let solved: SolvedKey | null = null;
   if (compiled.diagram && input.mcq && spec.placement === 'question') {
-    issues.push(...checkLabels(input.mcq, compiled.diagram), ...checkStem(spec, compiled, [input.mcq.stem, ...input.mcq.statements].join('\n')));
+    issues.push(
+      ...checkLabels(input.mcq, compiled.diagram),
+      ...checkStem(spec, compiled, [input.mcq.stem, ...input.mcq.statements].join('\n')),
+      ...checkCornerLettersDrawn(compiled.diagram, [input.mcq.stem, ...input.mcq.statements, ...input.mcq.options, input.key]),
+    );
     const solvedKey = solveKey(spec, compiled, input.mcq);
     solved = solvedKey.solved;
     issues.push(...solvedKey.issues);
@@ -101,7 +105,8 @@ function evaluateScene(spec: DiagramSpec, compiledIn: SceneBuilt, input: Pick<Di
   const words = input.mcq ? [input.mcq.stem, ...input.mcq.statements, ...input.mcq.options, input.key] : [input.question ?? '', input.key];
   const named = new Set(words.flatMap(cornerLettersIn));
   const points = spec.scene?.points ?? [];
-  if (spec.placement === 'question' && points.some((p) => !named.has(p.label.trim()))) {
+  // With no words at all (a sample drawn alone) there is nothing to read: keep every letter.
+  if (spec.placement === 'question' && words.join('').trim() && points.some((p) => !named.has(p.label.trim()))) {
     spec = { ...spec, scene: { ...spec.scene!, points: points.filter((p) => named.has(p.label.trim())) } };
     compiled = compileSpec(spec) as SceneBuilt;
   }
@@ -114,7 +119,7 @@ function evaluateScene(spec: DiagramSpec, compiledIn: SceneBuilt, input: Pick<Di
     issues.push(
       ...checkLabels(input.mcq, compiled.diagram, { order: false }).map((i) =>
         i.code === 'label.missing'
-          ? { ...i, text: `${i.text} Scene ${spec.scene?.type} has only the parts listed for it; when the question needs a label none of them carries, draw it with kind "curves" instead (levels and points can mark every quantity and price).` }
+          ? { ...i, text: `${i.text} Scene ${spec.scene?.type} has only the parts listed for it: give the label to one of them (a price ceiling's Qx is a fourth quantity on D), and when none can carry it, draw it with kind "curves" instead (levels and points can mark every quantity and price).` }
           : i,
       ),
     );

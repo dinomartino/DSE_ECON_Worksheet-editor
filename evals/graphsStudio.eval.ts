@@ -9,6 +9,7 @@ import { loadGlossary } from '@/glossary/load';
 import { EMPTY_CORPUS } from '@/questionStudio/nearCopy';
 import type { SourceQuestion, StudioRequest } from '@/questionStudio/types';
 import { PICTURE_MARK } from '@/questionStudio/source';
+import { Q21_KEY, Q21_MCQ } from '@/diagramGen/q21.fixture';
 import { Q22_KEY, Q22_MCQ } from '@/diagramGen/q22.fixture';
 import { diagramSvg } from '@/render/diagram';
 
@@ -22,28 +23,35 @@ import { diagramSvg } from '@/render/diagram';
  *
  * EVAL_REFERENCE_PNG=<png of the figure> writes "very close to" HKDSE 2018 Paper 1 Q22 instead (k-0577
  * round 2, u-fbsp): the reference's words carry the "[picture]" marker the studio sends, and the
- * picture is attached, as when a teacher picks the question from the bank.
+ * picture is attached, as when a teacher picks the question from the bank. EVAL_REFERENCE_Q=q21 makes it
+ * HKDSE 2023 Paper 1 Q21 instead (k-0577 round 3, u-kmdo; our fixture's words, the paper's picture).
  */
 
-/** HKDSE 2018 Paper 1 Q22 as the studio reads it from the bank: words with the picture's marker, its key and explanation. */
-function q22Reference(png: string): SourceQuestion {
-  const [first, ...rest] = Q22_MCQ.stem.split('\n');
+/** A past question as the studio reads it from the bank: words with the picture's marker, its key and explanation. */
+function bankReference(png: string, which: 'q22' | 'q21'): SourceQuestion {
+  const [mcq, key, id, label] = which === 'q21' ? [Q21_MCQ, Q21_KEY, 'DSE2023/P1/Q21', 'HKDSE 2023 Paper 1 Q21'] : [Q22_MCQ, Q22_KEY, 'DSE2018/P1/Q22', 'HKDSE 2018 Paper 1 Q22'];
+  const [first, ...rest] = mcq.stem.split('\n');
   return {
-    id: 'DSE2018/P1/Q22',
-    label: 'HKDSE 2018 Paper 1 Q22',
+    id,
+    label,
     stem: { en: [first, PICTURE_MARK, ...rest].join('\n'), zh: '' },
     statements: [],
-    options: Q22_MCQ.options.map((en) => ({ en, zh: '' })),
-    answerIndex: Q22_MCQ.answer,
-    explanation: { en: Q22_KEY.split('\n').slice(1).join(' '), zh: '' },
+    options: mcq.options.map((en) => ({ en, zh: '' })),
+    answerIndex: mcq.answer,
+    explanation: { en: key.split('\n').slice(1).join(' '), zh: '' },
     hasFigure: true,
-    figures: [{ dataUrl: `data:image/png;base64,${readFileSync(png).toString('base64')}` }],
+    figures: [{ dataUrl: `data:image/${png.endsWith('.png') ? 'png' : 'jpeg'};base64,${readFileSync(png).toString('base64')}` }],
     figureAt: ['stem'],
   } as SourceQuestion;
 }
 
 const REQUESTS = (process.env.EVAL_REQUESTS ?? '').split('|').map((s) => s.trim()).filter(Boolean);
 const REFERENCE_PNG = process.env.EVAL_REFERENCE_PNG ?? '';
+const REFERENCE_Q = process.env.EVAL_REFERENCE_Q === 'q21' ? 'q21' : 'q22';
+const REFERENCE_ASK = {
+  q22: 'Write one question very close to this one: a unit tax raised from t1 to t2, the deadweight loss.',
+  q21: 'Write one question very close to this one: a price ceiling at P1 that becomes effective when demand rises from D1 to D2, the deadweight loss.',
+};
 const DEFAULT = [
   'One MC question on the deadweight loss of a per-unit tax, with a supply-demand diagram whose areas are lettered.',
   'One MC question on a negative externality in production (MPC, MSC), asking which area on the diagram is the deadweight loss.',
@@ -75,7 +83,7 @@ describe.skipIf(!process.env.EVAL_MENTOR_TOKEN)('studio on topic-E requests, liv
     mkdirSync(path.join(out, 'svg'), { recursive: true });
     const rows: unknown[] = [];
     const signal = new AbortController().signal;
-    const texts = REQUESTS.length ? REQUESTS : REFERENCE_PNG ? ['Write one question very close to this one: a unit tax raised from t1 to t2, the deadweight loss.'] : DEFAULT;
+    const texts = REQUESTS.length ? REQUESTS : REFERENCE_PNG ? [REFERENCE_ASK[REFERENCE_Q]] : DEFAULT;
     for (const [n, text] of texts.entries()) {
       const before = charged;
       const picked = await liveEngine.pick({ text, examples: [], tagged: {} }, deps, signal);
@@ -85,7 +93,7 @@ describe.skipIf(!process.env.EVAL_MENTOR_TOKEN)('studio on topic-E requests, liv
         keyPoint: picked.picks[0]?.code ?? '',
         ...(picked.concept ? { concept: picked.concept } : {}),
         points: [],
-        examples: REFERENCE_PNG ? [q22Reference(REFERENCE_PNG)] : [],
+        examples: REFERENCE_PNG ? [bankReference(REFERENCE_PNG, REFERENCE_Q)] : [],
         strict: true,
         count: 1,
         level: 'same',

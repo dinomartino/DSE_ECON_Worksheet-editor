@@ -38,6 +38,25 @@ export const GRAPH_CASES: GraphCase[] = [
     labels: ['S_0', 'S_1', 'S_2', 'D', 'e', 'f', 'g', 'j', 'k', 'm', 'n'],
   },
   {
+    // k-0577 round 3 (u-kmdo): HKDSE 2023 P1 Q21, a ceiling at P1 made effective by a rise in demand; our words, the paper's figure and key.
+    id: 'e-ceiling-demand-rise',
+    type: 'Ceiling made effective by a demand rise: DWL (corner letters)',
+    family: 'E',
+    stem: 'The diagram below shows the market for Good X.\nThe government sets a price ceiling at P_1. Demand for Good X then increases from D_1 to D_2. Which of the following is correct?',
+    options: [
+      'There is over-production, and the deadweight loss is area abc.',
+      'There is over-production, and the deadweight loss is area acf.',
+      'There is under-production, and the deadweight loss is area abc.',
+      'There is under-production, and the deadweight loss is area acf.',
+    ],
+    answer: 2,
+    explanation:
+      'Before the rise, D_1 meets S at point a on the ceiling, so the ceiling does not bind. After demand rises to D_2, the equilibrium would be at c, but the price cannot rise above P_1. Sellers supply only the quantity at a, less than the efficient quantity at c: there is under-production. The units between a and c, which buyers value (up to b on D_2) more than they cost to make (along S), are not produced: the deadweight loss is area abc. Area acf lies under D_2 and above P_1 beyond c, which is not a loss of surplus.',
+    figure: 'Axes Price and Quantity. D_1 and S cross at a, on the dashed price line P_1. D_2 (demand after the rise) lies right of D_1 and meets S at c and the P_1 line at f; b is on D_2 directly above a, with a dashed line from b down to a. No quantity ticks. Key: abc.',
+    want: 'ceilingDemandRise: P1 dashed through a = D1×S; D2 right of D1; c = D2×S, f = D2 at P1, b on D2 above a; dashed b–a; letters above their dots, clear of lines; no other letters, no Q ticks.',
+    labels: ['D_1', 'D_2', 'S', 'P_1', 'a', 'b', 'c', 'f'],
+  },
+  {
     id: 'e-cs-ps',
     type: 'Consumer and producer surplus',
     family: 'E',

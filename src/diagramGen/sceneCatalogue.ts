@@ -100,8 +100,8 @@ export const SCENES: SceneDef[] = [
     when: 'one market at equilibrium: consumer and producer surplus, total social surplus, cost, revenue',
     parts: [curve('D', 'D', 'demand', 'downward-sloping'), curve('S', 'S', 'supply', 'upward-sloping'), y('P0', 'P_0', 'equilibrium price', 'where {D} meets {S}', 'W_0'), x('Q0', 'Q_0', 'equilibrium quantity', 'where {D} meets {S}')],
     regions: [
-      { id: 'cs', what: 'consumer surplus: under D, above P0, 0 to Q0', words: WORDS.cs, shape: 'the area under {D} and above the {P0} line, from 0 to {Q0}' },
-      { id: 'ps', what: 'producer surplus: above S, below P0, 0 to Q0', words: WORDS.ps, shape: 'the area below the {P0} line and above {S}, from 0 to {Q0}' },
+      { id: 'cs', what: 'CS: under D, above P0, 0 to Q0', words: WORDS.cs, shape: 'the area under {D} and above the {P0} line, from 0 to {Q0}' },
+      { id: 'ps', what: 'PS: above S, below P0, 0 to Q0', words: WORDS.ps, shape: 'the area below the {P0} line and above {S}, from 0 to {Q0}' },
       { id: 'cost', what: 'cost of production: under S, 0 to Q0', words: WORDS.cost, shape: 'the area under {S}, from 0 to {Q0}' },
     ],
     measures: { cs: ['cs'], ps: ['ps'], tss: ['cs', 'ps'], cost: ['cost'], revenue: ['ps', 'cost'] },
@@ -125,12 +125,12 @@ export const SCENES: SceneDef[] = [
       x('Q0', 'Q_0', 'quantity before the tax', 'where {D} meets {S0}'),
     ],
     regions: [
-      { id: 'csAfter', what: 'consumer surplus after the tax: under D above Pb, 0 to Q1', words: WORDS.cs, shape: 'the area under {D} and above the {Pb} line, from 0 to {Q1}' },
+      { id: 'csAfter', what: 'CS after the tax: under D above Pb, 0 to Q1', words: WORDS.cs, shape: 'the area under {D} and above the {Pb} line, from 0 to {Q1}' },
       { id: 'buyersBurden', what: "buyers' share of the tax revenue: Pb to P0, 0 to Q1", words: WORDS.buyersBurden, shape: 'the rectangle between the {Pb} and {P0} lines, from 0 to {Q1}' },
       { id: 'sellersBurden', what: "sellers' share of the tax revenue: P0 to Ps, 0 to Q1", words: WORDS.sellersBurden, shape: 'the rectangle between the {P0} and {Ps} lines, from 0 to {Q1}' },
-      { id: 'psAfter', what: 'producer surplus after the tax: above S0 below Ps, 0 to Q1', words: WORDS.ps, shape: 'the area below the {Ps} line and above {S0}, from 0 to {Q1}' },
-      { id: 'dwlBuyers', what: 'upper half of the deadweight loss: under D above P0, Q1 to Q0', words: null, shape: 'the triangle under {D} and above the {P0} line, from {Q1} to {Q0}' },
-      { id: 'dwlSellers', what: 'lower half of the deadweight loss: below P0 above S0, Q1 to Q0', words: null, shape: 'the triangle below the {P0} line and above {S0}, from {Q1} to {Q0}' },
+      { id: 'psAfter', what: 'PS after the tax: above S0 below Ps, 0 to Q1', words: WORDS.ps, shape: 'the area below the {Ps} line and above {S0}, from 0 to {Q1}' },
+      { id: 'dwlBuyers', what: 'DWL, upper part: under D above P0, Q1 to Q0', words: null, shape: 'the triangle under {D} and above the {P0} line, from {Q1} to {Q0}' },
+      { id: 'dwlSellers', what: 'DWL, lower part: below P0 above S0, Q1 to Q0', words: null, shape: 'the triangle below the {P0} line and above {S0}, from {Q1} to {Q0}' },
     ],
     measures: {
       taxRevenue: ['buyersBurden', 'sellersBurden'],
@@ -168,7 +168,7 @@ export const SCENES: SceneDef[] = [
       x('Q0', 'Q_0', 'quantity with no tax', 'where {D} meets {S0}'),
     ],
     regions: [
-      { id: 'dwlBefore', what: 'deadweight loss with t1: between D and S0, Qt1 to Q0', words: null, shape: 'the triangle between {D} and {S0}, from {Qt1} to {Q0}' },
+      { id: 'dwlBefore', what: 'DWL with t1: between D and S0, Qt1 to Q0', words: null, shape: 'the triangle between {D} and {S0}, from {Qt1} to {Q0}' },
       { id: 'dwlAddUpper', what: 'between D and S1, Qt2 to Qt1', words: null, shape: 'the triangle between {D} and {S1}, from {Qt2} to {Qt1}' },
       { id: 'dwlAddLower', what: 'between S1 and S0, Qt2 to Qt1', words: null, shape: 'the band between {S1} and {S0}, from {Qt2} to {Qt1}' },
     ],
@@ -208,7 +208,7 @@ export const SCENES: SceneDef[] = [
     regions: [
       { id: 'consumerBenefit', what: 'consumer benefit: left of D between P0 and Pb, 0 to Q1', words: WORDS.consumerBenefit, shape: 'the area between the {P0} and {Pb} lines, left of {D}, from 0 to {Q1}' },
       { id: 'producerBenefit', what: 'producer benefit: left of S0 between Ps and P0, 0 to Q1', words: WORDS.producerBenefit, shape: 'the area between the {Ps} and {P0} lines, left of {S0}, from 0 to {Q1}' },
-      { id: 'dwl', what: 'deadweight loss: between S0 (above) and D, Q0 to Q1', words: WORDS.dwl, shape: 'the triangle between {S0} and {D}, from {Q0} to {Q1}' },
+      { id: 'dwl', what: 'DWL: between S0 (above) and D, Q0 to Q1', words: WORDS.dwl, shape: 'the triangle between {S0} and {D}, from {Q0} to {Q1}' },
     ],
     measures: {
       consumerBenefit: ['consumerBenefit'],
@@ -233,13 +233,14 @@ export const SCENES: SceneDef[] = [
       x('Qs', 'Q_s', 'quantity supplied at the ceiling (= quantity traded)', 'where {S} meets the {Pc} line'),
       x('Q0', 'Q_0', 'equilibrium quantity', 'where {D} meets {S}'),
       x('Qd', 'Q_d', 'quantity demanded at the ceiling', 'where {D} meets the {Pc} line'),
+      x('Qx', 'Q_4', 'a 4th quantity on D, right of Qd (for a distractor)', 'on {D} below the {Pc} line, right of {Qd}'),
     ],
     regions: [
       { id: 'csKept', what: 'under D above P0, 0 to Qs', words: null, shape: 'the area under {D} and above the {P0} line, from 0 to {Qs}' },
       { id: 'transfer', what: 'from producers to consumers: P0 to Pc, 0 to Qs', words: null, shape: 'the rectangle between the {P0} and {Pc} lines, from 0 to {Qs}' },
-      { id: 'dwlBuyers', what: 'upper part of the deadweight loss: under D above P0, Qs to Q0', words: null, shape: 'the triangle under {D} and above the {P0} line, from {Qs} to {Q0}' },
-      { id: 'dwlSellers', what: 'lower part of the deadweight loss: below P0 above S, Qs to Q0', words: null, shape: 'the triangle below the {P0} line and above {S}, from {Qs} to {Q0}' },
-      { id: 'psAfter', what: 'producer surplus at the ceiling: below Pc above S, 0 to Qs', words: WORDS.ps, shape: 'the area below the {Pc} line and above {S}, from 0 to {Qs}' },
+      { id: 'dwlBuyers', what: 'DWL, upper part: under D above P0, Qs to Q0', words: null, shape: 'the triangle under {D} and above the {P0} line, from {Qs} to {Q0}' },
+      { id: 'dwlSellers', what: 'DWL, lower part: below P0 above S, Qs to Q0', words: null, shape: 'the triangle below the {P0} line and above {S}, from {Qs} to {Q0}' },
+      { id: 'psAfter', what: 'PS at the ceiling: below Pc above S, 0 to Qs', words: WORDS.ps, shape: 'the area below the {Pc} line and above {S}, from 0 to {Qs}' },
     ],
     measures: {
       dwl: ['dwlBuyers', 'dwlSellers'],
@@ -260,6 +261,34 @@ export const SCENES: SceneDef[] = [
     points: [pt('e0', 'D', 'S'), pt('sAtPc', 'S', 'Pc'), pt('dAtPc', 'D', 'Pc'), pt('dAtQs', 'D', 'Qs')],
   },
   {
+    // k-0577 round 3 (u-kmdo): HKDSE 2023 P1 Q21, a ceiling at the old equilibrium price that binds once demand rises.
+    type: 'ceilingDemandRise',
+    when: 'a ceiling at the price where D1 meets S, binding once demand rises to D2: shortage, underproduction, DWL (corner letters: dwl abc = e1, d2AtQs, e2)',
+    parts: [
+      curve('D1', 'D_1', 'demand before', 'downward-sloping'),
+      curve('D2', 'D_2', 'demand after', '{D1} shifted to the right'),
+      curve('S', 'S', 'supply', 'upward-sloping'),
+      y('Pc', 'P_1', 'the ceiling (dashed line)', 'a horizontal price line through where {D1} meets {S}'),
+      y('P2', 'P_2', 'price at D2×S', 'where {D2} meets {S}'),
+      x('Qs', 'Q_1', 'quantity traded', 'where {D1} meets {S}'),
+      x('Q2', 'Q_2', 'quantity at D2×S', 'where {D2} meets {S}'),
+      x('Qd', 'Q_3', 'quantity demanded at Pc', 'where {D2} meets the {Pc} line'),
+    ],
+    regions: [
+      { id: 'dwl', what: 'D2 to S, Qs to Q2', words: WORDS.dwl, shape: 'the triangle between {D2} and {S}, from {Qs} to {Q2}' },
+      { id: 'shortfall', what: 'above Pc, under S and D2, Qs to Qd', words: null, shape: 'the triangle above the {Pc} line and under {S} and {D2}, from {Qs} to {Qd}' },
+      { id: 'csAfter', what: 'under D2 above Pc, 0 to Qs', words: WORDS.cs, shape: 'the area under {D2} and above the {Pc} line, from 0 to {Qs}' },
+      { id: 'psAfter', what: 'below Pc above S, 0 to Qs', words: WORDS.ps, shape: 'the area below the {Pc} line and above {S}, from 0 to {Qs}' },
+    ],
+    measures: { dwl: ['dwl'], csAfter: ['csAfter'], psAfter: ['psAfter'], tssAfter: ['csAfter', 'psAfter'] },
+    measureWords: { dwl: WORDS.dwl, tssAfter: WORDS.tss },
+    ticks: { shortage: ['Qs', 'Qd'], quantityAfter: ['Qs'], quantityDemanded: ['Qd'], priceAfter: ['Pc'] },
+    // As the paper prints it: only the ceiling's P1; a dashed line from b down to a bounds the loss.
+    shown: ['Pc'],
+    edges: [],
+    points: [pt('e1', 'D1', 'S'), pt('e2', 'D2', 'S'), pt('d2AtPc', 'D2', 'Pc'), pt('d2AtQs', 'D2', 'Qs'), pt('d1AtQ2', 'D1', 'Q2')],
+  },
+  {
     type: 'priceFloor',
     when: 'a price floor (minimum price) or minimum wage above equilibrium: surplus or unemployment, quantity traded, deadweight loss, changes in surplus; market "labour" for wages',
     parts: [
@@ -272,10 +301,10 @@ export const SCENES: SceneDef[] = [
       x('Qs', 'Q_s', 'quantity supplied at the floor', 'where {S} meets the {Pf} line'),
     ],
     regions: [
-      { id: 'csAfter', what: 'consumer surplus at the floor: under D above Pf, 0 to Qd', words: WORDS.cs, shape: 'the area under {D} and above the {Pf} line, from 0 to {Qd}' },
+      { id: 'csAfter', what: 'CS at the floor: under D above Pf, 0 to Qd', words: WORDS.cs, shape: 'the area under {D} and above the {Pf} line, from 0 to {Qd}' },
       { id: 'transfer', what: 'from consumers to producers: Pf to P0, 0 to Qd', words: null, shape: 'the rectangle between the {Pf} and {P0} lines, from 0 to {Qd}' },
-      { id: 'dwlBuyers', what: 'upper part of the deadweight loss: under D above P0, Qd to Q0', words: null, shape: 'the triangle under {D} and above the {P0} line, from {Qd} to {Q0}' },
-      { id: 'dwlSellers', what: 'lower part of the deadweight loss: below P0 above S, Qd to Q0', words: null, shape: 'the triangle below the {P0} line and above {S}, from {Qd} to {Q0}' },
+      { id: 'dwlBuyers', what: 'DWL, upper part: under D above P0, Qd to Q0', words: null, shape: 'the triangle under {D} and above the {P0} line, from {Qd} to {Q0}' },
+      { id: 'dwlSellers', what: 'DWL, lower part: below P0 above S, Qd to Q0', words: null, shape: 'the triangle below the {P0} line and above {S}, from {Qd} to {Q0}' },
       { id: 'psKept', what: 'below P0 above S, 0 to Qd', words: null, shape: 'the area below the {P0} line and above {S}, from 0 to {Qd}' },
     ],
     measures: {
@@ -307,11 +336,11 @@ export const SCENES: SceneDef[] = [
       x('Q0', 'Q_0', 'equilibrium quantity without the quota', 'where {D} meets {S}'),
     ],
     regions: [
-      { id: 'csAfter', what: 'consumer surplus with the quota: under D above P1, 0 to Qq', words: WORDS.cs, shape: 'the area under {D} and above the {P1} line, from 0 to {Qq}' },
+      { id: 'csAfter', what: 'CS with the quota: under D above P1, 0 to Qq', words: WORDS.cs, shape: 'the area under {D} and above the {P1} line, from 0 to {Qq}' },
       { id: 'transfer', what: 'from consumers to producers: P1 to P0, 0 to Qq', words: null, shape: 'the rectangle between the {P1} and {P0} lines, from 0 to {Qq}' },
       { id: 'psKept', what: 'below P0 above S, 0 to Qq', words: null, shape: 'the area below the {P0} line and above {S}, from 0 to {Qq}' },
-      { id: 'dwlBuyers', what: 'upper part of the deadweight loss: under D above P0, Qq to Q0', words: null, shape: 'the triangle under {D} and above the {P0} line, from {Qq} to {Q0}' },
-      { id: 'dwlSellers', what: 'lower part of the deadweight loss: below P0 above S, Qq to Q0', words: null, shape: 'the triangle below the {P0} line and above {S}, from {Qq} to {Q0}' },
+      { id: 'dwlBuyers', what: 'DWL, upper part: under D above P0, Qq to Q0', words: null, shape: 'the triangle under {D} and above the {P0} line, from {Qq} to {Q0}' },
+      { id: 'dwlSellers', what: 'DWL, lower part: below P0 above S, Qq to Q0', words: null, shape: 'the triangle below the {P0} line and above {S}, from {Qq} to {Q0}' },
     ],
     measures: {
       dwl: ['dwlBuyers', 'dwlSellers'],
@@ -342,9 +371,9 @@ export const SCENES: SceneDef[] = [
       x('Qe', 'Q*', 'socially efficient output (where the social curve meets the other one)', 'where {social} meets the other curve'),
     ],
     regions: [
-      { id: 'dwl', what: 'deadweight loss: between the social curve and the other curve, between Qm and Qe', words: WORDS.dwl, shape: 'the triangle between {social} and the curve it crosses, between {Qm} and {Qe}' },
+      { id: 'dwl', what: 'DWL: between the social curve and the other curve, between Qm and Qe', words: WORDS.dwl, shape: 'the triangle between {social} and the curve it crosses, between {Qm} and {Qe}' },
       { id: 'external', what: 'external cost or benefit up to the nearer output: between the social and the private curve, from 0 to the smaller of Qm and Qe', words: null, shape: 'the area between {social} and the private curve it lies beside, from 0 to the smaller of {Qm} and {Qe}' },
-      { id: 'wedge', what: 'the triangle beside the deadweight loss: between the other curve and the private curve, between Qm and Qe', words: null, shape: 'the triangle between the private curve and the curve it crosses, between {Qm} and {Qe}' },
+      { id: 'wedge', what: 'the triangle beside the DWL: between the other curve and the private curve, between Qm and Qe', words: null, shape: 'the triangle between the private curve and the curve it crosses, between {Qm} and {Qe}' },
     ],
     measures: { dwl: ['dwl'], externalCost: ['external', 'dwl', 'wedge'] },
     measureWords: {},
@@ -391,12 +420,12 @@ export const SCENES: SceneDef[] = [
       x('Q4', 'Q_4', 'quantity demanded at the world price', 'where {D} meets the {Pw} line'),
     ],
     regions: [
-      { id: 'psGain', what: 'gain in producer surplus: Pt to Pw left of S, 0 to Q2', words: WORDS.psGain, shape: 'the area between the {Pt} and {Pw} lines, left of {S}' },
-      { id: 'dwlProduction', what: 'deadweight loss in production: between S and Pw, Q1 to Q2', words: null, shape: 'the triangle above the {Pw} line and below {S}, from {Q1} to {Q2}' },
+      { id: 'psGain', what: 'gain in PS: Pt to Pw left of S, 0 to Q2', words: WORDS.psGain, shape: 'the area between the {Pt} and {Pw} lines, left of {S}' },
+      { id: 'dwlProduction', what: 'DWL in production: between S and Pw, Q1 to Q2', words: null, shape: 'the triangle above the {Pw} line and below {S}, from {Q1} to {Q2}' },
       { id: 'revenue', what: 'tariff revenue: Pt to Pw, Q2 to Q3', words: WORDS.tariffRevenue, shape: 'the rectangle between the {Pt} and {Pw} lines, from {Q2} to {Q3}' },
-      { id: 'dwlConsumption', what: 'deadweight loss in consumption: between D and Pw, Q3 to Q4', words: null, shape: 'the triangle above the {Pw} line and below {D}, from {Q3} to {Q4}' },
-      { id: 'csAfter', what: 'consumer surplus with the tariff: under D above Pt, 0 to Q3', words: WORDS.cs, shape: 'the area under {D} and above the {Pt} line, from 0 to {Q3}' },
-      { id: 'psBefore', what: 'producer surplus at the world price: below Pw above S, 0 to Q1', words: WORDS.ps, shape: 'the area below the {Pw} line and above {S}, from 0 to {Q1}' },
+      { id: 'dwlConsumption', what: 'DWL in consumption: between D and Pw, Q3 to Q4', words: null, shape: 'the triangle above the {Pw} line and below {D}, from {Q3} to {Q4}' },
+      { id: 'csAfter', what: 'CS with the tariff: under D above Pt, 0 to Q3', words: WORDS.cs, shape: 'the area under {D} and above the {Pt} line, from 0 to {Q3}' },
+      { id: 'psBefore', what: 'PS at the world price: below Pw above S, 0 to Q1', words: WORDS.ps, shape: 'the area below the {Pw} line and above {S}, from 0 to {Q1}' },
     ],
     measures: {
       dwl: ['dwlProduction', 'dwlConsumption'],
