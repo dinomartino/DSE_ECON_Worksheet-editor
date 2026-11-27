@@ -14,6 +14,68 @@ a version heading is edited afterwards.
 
 ## Unreleased
 
+## 0.10.1 — 2026-11-27
+
+### Added
+- **Browse the past paper bank by year.** A By topic / By year switch at the top of the Past paper
+  bank (and of Past papers in the editor's 題庫 tab) lists every exam year: HKDSE 2026 back to
+  2012 and the Practice and Sample papers, then HKCEE and HKALE. Open a year to see its questions
+  in question order, ready to pick or insert as before; a year with two papers lists both. Search,
+  the exam and year filters and show answers still work, and ↑ ↓ move from year to year. The bank
+  remembers the view you chose last.
+  <!-- zh: **按年份瀏覽歷屆試題庫。** 歷屆試題庫頂部（及編輯器「題庫」分頁的「歷屆試題」）新增「按課題／按年份」切換，列出每個考試年份：HKDSE 2026 至 2012 年及練習卷、樣本試卷，然後是 HKCEE 及 HKALE。開啟某一年份即可按題號順序查看題目，並如常選取或插入；有兩份試卷的年份會同時列出。搜尋、考試及年份篩選與顯示答案照常可用，按 ↑ ↓ 可逐年移動。題庫會記住你上次選擇的排列方式。 -->
+- **Arrange the past paper bank your own way, and make worksheets from it in one go.** The
+  Past paper bank has a third view beside By topic and By year: **Arrange**. It lists every
+  question of the bank on one page, under its syllabus part and topic, each with its source in
+  the short form (for example DSE2024/P1/Q38). Drag a question to put it in your own order, or onto
+  another topic to move it there (or tick some and use Move to…; on the keyboard, Alt + ↑ ↓).
+  One tick on a part or a topic ticks every question under it, and you can untick single ones.
+  "New worksheet" on a part or topic, or Add for the ticked questions, puts them into a
+  worksheet in your order. A worksheet that takes questions from several topics (a whole part,
+  or a ticked set) gets a heading for each topic, in English and 中文. Tick "Show source" in
+  the bar at the bottom of Arrange, beside Add (off unless you tick it), to print each
+  question's short source on the page, in the PDF and in Word; it is there even with nothing
+  ticked, for a part's or topic's own button. Setup → Page can change it later. "Show all" shows every question as it
+  prints in one tap ("Hide all" hides them again); each question still has its own Show. Arrange is also in the editor's 題庫 tab → Past
+  papers, with the same order and ticks: Add puts questions into the paper you are working on,
+  New worksheet opens a new one. Your order is kept on this computer and
+  never changes the bank; Reset puts a topic, or everything, back in the bank's order.
+  <!-- zh: **按你自己的方式編排歷屆試題庫，並一次過做成工作紙。** 歷屆試題庫在「按課題」和「按年份」旁新增第三種檢視：**編排**。它在同一頁列出題庫的所有題目，按課程範疇和課題分組，每題都以簡短格式註明出處（例如 DSE2024/P1/Q38）。拖動題目可按你的次序排列，拖到另一課題即移到該課題（或勾選後用「移到…」；鍵盤可用 Alt + ↑ ↓）。在範疇或課題勾選一次，即勾選其下所有題目，亦可逐題取消。範疇或課題上的「開新工作紙」，或為已勾選題目按「加入」，會把題目按你的次序放進工作紙；來自多個課題的工作紙（整個範疇或勾選的題目）會為每個課題加上標題（英文及中文）。在「編排」底部的列（「加入」旁邊）勾選「顯示出處」（預設不勾選），每題的簡短出處便會印在頁面、PDF 和 Word 中；未勾選任何題目時這個勾選框亦在底部，供範疇或課題本身的按鈕使用。之後可在「頁面設定 → 頁面」更改。「全部顯示」一按即把每題按列印樣式顯示（「全部隱藏」可全部隱藏），每題亦可逐一顯示或隱藏。編輯器的「題庫 → 歷屆試題」亦有「編排」，次序及勾選與題庫畫面相同：「加入」把題目放進正在編輯的試卷，「開新工作紙」則開一份新的。你的排列只保存在這部電腦上，不會改動題庫；「還原」可把一個課題或全部還原為題庫原本的次序。 -->
+- **The Question bank sorts your questions by your MCQ topics.** By topic now follows the 72
+  topics of DSEcon Mentor's MCQ section (Price Ceiling, Per-unit Tax, Monetary Base…) in the site's
+  sections A–J, instead of the EDB syllabus points: the topic cards, the list, the filter, the tag
+  line and the topic pickers all use them, in the 題庫 tab and in a question's Topics row too.
+  Nothing in your saved papers changes: a question's existing topics are read as the matching MCQ
+  topic. Where one syllabus point covers several MCQ topics (Market intervention: ceiling, floor,
+  quota, tax, subsidy), the topics page offers **Pick the MCQ topic**, one question at a time with
+  the choices as numbered keys.
+  <!-- zh: **題庫按你的 MCQ 課題排列題目。** 「按課題」現在跟從 DSEcon Mentor MCQ 部分的 72 個課題（價格上限、從量稅、貨幣基礎……），按網站的 A 至 J 部分排列，不再按 EDB 課程要點：課題卡、清單、篩選、標籤行及課題選擇器都使用這些課題，題庫分頁及題目的「課題」一欄亦然。已儲存的試卷不會改變：題目現有的課題會讀作相應的 MCQ 課題。若一個課程要點涵蓋多個 MCQ 課題（政府干預：價格上限、價格下限、配額、從量稅、從量津貼），課題頁會提供「選定 MCQ 課題」，逐題顯示，選項以數字鍵選擇。 -->
+
+### Changed
+- **The Past paper bank lists its topics like your Question bank.** Its topics sit in the same
+  sections A–J as your MCQ topics on DSEcon Mentor (Circular Flow under F) with the same names, and a
+  question you copy out is filed under its exact MCQ topic.
+  <!-- zh: **歷屆試題庫的課題排列與你的題庫一致。** 課題按 DSEcon Mentor 上你的 MCQ 課題，放在相同的 A 至 J 部分（經濟活動的循環流程屬 F），名稱亦相同；複製出來的題目會歸入其確切的 MCQ 課題。 -->
+- **Show source prints above the question.** A question's source, for example (DSESP/P1/Q3), now
+  sits on its own line just above the question, starting where the question number starts,
+  instead of at the right of its first line. The same on screen, in print, PDF, Word and copied
+  text, in English, 中文 and bilingual papers, in every source format; a page never ends on a
+  source without its question.
+  <!-- zh: **「顯示出處」改印在題目上方。** 每題的出處（例如 (DSESP/P1/Q3)）現在獨佔一行，印在題目正上方，與題號左邊對齊，不再放在首行右方。畫面、列印、PDF、Word 及複製的文字皆同，英文、中文及雙語試卷和各種出處格式都適用；出處不會單獨留在頁底而與題目分開。 -->
+- **On a bilingual paper, a question's source prints once, short.** With Show source on, an
+  English + 中文 paper now prints each source as the short tag alone, such as DSE2024/P1/Q38,
+  even when the source format is Full, instead of the English and Chinese full names side by
+  side. English-only and 中文-only papers keep the format you chose. The same on screen, in
+  print, PDF and Word.
+  <!-- zh: **中英對照試卷的出處只印一次簡寫。** 開啟「顯示出處」後，中英對照試卷的每題出處現在只印簡寫，例如 DSE2024/P1/Q38，即使出處格式設為「完整」亦然，不再並列中英文全稱。純英文或純中文試卷照用你所選的格式。畫面、列印、PDF 及 Word 皆同。 -->
+
+### Fixed
+- **The Past paper bank's filter bar stays on one row.** With a long topic name, "Show answers"
+  could drop to a second row on its own. Now the topic name shortens (the full name shows when
+  you point at it) and the Paper list narrows instead, in every view and both languages. In a
+  narrow window "Show answers" moves to the front of the row, so it is always in sight.
+  <!-- zh: **歷屆試題庫的篩選列保持在同一行。** 課題名稱較長時，「顯示答案」有時會獨自跌到第二行。現在課題名稱會縮短（指向它即顯示全名），「試卷」選單亦會收窄，所有檢視及兩種語言皆然。視窗較窄時，「顯示答案」會移到該行前面，時刻可見。 -->
+
 ## 0.10.0 — 2026-11-20
 
 ### Added
