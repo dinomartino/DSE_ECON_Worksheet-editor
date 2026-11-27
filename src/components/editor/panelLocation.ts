@@ -1,4 +1,5 @@
 import { flattenBlocks } from '@/model/edits';
+import { answerBlocksOf, type AnswerOwner } from '@/model/answerBlocks';
 import { sourceLetter } from '@/model/drq';
 import { partLabel, subPartLabel } from '@/model/numbering';
 import type { ContentBlock, StructuredQuestion } from '@/model/types';
@@ -44,17 +45,17 @@ function sourceHolding(blocks: readonly ContentBlock[], id: string): { block: Co
 const holds = (blocks: readonly ContentBlock[] | undefined, id: string) =>
   Boolean(blocks && flattenBlocks([...blocks]).some((block) => block.id === id));
 
-/** Whether a leaf's answer, model diagram or scheme is what `id` names. */
-function inTeacherArea(
-  leaf: { id: string; scheme?: unknown; answerDiagram?: ContentBlock },
-  kind: string,
-  id: string,
-): boolean {
+/** Whether a leaf's answer (its text or any of its blocks) or scheme is what `id` names. */
+function inTeacherArea(leaf: AnswerOwner & { id: string; scheme?: unknown }, kind: string, id: string): boolean {
   if (kind === 'partAnswer' || kind === 'subPartAnswer' || kind === 'questionAnswer') return id === leaf.id;
-  if (leaf.answerDiagram && holds([leaf.answerDiagram], id)) return true;
+  // The answer's blocks (u-0c5q): a table, picture, diagram or paragraph inside the answer.
+  if (BLOCK_KINDS.has(kind)) return holds(answerBlocksOf(leaf), id);
   // A scheme's points, levels and descriptors carry their own ids somewhere inside it.
   return leaf.scheme !== undefined && JSON.stringify(leaf.scheme).includes(`"${id}"`);
 }
+
+/** Kinds that may name something in a leaf's teacher area: its answer text, blocks or scheme. */
+const inTeacher = (kind: string) => TEACHER_KINDS.has(kind) || BLOCK_KINDS.has(kind);
 
 export function panelLocation(
   question: StructuredQuestion,
@@ -75,7 +76,7 @@ export function panelLocation(
       : [stem];
   }
   // An essay question with no parts: its answer and scheme.
-  if (TEACHER_KINDS.has(kind) && question.parts.length === 0 && inTeacherArea(question, kind, id)) {
+  if (inTeacher(kind) && question.parts.length === 0 && inTeacherArea(question, kind, id)) {
     return [teacher(`teacher:${question.id}`)];
   }
 
@@ -84,12 +85,12 @@ export function panelLocation(
     for (const [subIndex, sub] of (part.subParts ?? []).entries()) {
       const subCrumb: Crumb = { kind: 'subPart', label: subPartLabel(subIndex), anchor: sub.id };
       if (BLOCK_KINDS.has(kind) && holds(sub.blocks, id)) return [partCrumb, subCrumb];
-      if (TEACHER_KINDS.has(kind) && inTeacherArea(sub, kind, id)) {
+      if (inTeacher(kind) && inTeacherArea(sub, kind, id)) {
         return [partCrumb, subCrumb, teacher(`teacher:${sub.id}`)];
       }
     }
     if (BLOCK_KINDS.has(kind) && (holds(part.blocks, id) || holds(part.blocksBefore, id))) return [partCrumb];
-    if (TEACHER_KINDS.has(kind) && inTeacherArea(part, kind, id)) return [partCrumb, teacher(`teacher:${part.id}`)];
+    if (inTeacher(kind) && inTeacherArea(part, kind, id)) return [partCrumb, teacher(`teacher:${part.id}`)];
   }
   return [];
 }

@@ -3,7 +3,7 @@ import { hasOptionalSection, questionMarks, sectionMarksById, worksheetMarks } f
 import { computeNumbering } from '@/model/numbering';
 import { bi, documentName, isBiTextEmpty, plain } from '@/model/text';
 import type { MarkScheme } from '@/model/markSchemeTypes';
-import type { AnswerKeyPreset, BiText, DiagramBlock, LanguageMode, Worksheet } from '@/model/types';
+import type { AnswerKeyPreset, BiText, ContentBlock, LanguageMode, Worksheet } from '@/model/types';
 import { versionLetters, versionSeed } from '@/model/versions';
 import { resolveAnswerKeyLayout, type ResolvedAnswerKeyLayout } from '@/model/answerKeyLayout';
 import { mcPercentOf } from '@/model/examResults';
@@ -86,8 +86,11 @@ export interface AnswerKeyRow {
   /** Absent prints nothing; 0 prints "(0 marks)" — the paper's own rule. */
   marks?: number;
   answer?: BiText;
-  /** The model answer diagram, printed under the answer text (§ `QuestionPart.answerDiagram`). */
-  diagram?: DiagramBlock;
+  /**
+   * The model answer's blocks, printed under the answer text in order (`answerBlocksOf`: the
+   * old model diagram first, then tables, pictures, diagrams and text, u-0c5q).
+   */
+  blocks?: ContentBlock[];
   /** HKEAA marking points, levels and EC, printed under the answer (`render/markScheme.ts`). */
   scheme?: MarkScheme;
   /**

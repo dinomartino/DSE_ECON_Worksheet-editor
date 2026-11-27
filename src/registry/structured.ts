@@ -1,4 +1,5 @@
 import { fillWritten, type AnswerVisitor } from '@/model/answerLeaves';
+import { answerBlocksOf, hasAnswer, type AnswerOwner } from '@/model/answerBlocks';
 import { flattenBlocks } from '@/model/edits';
 import { answeredDiagrams } from '@/model/diagramAnswers';
 import { createStructuredQuestion } from '@/model/factories';
@@ -12,12 +13,12 @@ import {
 } from '@/model/numbering';
 import { areBlocksEmpty, bi, isBiTextEmpty } from '@/model/text';
 import { mapSame, patch, type TextWalker } from '@/model/textSlots';
-import type { BiText, ContentBlock, DiagramBlock, QuestionPart, QuestionSubPart, StructuredQuestion } from '@/model/types';
+import type { ContentBlock, QuestionPart, QuestionSubPart, StructuredQuestion } from '@/model/types';
 import {
-  diagramNodeFor,
   pushGap,
   renderContentBlocks,
   hasPrintedText,
+  type EditTarget,
   type RenderContext,
   type RenderNode,
 } from '@/render/ir';
@@ -59,11 +60,43 @@ function attachMarksToLastText(
 }
 
 /**
- * A leaf's model answer diagram (§ `QuestionPart.answerDiagram`), teacher-only. A diagram
- * node carries no indent, so it takes its block's own alignment (centred by default).
+ * A leaf's model answer, teacher-only: its text, then its blocks (`answerBlocksOf`: the old
+ * model diagram first, then tables, pictures, diagrams and more text in the teacher's
+ * order, u-0c5q), at the leaf's own text column. The text keeps with the blocks under it.
+ * The first figure sits straight under the text, as the model diagram always has; every
+ * node is teacher-only, the blank lines between blocks included, so a student copy prints
+ * no trace of the answer. A diagram node carries no indent: it takes its block's own
+ * alignment (centred by default).
  */
-function pushAnswerDiagram(nodes: RenderNode[], block: DiagramBlock | undefined): void {
-  if (block) nodes.push(diagramNodeFor(block, { teacherOnly: true }));
+function pushAnswer(
+  nodes: RenderNode[],
+  owner: AnswerOwner,
+  indent: number,
+  edit: EditTarget,
+  context: RenderContext,
+): void {
+  const blocks = answerBlocksOf(owner);
+  if (!isBiTextEmpty(owner.answer)) {
+    nodes.push({
+      kind: 'text',
+      style: 'Marking Scheme',
+      teacherOnly: true,
+      text: owner.answer!,
+      indent,
+      ...(blocks.length > 0 ? { keepNext: true } : {}),
+      edit,
+    });
+  }
+  if (blocks.length === 0) return;
+  const start = nodes.length;
+  renderContentBlocks(nodes, blocks, 'Marking Scheme', {
+    teacherOnly: true,
+    indent,
+    language: context.mode.language,
+  });
+  for (let index = start; index < nodes.length; index++) {
+    (nodes[index] as { teacherOnly?: boolean }).teacherOnly = true;
+  }
 }
 
 function render(question: StructuredQuestion, context: RenderContext): RenderNode[] {
@@ -135,22 +168,13 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
     question.blocks.length === 0;
   if (isLeaf && !stemClaimed) attachMarksToLastText(nodes, 0, stemMarks);
 
-  // An essay's answer, model diagram and scheme, as a leaf part's, at the stem's column.
-  if (isLeaf && !isBiTextEmpty(question.answer)) {
-    nodes.push({
-      kind: 'text',
-      style: 'Marking Scheme',
-      teacherOnly: true,
-      text: question.answer!,
-      indent: context.indents.stemText,
-      ...(question.answerDiagram ? { keepNext: true } : {}),
-      edit: { kind: 'questionAnswer', questionId: question.id },
-    });
-  }
+  // An essay's answer (text and blocks) and scheme, as a leaf part's, at the stem's column.
   // The leaf question's own writing room, under the stem it answers (§ the LQ line).
   // Absent prints nothing, like marks. Blank axes to draw on come first (§ AnswerGraph),
-  // after the teacher's model diagram and scheme.
-  if (isLeaf) pushAnswerDiagram(nodes, question.answerDiagram);
+  // after the teacher's model answer and scheme.
+  if (isLeaf) {
+    pushAnswer(nodes, question, context.indents.stemText, { kind: 'questionAnswer', questionId: question.id }, context);
+  }
   if (isLeaf) {
     nodes.push(
       ...renderMarkScheme(question.scheme, {
@@ -267,19 +291,9 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
       if (part.blocks.length > 0) attachMarksToLastText(nodes, partStart, leafMarks);
     }
 
-    if (!hasSubParts && !isBiTextEmpty(part.answer)) {
-      nodes.push({
-        kind: 'text',
-        style: 'Marking Scheme',
-        teacherOnly: true,
-        text: part.answer!,
-        indent: context.indents.partText,
-        // An answer keeps with the model diagram under it.
-        ...(part.answerDiagram ? { keepNext: true } : {}),
-        edit: { kind: 'partAnswer', questionId: question.id, partId: part.id },
-      });
-    }
-    // The model diagram, then the HKEAA scheme, follow the plain answer; teacher only.
+    // The model answer (text, then its blocks), then the HKEAA scheme; teacher only.
+    const partAnswer = () =>
+      pushAnswer(nodes, part, context.indents.partText, { kind: 'partAnswer', questionId: question.id, partId: part.id }, context);
     const partScheme = () =>
       renderMarkScheme(part.scheme, {
         indent: context.indents.partText,
@@ -288,7 +302,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         editing: context.mode.editing,
       });
     if (!hasSubParts) {
-      pushAnswerDiagram(nodes, part.answerDiagram);
+      partAnswer();
       nodes.push(...partScheme());
     }
 
@@ -349,23 +363,13 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         if (subPart.blocks.length > 0) attachMarksToLastText(nodes, subStart, subMarks);
       }
 
-      if (!isBiTextEmpty(subPart.answer)) {
-        nodes.push({
-          kind: 'text',
-          style: 'Marking Scheme',
-          teacherOnly: true,
-          text: subPart.answer!,
-          indent: context.indents.subPartText,
-          ...(subPart.answerDiagram ? { keepNext: true } : {}),
-          edit: {
-            kind: 'subPartAnswer',
-            questionId: question.id,
-            partId: part.id,
-            subPartId: subPart.id,
-          },
-        });
-      }
-      pushAnswerDiagram(nodes, subPart.answerDiagram);
+      pushAnswer(
+        nodes,
+        subPart,
+        context.indents.subPartText,
+        { kind: 'subPartAnswer', questionId: question.id, partId: part.id, subPartId: subPart.id },
+        context,
+      );
       nodes.push(
         ...renderMarkScheme(subPart.scheme, {
           indent: context.indents.subPartText,
@@ -392,20 +396,8 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
     });
 
     // A part with sub-parts still shows its aggregate answer, if the teacher wrote one.
-    if (hasSubParts && !isBiTextEmpty(part.answer)) {
-      nodes.push({
-        kind: 'text',
-        style: 'Marking Scheme',
-        teacherOnly: true,
-        text: part.answer!,
-        indent: context.indents.partText,
-        // An answer keeps with the model diagram under it.
-        ...(part.answerDiagram ? { keepNext: true } : {}),
-        edit: { kind: 'partAnswer', questionId: question.id, partId: part.id },
-      });
-    }
     if (hasSubParts) {
-      pushAnswerDiagram(nodes, part.answerDiagram);
+      partAnswer();
       nodes.push(...partScheme());
     }
 
@@ -440,6 +432,9 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
  * sub-parts, so one order serves both. Question-level answers print only without parts.
  * Letters label review rows only; they are never text to translate.
  */
+/** An answer's blocks are teacher-only, and their paragraphs are answer text (u-0c5q). */
+const ANSWER_BLOCKS = { role: 'teacher', paragraphKind: 'answer' } as const;
+
 function mapTexts(question: StructuredQuestion, walk: TextWalker): StructuredQuestion {
   const questionId = question.id;
   const own = question.parts.length > 0 ? walk.unprinted() : walk;
@@ -449,6 +444,7 @@ function mapTexts(question: StructuredQuestion, walk: TextWalker): StructuredQue
       kind: 'answer', role: 'teacher', target: { kind: 'questionAnswer', questionId },
     }),
     answerDiagram: own.diagramBlock('answerDiagram', question.answerDiagram, 'teacher'),
+    answerBlocks: own.optionalBlocks('answerBlocks', question.answerBlocks, ANSWER_BLOCKS),
     scheme: own.scheme('scheme', question.scheme),
     answerGraph: own.answerGraph('answerGraph', question.answerGraph, 'print'),
     parts: mapSame(question.parts, (part, index) => {
@@ -465,6 +461,7 @@ function mapTexts(question: StructuredQuestion, walk: TextWalker): StructuredQue
               kind: 'answer', role: 'teacher', target: { kind: 'subPartAnswer', questionId, partId, subPartId: sub.id },
             }),
             answerDiagram: sw.diagramBlock('answerDiagram', sub.answerDiagram, 'teacher'),
+            answerBlocks: sw.optionalBlocks('answerBlocks', sub.answerBlocks, ANSWER_BLOCKS),
             scheme: sw.scheme('scheme', sub.scheme),
             answerGraph: sw.answerGraph('answerGraph', sub.answerGraph, 'print'),
           });
@@ -473,6 +470,7 @@ function mapTexts(question: StructuredQuestion, walk: TextWalker): StructuredQue
           kind: 'answer', role: 'teacher', target: { kind: 'partAnswer', questionId, partId },
         }),
         answerDiagram: w.diagramBlock('answerDiagram', part.answerDiagram, 'teacher'),
+        answerBlocks: w.optionalBlocks('answerBlocks', part.answerBlocks, ANSWER_BLOCKS),
         scheme: w.scheme('scheme', part.scheme),
         answerGraph: w.answerGraph('answerGraph', part.answerGraph, 'print'),
       });
@@ -526,16 +524,13 @@ function mapAnswers(question: StructuredQuestion, visit: AnswerVisitor): Structu
 function healthFacts(question: StructuredQuestion): QuestionHealthFacts {
   // A marking scheme, a model diagram or an answer drawn on the leaf's own diagram
   // answers it as fully as answer text does.
-  const answered = (leaf: {
-    answer?: BiText;
+  const answered = (leaf: AnswerOwner & {
     scheme?: MarkScheme;
-    answerDiagram?: DiagramBlock;
     blocks: ContentBlock[];
     blocksBefore?: ContentBlock[];
   }) =>
-    !isBiTextEmpty(leaf.answer) ||
+    hasAnswer(leaf) ||
     !isSchemeEmpty(leaf.scheme) ||
-    Boolean(leaf.answerDiagram) ||
     answeredDiagrams([...(leaf.blocksBefore ?? []), ...leaf.blocks]).length > 0;
   let unansweredParts = question.parts.length === 0 && !answered(question) ? 1 : 0;
   let bodyEmpty = true;
@@ -554,12 +549,18 @@ function healthFacts(question: StructuredQuestion): QuestionHealthFacts {
  * (same placement as `render` — a shared label on the last sub-part, absent prints
  * nothing) and the author's answer text.
  */
+/** A key row's answer blocks (§ `AnswerKeyRow.blocks`); no key when there are none. */
+const keyBlocks = (owner: AnswerOwner): { blocks?: ContentBlock[] } => {
+  const blocks = answerBlocksOf(owner);
+  return blocks.length > 0 ? { blocks } : {};
+};
+
 function answerKey(question: StructuredQuestion): AnswerKeyEntry {
   const rows: AnswerKeyRow[] = [];
   // An answer drawn on a question's own diagram (its answer layer) prints in the key
   // as that diagram, unlabelled, under the row it answers.
   const drawn = (depth: 1 | 2, blocks: ContentBlock[]) => {
-    for (const diagram of answeredDiagrams(blocks)) rows.push({ depth, diagram });
+    for (const diagram of answeredDiagrams(blocks)) rows.push({ depth, blocks: [diagram] });
   };
   if (question.parts.length > 0) drawn(1, question.blocks);
   question.parts.forEach((part, partIndex) => {
@@ -575,7 +576,7 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
       label: partLabel(partIndex),
       marks: hasSubParts ? undefined : part.marks,
       answer: hasSubParts ? undefined : part.answer,
-      ...(!hasSubParts && part.answerDiagram ? { diagram: part.answerDiagram } : {}),
+      ...(!hasSubParts ? keyBlocks(part) : {}),
       ...(!hasSubParts && part.scheme ? { scheme: part.scheme } : {}),
       ...(!hasSubParts ? partEdits : {}),
       prompt: paragraphLines(part.blocks),
@@ -588,7 +589,7 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
         label: subPartLabel(subIndex),
         marks: subIndex === sharedMarksIndex ? part.marks : subPart.marks,
         answer: subPart.answer,
-        ...(subPart.answerDiagram ? { diagram: subPart.answerDiagram } : {}),
+        ...keyBlocks(subPart),
         ...(subPart.scheme ? { scheme: subPart.scheme } : {}),
         answerEdit: { kind: 'subPartAnswer', ...subAt },
         schemeAt: subAt,
@@ -598,14 +599,11 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
     });
     // A part with sub-parts may still carry an aggregate answer (and scheme), printed
     // after the group.
-    if (
-      hasSubParts &&
-      (!isBiTextEmpty(part.answer) || !isSchemeEmpty(part.scheme) || part.answerDiagram)
-    ) {
+    if (hasSubParts && (hasAnswer(part) || !isSchemeEmpty(part.scheme))) {
       rows.push({
         depth: 1,
         ...(!isBiTextEmpty(part.answer) ? { answer: part.answer } : {}),
-        ...(part.answerDiagram ? { diagram: part.answerDiagram } : {}),
+        ...keyBlocks(part),
         ...(part.scheme ? { scheme: part.scheme } : {}),
         ...partEdits,
       });
@@ -614,15 +612,12 @@ function answerKey(question: StructuredQuestion): AnswerKeyEntry {
   // With no parts the question is the leaf, and its marks ride on its own line; its
   // answer, model diagram and scheme are an unlabelled row under the number.
   const marks = question.parts.length === 0 ? questionMarks(question) || undefined : undefined;
-  if (
-    question.parts.length === 0 &&
-    (!isBiTextEmpty(question.answer) || question.answerDiagram || !isSchemeEmpty(question.scheme))
-  ) {
+  if (question.parts.length === 0 && (hasAnswer(question) || !isSchemeEmpty(question.scheme))) {
     const at = { questionId: question.id };
     rows.push({
       depth: 1,
       ...(!isBiTextEmpty(question.answer) ? { answer: question.answer } : {}),
-      ...(question.answerDiagram ? { diagram: question.answerDiagram } : {}),
+      ...keyBlocks(question),
       ...(question.scheme ? { scheme: question.scheme } : {}),
       answerEdit: { kind: 'questionAnswer', ...at },
       schemeAt: at,
@@ -694,9 +689,9 @@ function slotKeys(question: StructuredQuestion): Map<QuestionPart | QuestionSubP
   return keys;
 }
 
-const blockIdsOf = (blocks: ContentBlock[] | undefined, extra?: DiagramBlock): string[] => [
+const blockIdsOf = (blocks: ContentBlock[] | undefined, answer?: AnswerOwner): string[] => [
   ...flattenBlocks(blocks ?? []).map((block) => block.id),
-  ...(extra ? [extra.id] : []),
+  ...(answer ? flattenBlocks(answerBlocksOf(answer)).map((block) => block.id) : []),
 ];
 
 /** Topics per part: every part, then its sub-parts; a question with no parts has none. */
@@ -712,7 +707,7 @@ function tagSlots(question: StructuredQuestion): TagSlotInfo[] {
       label: partLabel(index),
       leaf: subParts.length === 0,
       ...(part.tags !== undefined ? { own: part.tags as unknown[] } : {}),
-      blockIds: blockIdsOf(part.blocks, part.answerDiagram),
+      blockIds: blockIdsOf(part.blocks, part),
       leadInIds: blockIdsOf(part.blocksBefore),
       answerIds: [part.id],
     });
@@ -724,7 +719,7 @@ function tagSlots(question: StructuredQuestion): TagSlotInfo[] {
         parent: key,
         leaf: true,
         ...(sub.tags !== undefined ? { own: sub.tags as unknown[] } : {}),
-        blockIds: blockIdsOf(sub.blocks, sub.answerDiagram),
+        blockIds: blockIdsOf(sub.blocks, sub),
         leadInIds: [],
         answerIds: [sub.id],
       });

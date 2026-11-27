@@ -54,6 +54,7 @@ import {
 } from '@/components/ui';
 import { TableSizePicker } from '@/components/ui/TableSizePicker';
 import { BiTextField } from './BiTextField';
+import type { FieldTranslate } from '@/components/translate/fieldFill';
 import { CaptionField } from './CaptionField';
 import { biExcerpt, ExcerptRow } from './panelRows';
 import { DiagramEditor } from './DiagramEditor';
@@ -96,6 +97,14 @@ interface Props {
    * the "+ Source" affordance — a source may not contain another (§`SourceBlock`).
    */
   nested?: boolean;
+  /**
+   * A model answer's blocks (u-0c5q): teacher-only, so not on the page a teacher is
+   * usually looking at. Paragraphs are typed here, in a field like the answer text above
+   * them (`label` names each one, `translate` gives it the inline AI fill), instead of
+   * being an address of text typed on the page; and "+ Source" is withheld — a DRQ source
+   * panel belongs to the question, and its letter would count among the stem's.
+   */
+  answer?: { label: string; translate?: FieldTranslate };
 }
 
 export function BlockEditor({
@@ -105,6 +114,7 @@ export function BlockEditor({
   labelHint,
   figureWidth,
   nested,
+  answer,
 }: Props) {
   const m = useMessages(BLOCK_EDITOR_MESSAGES);
   const dm = useMessages(DRQ_PANEL_MESSAGES);
@@ -235,6 +245,26 @@ export function BlockEditor({
       {label && <GroupHeader title={label} hint={labelHint} />}
 
       {blocks.map((block, index) => {
+        if (block.kind === 'paragraph' && answer) {
+          return (
+            <div
+              key={block.id}
+              data-edit-target={editTargetKey({ kind: 'blockText', blockId: block.id })}
+              className="group/block flex items-start gap-1"
+            >
+              <div className="min-w-0 flex-1">
+                <BiTextField
+                  ariaLabel={answer.label}
+                  translate={answer.translate}
+                  value={block.text}
+                  rows={1}
+                  onChange={(text) => replace(index, { ...block, text })}
+                />
+              </div>
+              {controls(index)}
+            </div>
+          );
+        }
         if (block.kind === 'paragraph') {
           // An address, not a field: the paragraph is typed on the page (§ panelRows).
           return (
@@ -385,7 +415,7 @@ export function BlockEditor({
             views already in it, rather than an empty frame and a second Add row. Seeded with
             the next free letter as a convenience only — nothing stores an index, and
             reordering relabels nothing (§`SourceBlock`). */}
-        {!nested && (
+        {!nested && !answer && (
           <Menu
             align="left"
             label={dm.addSourceOf}

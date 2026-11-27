@@ -1403,7 +1403,7 @@ function tableNodeFor(block: TableBlock, options: BlockNodeOptions): TableNode |
   };
 }
 
-/** A diagram block's IR node — also a leaf's model answer diagram (§ `QuestionPart.answerDiagram`). */
+/** A diagram block's IR node — also a model answer's diagrams (§ `QuestionPart.answerBlocks`). */
 export function diagramNodeFor(block: DiagramBlock, options: BlockNodeOptions): DiagramNode {
   return {
     kind: 'diagram',

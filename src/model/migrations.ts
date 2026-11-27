@@ -66,6 +66,18 @@ const V4_FIGURE_GRID_VERSION = 4;
  */
 const V4_FLOW_VERSION = V4_FIGURE_GRID_VERSION;
 
+/**
+ * Also v4 (u-0c5q; still no release has written 4, so a third reason rather than a fifth
+ * version): a model answer holding more than its text and one diagram (`answerBlocks`:
+ * tables, pictures, several diagrams, more text, in any order). Every build before it
+ * reads `answer` and `answerDiagram` and nothing else, so it opens such a paper read-only
+ * under the "newer version" bar, the answers' text still showing (it stays in `answer`)
+ * and nothing of the blocks. An answer of text and one diagram keeps the old shape
+ * (`withAnswerBlocks`, and `serializeWorksheet` again for any held in memory), so it never
+ * raises the mark (`hasAnswerBlocks`).
+ */
+const V4_ANSWER_BLOCKS_VERSION = V4_FIGURE_GRID_VERSION;
+
 type RawDoc = Record<string, unknown>;
 
 /**
@@ -238,9 +250,42 @@ function normalize(worksheet: Worksheet): Worksheet {
 export function serializeWorksheet(worksheet: Worksheet): Record<string, unknown> {
   const { __unknown, ...rest } = worksheet;
   const out: RawDoc = { ...(__unknown ?? {}), ...rest };
+  // An answer stores in the oldest shape that holds it (§ V4_ANSWER_BLOCKS_VERSION).
+  if (Array.isArray(out.questions)) out.questions = out.questions.map(oldestAnswerShapes);
   out.schemaVersion = writtenSchemaVersion(worksheet.schemaVersion, out);
   // A grid carries the picture older builds show in its place (§ V4_FIGURE_GRID_VERSION).
   return out.schemaVersion === V4_FIGURE_GRID_VERSION ? withGridFallbacks(out) : out;
+}
+
+/**
+ * A stored question with every leaf's answer in the oldest shape that holds it: an empty
+ * `answerBlocks` dropped, a lone diagram moved to `answerDiagram` (`withAnswerBlocks` keeps
+ * memory in this shape; this covers anything built around it). The same value when none
+ * needs it, so an untouched document saves byte for byte.
+ */
+function oldestAnswerShapes(question: unknown): unknown {
+  if (!isRecord(question)) return question;
+  const leaf = (owner: unknown): unknown => {
+    if (!isRecord(owner) || !Array.isArray(owner.answerBlocks)) return owner;
+    const blocks = owner.answerBlocks as unknown[];
+    const lone = blocks.length === 1 && isRecord(blocks[0]) && blocks[0].kind === 'diagram' && owner.answerDiagram === undefined;
+    if (blocks.length > 0 && !lone) return owner;
+    const next: RawDoc = { ...owner };
+    delete next.answerBlocks;
+    if (lone) next.answerDiagram = blocks[0];
+    return next;
+  };
+  let next = leaf(question) as RawDoc;
+  if (Array.isArray(next.parts)) {
+    const parts = next.parts.map((part) => {
+      const shaped = leaf(part);
+      if (!isRecord(shaped) || !Array.isArray(shaped.subParts)) return shaped;
+      const subParts = shaped.subParts.map(leaf);
+      return subParts.some((sub, i) => sub !== (shaped.subParts as unknown[])[i]) ? { ...shaped, subParts } : shaped;
+    });
+    if (parts.some((part, i) => part !== (next.parts as unknown[])[i])) next = { ...next, parts };
+  }
+  return next;
 }
 
 /**
@@ -252,6 +297,7 @@ export function serializeWorksheet(worksheet: Worksheet): Record<string, unknown
 export function writtenSchemaVersion(version: number, doc: unknown): number {
   if (version > CURRENT_SCHEMA_VERSION) return version;
   if (hasFigureGrid(doc)) return V4_FIGURE_GRID_VERSION;
+  if (hasAnswerBlocks(doc)) return V4_ANSWER_BLOCKS_VERSION;
   if (hasV4Flow(doc)) return V4_FLOW_VERSION;
   if (hasV3Diagram(doc)) return V3_DIAGRAM_VERSION;
   if (isRecord(doc) && (doc.answerKeyLayout !== undefined || hasAnswerAnySection(doc.layout) || hasEssayAnswer(doc.questions))) {
@@ -304,6 +350,14 @@ function hasWords(value: unknown): boolean {
   if (!isRecord(value)) return false;
   if (typeof value.text === 'string') return value.text.trim().length > 0;
   return Object.values(value).some(hasWords);
+}
+
+/** A non-empty `answerBlocks` anywhere in `value` (§ V4_ANSWER_BLOCKS_VERSION). */
+function hasAnswerBlocks(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasAnswerBlocks);
+  if (!isRecord(value)) return false;
+  if (Array.isArray(value.answerBlocks) && value.answerBlocks.length > 0) return true;
+  return Object.values(value).some(hasAnswerBlocks);
 }
 
 /** A figure grid block anywhere in `value` (§ V4_FIGURE_GRID_VERSION). */

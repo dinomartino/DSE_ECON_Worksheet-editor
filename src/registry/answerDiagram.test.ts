@@ -9,7 +9,6 @@ import {
   applyDeleteTarget,
   applyResizeBlock,
   findDiagramBlock,
-  isAnswerDiagram,
   replaceBlockById,
 } from '@/model/edits';
 import { migrate, serializeWorksheet } from '@/model/migrations';
@@ -130,8 +129,6 @@ describe('model answer diagram — model', () => {
     ]);
     expect(findDiagramBlock(worksheet, 'dg-a')?.id).toBe('dg-a');
     expect(findDiagramBlock(worksheet, 'dg-b1')?.id).toBe('dg-b1');
-    expect(isAnswerDiagram(worksheet, 'dg-b1')).toBe(true);
-    expect(isAnswerDiagram(worksheet, 'a-text')).toBe(false);
 
     const found = findDiagramBlock(worksheet, 'dg-b1')!;
     const patched = replaceBlockById(worksheet, 'dg-b1', {
@@ -232,7 +229,7 @@ describe('model answer diagram — answer key', () => {
     const entry = structuredType.answerKey!(worksheet.questions[0] as StructuredQuestion, {
       questionNumber: 1,
     });
-    expect(entry.kind === 'scheme' && entry.rows[0].diagram?.id).toBe('dg-a');
+    expect(entry.kind === 'scheme' && entry.rows[0].blocks?.map((block) => block.id)).toEqual(['dg-a']);
 
     const nodes = renderAnswerKey(worksheet, 'en');
     const kinds = shape(nodes);

@@ -2,20 +2,19 @@
 
 import { useState, type ReactNode } from 'react';
 import { editTargetKey, flattenBlocks } from '@/model/edits';
-import { createAnswerDiagram, createParagraphBlock, createPart, createSubPart } from '@/model/factories';
+import { ANSWER_DIAGRAM_WIDTH_PX, createAnswerDiagram, createParagraphBlock, createPart, createSubPart } from '@/model/factories';
+import { answerBlocksOf, withAnswerBlocks, type AnswerOwner } from '@/model/answerBlocks';
 import { partMarks, questionMarks } from '@/model/marks';
 import { partLabel, subPartLabel } from '@/model/numbering';
 import { emptyBiText } from '@/model/text';
 import type {
   AnswerGraph,
   ContentBlock,
-  DiagramBlock,
   QuestionPart,
   StructuredQuestion,
 } from '@/model/types';
 import { createAnswerGraph } from '@/model/answerGraph';
 import { AnswerGraphFields } from './AnswerGraphFields';
-import { AnswerDiagramRow } from './AnswerDiagramRow';
 import type { EditorPanelProps } from '@/registry/types';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { Button, CheckField, GroupHeader, NumberField, Pill } from '@/components/ui';
@@ -47,6 +46,12 @@ function withScheme<T extends { scheme?: MarkScheme }>(leaf: T, scheme: MarkSche
   return next;
 }
 
+/** The question patch that stores a leaf's answer blocks: both fields named, so a dropped one is cleared. */
+const answerPatch = (leaf: AnswerOwner): Partial<StructuredQuestion> => ({
+  answerDiagram: leaf.answerDiagram,
+  answerBlocks: leaf.answerBlocks,
+});
+
 const replacePart = (parts: QuestionPart[], index: number, part: QuestionPart) =>
   parts.map((entry, i) => (i === index ? part : entry));
 
@@ -71,10 +76,10 @@ function targetOwner(
   for (const part of question.parts) {
     for (const sub of part.subParts ?? []) {
       if (kind === 'subPartAnswer' && id === sub.id) return { partId: part.id, subPartId: sub.id };
-      if (holdsBlock && inBlocks(sub.blocks)) return { partId: part.id, subPartId: sub.id };
+      if (holdsBlock && (inBlocks(sub.blocks) || inBlocks(answerBlocksOf(sub)))) return { partId: part.id, subPartId: sub.id };
     }
     if (kind === 'partAnswer' && id === part.id) return { partId: part.id };
-    if (holdsBlock && (inBlocks(part.blocks) || inBlocks(part.blocksBefore))) {
+    if (holdsBlock && (inBlocks(part.blocks) || inBlocks(part.blocksBefore) || inBlocks(answerBlocksOf(part)))) {
       return { partId: part.id };
     }
   }
@@ -92,15 +97,42 @@ function graphMenuItem(
     : { label: m.addGraph, onSelect: () => set(createAnswerGraph()) };
 }
 
-/** The row menu's model-diagram toggle (§ `QuestionPart.answerDiagram`). */
-function diagramMenuItem(
-  m: PanelMessages,
-  current: DiagramBlock | undefined,
-  set: (diagram: DiagramBlock | undefined) => void,
-): MenuItem {
-  return current
-    ? { label: m.removeDiagram, onSelect: () => set(undefined) }
-    : { label: m.addDiagram, onSelect: () => set(createAnswerDiagram()) };
+/**
+ * The row menu's "Add model diagram": one more diagram at the end of the leaf's answer
+ * (u-0c5q: an answer holds several; each is moved or removed in the answer's own list).
+ */
+function diagramMenuItem<T extends AnswerOwner>(m: PanelMessages, leaf: T, set: (leaf: T) => void): MenuItem {
+  return {
+    label: m.addDiagram,
+    onSelect: () => set(withAnswerBlocks(leaf, [...answerBlocksOf(leaf), createAnswerDiagram()])),
+  };
+}
+
+/**
+ * The model answer's blocks under its text (u-0c5q): the stem's own Add row — text, table,
+ * picture, diagram — moved, removed and edited in place, teacher-only like the answer. The
+ * old single model diagram is the first block here; the list is stored in the oldest shape
+ * that holds it (`withAnswerBlocks`).
+ */
+function AnswerBlocks<T extends AnswerOwner>({
+  m,
+  leaf,
+  onChange,
+}: {
+  m: PanelMessages;
+  leaf: T;
+  onChange: (leaf: T) => void;
+}) {
+  return (
+    <BlockEditor
+      blocks={answerBlocksOf(leaf)}
+      onChange={(blocks) => onChange(withAnswerBlocks(leaf, blocks))}
+      label={m.answerBlocks}
+      labelHint={m.answerBlocksHint}
+      figureWidth={ANSWER_DIAGRAM_WIDTH_PX}
+      answer={{ label: m.answerParagraph, translate: { kind: 'answer' } }}
+    />
+  );
 }
 
 /**
@@ -313,11 +345,12 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
               {m.addGraphSpace}
             </Button>
           )}
-          {!question.answerDiagram && (
-            <Button size="sm" onClick={() => onChange({ answerDiagram: createAnswerDiagram() })}>
-              {m.addModelDiagram}
-            </Button>
-          )}
+          <Button
+            size="sm"
+            onClick={() => onChange(answerPatch(withAnswerBlocks(question, [...answerBlocksOf(question), createAnswerDiagram()])))}
+          >
+            {m.addModelDiagram}
+          </Button>
         </section>
       )}
       {/* An essay's answer, model diagram and scheme, in print order, as a leaf part's. */}
@@ -329,13 +362,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
             value={question.answer ?? emptyBiText()}
             onChange={(answer) => onChange({ answer })}
           />
-          {question.answerDiagram && (
-            <AnswerDiagramRow
-              block={question.answerDiagram}
-              onChange={(answerDiagram) => onChange({ answerDiagram })}
-              onRemove={() => onChange({ answerDiagram: undefined })}
-            />
-          )}
+          <AnswerBlocks m={m} leaf={question} onChange={(next) => onChange(answerPatch(next))} />
           <MarkSchemeEditor
             scheme={question.scheme}
             printedMarks={question.marks}
@@ -452,9 +479,9 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                 setExpandedParts((prev) => new Set(prev).add(part.id));
                 patchPart(partIndex, { answerGraph });
               }),
-              diagramMenuItem(m, part.answerDiagram, (answerDiagram) => {
+              diagramMenuItem(m, part, (next) => {
                 setExpandedParts((prev) => new Set(prev).add(part.id));
-                patchPart(partIndex, { answerDiagram });
+                setParts(replacePart(question.parts, partIndex, next));
               }),
               {
                 label: m.deletePart,
@@ -590,12 +617,10 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                 ),
                               });
                             }),
-                            diagramMenuItem(m, subPart.answerDiagram, (answerDiagram) => {
+                            diagramMenuItem(m, subPart, (next) => {
                               setExpandedSubs((prev) => new Set(prev).add(subPart.id));
                               patchPart(partIndex, {
-                                subParts: subParts.map((s, i) =>
-                                  i === subIndex ? { ...s, answerDiagram } : s,
-                                ),
+                                subParts: subParts.map((s, i) => (i === subIndex ? next : s)),
                               });
                             }),
                             {
@@ -723,25 +748,15 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                       })
                                     }
                                   />
-                                  {subPart.answerDiagram && (
-                                    <AnswerDiagramRow
-                                      block={subPart.answerDiagram}
-                                      onChange={(answerDiagram) =>
-                                        patchPart(partIndex, {
-                                          subParts: subParts.map((s, i) =>
-                                            i === subIndex ? { ...s, answerDiagram } : s,
-                                          ),
-                                        })
-                                      }
-                                      onRemove={() =>
-                                        patchPart(partIndex, {
-                                          subParts: subParts.map((s, i) =>
-                                            i === subIndex ? { ...s, answerDiagram: undefined } : s,
-                                          ),
-                                        })
-                                      }
-                                    />
-                                  )}
+                                  <AnswerBlocks
+                                    m={m}
+                                    leaf={subPart}
+                                    onChange={(next) =>
+                                      patchPart(partIndex, {
+                                        subParts: subParts.map((s, i) => (i === subIndex ? next : s)),
+                                      })
+                                    }
+                                  />
                                   <MarkSchemeEditor
                                     ownerId={subPart.id}
                                     scheme={subPart.scheme}
@@ -796,13 +811,11 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                       value={part.answer ?? emptyBiText()}
                       onChange={(answer) => patchPart(partIndex, { answer })}
                     />
-                    {part.answerDiagram && (
-                      <AnswerDiagramRow
-                        block={part.answerDiagram}
-                        onChange={(answerDiagram) => patchPart(partIndex, { answerDiagram })}
-                        onRemove={() => patchPart(partIndex, { answerDiagram: undefined })}
-                      />
-                    )}
+                    <AnswerBlocks
+                      m={m}
+                      leaf={part}
+                      onChange={(next) => setParts(replacePart(question.parts, partIndex, next))}
+                    />
                     <MarkSchemeEditor
                       ownerId={part.id}
                       scheme={part.scheme}
