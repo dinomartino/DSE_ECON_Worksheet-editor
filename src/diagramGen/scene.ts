@@ -4,7 +4,8 @@ import { resolveAnchor } from '@/model/diagramAnchors';
 import { axes, cross, curve, finish, newId, point, priceLine, shiftArrow, shiftOf, span, type Pair } from '@/model/diagramTemplateKit';
 import type { BiText } from '@/model/types';
 import { shiftArrowPlace, type Compiled } from './compile';
-import { defaultLabel, regionsOf, sceneDef, type SceneDef } from './sceneCatalogue';
+import { placePointLabels } from './pointLabels';
+import { defaultLabel, regionsOf, sceneDef, type SceneDef, type ScenePointDef } from './sceneCatalogue';
 import { phrase, plainOf, symbol } from './text';
 import type { CurveRole, DiagramIssue, DiagramSpec, Slope, SpecScene, SpecText } from './types';
 
@@ -23,6 +24,12 @@ export interface SceneBuilt extends Compiled {
   regionLabels: Map<string, string>;
   /** Part id → its printed label ('' = not printed). */
   partLabels: Map<string, string>;
+  /** Catalogue point id → its letter, for the points the model lettered (k-0577 round 2). */
+  pointLabels: Map<string, string>;
+  /** Every catalogue point of the scene → where it is (resolved), lettered or not. */
+  pointPlaces: Map<string, { x: number; y: number }>;
+  /** Every region of the scene → its outline (resolved), drawn or not. */
+  regionPolygons: Map<string, Array<{ x: number; y: number }>>;
 }
 
 const DEMAND_SLOPE: Record<Slope, number> = { normal: -1, steep: -2.2, flat: -0.42 };
@@ -91,15 +98,7 @@ function tickPoint(
   parts: Array<DiagramCurve | DiagramPointMark>,
   ticks: { x?: BiText | null; y?: BiText | null },
 ): DiagramPointMark {
-  const scratch: Diagram = {
-    x: {},
-    y: {},
-    curves: parts.filter((p): p is DiagramCurve => 'points' in p),
-    points: parts.filter((p): p is DiagramPointMark => 'at' in p),
-    labels: [],
-    arrows: [],
-  };
-  const where = resolveIn(scratch, ref);
+  const where = resolveIn(scratchOf(parts), ref);
   const drops: Array<'x' | 'y'> = [];
   if (ticks.x !== undefined) drops.push('x');
   if (ticks.y !== undefined) drops.push('y');
@@ -112,6 +111,17 @@ function tickPoint(
   });
 }
 
+function scratchOf(parts: Array<DiagramCurve | DiagramPointMark>): Diagram {
+  return {
+    x: {},
+    y: {},
+    curves: parts.filter((p): p is DiagramCurve => 'points' in p),
+    points: parts.filter((p): p is DiagramPointMark => 'at' in p),
+    labels: [],
+    arrows: [],
+  };
+}
+
 function resolveIn(d: Diagram, ref: DiagramAnchorRef): { x: number; y: number } {
   const p = resolveAnchor(d, ref);
   if (!p) throw new Error('scene anchor does not resolve');
@@ -122,12 +132,18 @@ interface Draft {
   curves: DiagramCurve[];
   points: DiagramPointMark[];
   arrows: DiagramArrow[];
+  /** Shift arrows to place once every point is known (they keep clear of lettered points too). */
+  shifts?: Array<{ source: DiagramCurve; copy: DiagramCurve; by: { x: number; y: number } }>;
   spans?: DiagramSpan[];
   x: BiText;
   y: BiText;
   regions: Record<string, Band>;
   curveRoles: Record<string, { curve: DiagramCurve; role: CurveRole }>;
   levels: Record<string, { vertical: boolean; at: number }>;
+  /** Tick part → the point whose drop carries it (for lettered points at a tick's quantity or price). */
+  marks: Record<string, DiagramPointMark>;
+  /** Stand-ins a catalogue point may name: the externality's `other` and `private` curves. */
+  alias?: Record<string, string>;
 }
 
 const GAP_WORDS = {
@@ -175,6 +191,38 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
         },
         curveRoles: { D: { curve: d, role: 'demand' }, S: { curve: s, role: 'supply' } },
         levels: {},
+        marks: { P0: e0, Q0: e0 },
+      };
+    }
+    case 'taxChange': {
+      // Two taxes: t₁ moves S₀ up to S₁, t₂ = 2t₁ to S₂; each step's quantity change kept readable.
+      const t = Math.min(0.2, shiftFor((SHIFT[scene.size] ?? 0.28) * k * 0.7, dm, sm));
+      const d = curve(lineThrough(dm), name('D'));
+      const s0 = curve(room(TOP - 2 * t), name('S0'));
+      const s1 = shiftOf(s0, 0, t, name('S1'));
+      const s2 = shiftOf(s1, 0, t, name('S2'));
+      const parts: Array<DiagramCurve | DiagramPointMark> = [d, s0, s1, s2];
+      const e0 = tickPoint(cross(d, s0), parts, { x: tick('Q0'), y: tick('P0') });
+      const e1 = tickPoint(cross(d, s1), parts, { x: tick('Qt1'), y: tick('Pt1') });
+      const e2 = tickPoint(cross(d, s2), parts, { x: tick('Qt2'), y: tick('Pt2') });
+      return {
+        curves: [d, s0, s1, s2],
+        points: [e0, e1, e2],
+        arrows,
+        shifts: [
+          { source: s0, copy: s1, by: { x: 0, y: t } },
+          { source: s1, copy: s2, by: { x: 0, y: t } },
+        ],
+        x: axisX,
+        y: axisY,
+        regions: {
+          dwlBefore: band([on(d), on(s0)], at(e1), at(e0)),
+          dwlAddUpper: band([on(d), on(s1)], at(e2), at(e1)),
+          dwlAddLower: band([on(s1), on(s0)], at(e2), at(e1)),
+        },
+        curveRoles: { D: { curve: d, role: 'demand' }, S0: { curve: s0, role: 'supply' }, S1: { curve: s1, role: 'supply' }, S2: { curve: s2, role: 'supply' } },
+        levels: {},
+        marks: { Q0: e0, P0: e0, Qt1: e1, Pt1: e1, Qt2: e2, Pt2: e2 },
       };
     }
     case 'unitTax':
@@ -202,16 +250,17 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
             triangle: band([on(d), on(s0)], at(e1), at(e0)),
             remaining: band([on(d), on(s1)], 0, at(e1)),
           };
-      arrows.push(...arrowFor(s0, s1, { x: 0, y: t }, [d, s0, s1], [e0, e1, ...(sp ? [sp] : [])]));
       return {
         curves: [d, s0, s1],
         points: [e0, e1, ...(sp ? [sp] : [])],
         arrows,
+        shifts: [{ source: s0, copy: s1, by: { x: 0, y: t } }],
         x: axisX,
         y: axisY,
         regions,
         curveRoles: { D: { curve: d, role: 'demand' }, S0: { curve: s0, role: 'supply' }, S1: { curve: s1, role: 'supply' } },
         levels: {},
+        marks: { Q0: e0, P0: e0, Q1: e1, Pb: e1, P1: e1, ...(sp ? { Ps: sp } : {}) },
       };
     }
     case 'unitSubsidy': {
@@ -226,11 +275,11 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
       const e1 = tickPoint(cross(d, s1), parts, { x: tick('Q1'), y: tick('Pb') });
       // Sellers receive P₂ on S₀ above Q₁; its drop runs down through E₁, the DWL's right edge.
       const sp = tickPoint({ on: s0.id, x: at(e1) }, [...parts, e1], { x: null, y: tick('Ps') });
-      arrows.push(...arrowFor(s0, s1, { x: 0, y: -t }, [d, s0, s1], [e0, e1, sp]));
       return {
         curves: [d, s0, s1],
         points: [e0, e1, sp],
         arrows,
+        shifts: [{ source: s0, copy: s1, by: { x: 0, y: -t } }],
         x: axisX,
         y: axisY,
         regions: {
@@ -240,6 +289,7 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
         },
         curveRoles: { D: { curve: d, role: 'demand' }, S0: { curve: s0, role: 'supply' }, S1: { curve: s1, role: 'supply' } },
         levels: {},
+        marks: { Q0: e0, P0: e0, Q1: e1, Pb: e1, Ps: sp },
       };
     }
     case 'priceCeiling':
@@ -296,6 +346,7 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
         regions,
         curveRoles: { D: { curve: d, role: 'demand' }, S: { curve: s, role: 'supply' }, [lineId]: { curve: line, role: 'horizontal' } },
         levels: { [lineId]: { vertical: false, at: y } },
+        marks: { Q0: e0, P0: e0, Qs: qs, Qd: qd },
       };
     }
     case 'quota': {
@@ -326,6 +377,7 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
         },
         curveRoles: { D: { curve: d, role: 'demand' }, S: { curve: s, role: 'supply' }, S1: { curve: s1, role: 'supply' } },
         levels: { Qq: { vertical: true, at: qx } },
+        marks: { Q0: e0, P0: e0, Qq: e1, P1: e1 },
       };
     }
     case 'externality': {
@@ -365,6 +417,8 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
         },
         curveRoles: { D: { curve: d, role: 'demand' }, S: { curve: s, role: 'supply' }, social: { curve: social, role: inProduction ? 'supply' : 'demand' } },
         levels: {},
+        marks: { Qm: em, Pm: em, Qe: ee, Pe: ee },
+        alias: { other: inProduction ? 'D' : 'S', private: inProduction ? 'S' : 'D' },
       };
     }
     case 'tariff': {
@@ -399,6 +453,7 @@ function draft(scene: SpecScene, name: (part: string) => BiText | undefined, tic
         },
         curveRoles: { D: { curve: d, role: 'demand' }, S: { curve: s, role: 'supply' }, Pw: { curve: pw, role: 'horizontal' }, Pt: { curve: pt, role: 'horizontal' } },
         levels: { Pw: { vertical: false, at: pwY }, Pt: { vertical: false, at: pwY + t } },
+        marks: { Q1: q1, Q2: q2, Q3: q3, Q4: q4 },
       };
     }
     case 'none':
@@ -434,7 +489,19 @@ export function sceneLabels(def: SceneDef, scene: SpecScene): Map<string, string
 export function compileScene(spec: DiagramSpec): SceneBuilt {
   const issues: DiagramIssue[] = [];
   const error = (code: string, text: string) => issues.push({ level: 'error', code, text });
-  const empty = (): SceneBuilt => ({ diagram: null, issues, curveIds: new Map(), roles: new Map(), levels: new Map(), regionAreas: new Map(), regionLabels: new Map(), partLabels: new Map() });
+  const empty = (): SceneBuilt => ({
+    diagram: null,
+    issues,
+    curveIds: new Map(),
+    roles: new Map(),
+    levels: new Map(),
+    regionAreas: new Map(),
+    regionLabels: new Map(),
+    partLabels: new Map(),
+    pointLabels: new Map(),
+    pointPlaces: new Map(),
+    regionPolygons: new Map(),
+  });
   const scene = spec.scene;
   const def = scene ? sceneDef(scene.type) : undefined;
   if (!scene || !def) {
@@ -445,7 +512,9 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     if (!def.parts.some((p) => p.id === l.part.trim())) error('scene.part', `Scene ${def.type} has no part "${l.part}". Its parts are ${def.parts.map((p) => p.id).join(', ')}.`);
   }
   const labels = sceneLabels(def, scene);
-  const anyArea = scene.areas.length > 0;
+  const scenePoints = scene.points ?? [];
+  // Lettered corners need the dashed lines that bound their areas, as lettered regions do.
+  const anyArea = scene.areas.length > 0 || scenePoints.length > 0;
   const name = (part: string) => symbol(labels.get(part) ?? '');
   // A tick with no label still draws its dashed line when lettered regions need it as an edge.
   const tick = (part: string): BiText | null | undefined => {
@@ -507,6 +576,77 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
     plans.push({ regions, label, pattern: PATTERNS[i % PATTERNS.length], text });
   });
 
+  // Lettered points (k-0577 round 2): each on its catalogue place, anchored so a drag keeps it there.
+  const pointLabels = new Map<string, string>();
+  const lettered: DiagramPointMark[] = [];
+  const letteredIds = new Map<string, string>();
+  const pointPlaces = new Map<string, { x: number; y: number }>();
+  const parts: Array<DiagramCurve | DiagramPointMark> = [...built.curves, ...built.points];
+  const refOf = (p: ScenePointDef): DiagramAnchorRef | null => {
+    const curveOf = (id: string) => built!.curveRoles[built!.alias?.[id] ?? id]?.curve;
+    const on = curveOf(p.on);
+    if (!on) return null;
+    const other = curveOf(p.at);
+    if (other) return cross(on, other);
+    const kind = def.parts.find((q) => q.id === p.at)?.kind;
+    const mark = built!.marks[p.at];
+    if (!mark || !kind || kind === 'curve') return null;
+    return kind === 'xTick' ? { on: on.id, x: at(mark) } : { on: on.id, y: at(mark) };
+  };
+  for (const p of def.points) {
+    const ref = refOf(p);
+    if (!ref) continue;
+    try {
+      pointPlaces.set(p.id, resolveIn(scratchOf(parts), ref));
+    } catch {
+      // Not on the plot with these choices.
+    }
+  }
+  const seenLetters = new Set<string>();
+  for (const sp of scenePoints) {
+    const p = def.points.find((q) => q.id === sp.point);
+    if (!p) {
+      error('scene.point', `Scene ${def.type} has no point "${sp.point}". Its points are ${def.points.map((q) => q.id).join(', ')}.`);
+      continue;
+    }
+    const letter = sp.label.trim();
+    if (!/^[A-Za-z]$/.test(letter)) {
+      error('scene.pointLabel', `Point ${p.id} needs one letter as its label (got "${sp.label}").`);
+      continue;
+    }
+    if (seenLetters.has(letter) || pointLabels.has(p.id)) {
+      error('scene.pointTwice', `Letter ${letter} or point ${p.id} is used twice: one letter per point.`);
+      continue;
+    }
+    const ref = refOf(p);
+    const where = pointPlaces.get(p.id);
+    if (!ref || !where) {
+      error('scene.pointOff', `Point ${p.id} is not on the figure with these choices.`);
+      continue;
+    }
+    seenLetters.add(letter);
+    pointLabels.set(p.id, letter);
+    const mark = point(where.x, where.y, symbol(letter), { anchor: ref, dot: true });
+    letteredIds.set(p.id, mark.id);
+    lettered.push(mark);
+  }
+  // A lettered point above a tick's point (n on S₂ above e) takes over its dashed line, so the line runs up to it.
+  for (const [part, mark] of Object.entries(built.marks)) {
+    if (!mark.dropTo?.includes('x') || def.parts.find((q) => q.id === part)?.kind !== 'xTick') continue;
+    const above = lettered.filter((l) => Math.abs(l.at.x - mark.at.x) < 1e-6 && l.at.y > mark.at.y + 1e-6).sort((a, b) => b.at.y - a.at.y)[0];
+    if (!above) continue;
+    above.dropTo = ['x'];
+    if (mark.xTickLabel) above.xTickLabel = mark.xTickLabel;
+    mark.dropTo = mark.dropTo.filter((a) => a !== 'x');
+    delete mark.xTickLabel;
+  }
+  // Shift arrows last: clear of every line, point and lettered point, and of each other.
+  const arrows = [...built.arrows];
+  for (const sh of built.shifts ?? []) {
+    const placed = arrows.flatMap((a) => [a.from, a.to, { x: (a.from.x + a.to.x) / 2, y: (a.from.y + a.to.y) / 2 }].map((at) => ({ id: 'probe', at })));
+    arrows.push(...arrowFor(sh.source, sh.copy, sh.by, built.curves, [...built.points, ...lettered, ...placed]));
+  }
+
   const curveIds = new Map<string, string>();
   const roles = new Map<string, CurveRole>();
   for (const [part, { curve: c, role }] of Object.entries(built.curveRoles)) {
@@ -519,7 +659,7 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
   let diagram: Diagram;
   try {
     diagram = finish(
-      axes(built.x, built.y, { curves: built.curves, points: built.points, arrows: built.arrows, ...(built.spans?.length ? { spans: built.spans } : {}) }),
+      axes(built.x, built.y, { curves: built.curves, points: [...built.points, ...lettered], arrows, ...(built.spans?.length ? { spans: built.spans } : {}) }),
       () => {
         const areas: DiagramArea[] = [];
         for (const plan of plans) {
@@ -555,8 +695,17 @@ export function compileScene(spec: DiagramSpec): SceneBuilt {
   }
   // `finish` copied the areas: write the labels into the diagram's own.
   diagram = { ...diagram, areas: (diagram.areas ?? []).map((a) => [...regionAreas.values()].find((r) => r.id === a.id) ?? a) };
+  // Each letter beside its own point, clear of every line, arrow, dot and label.
+  if (lettered.length) diagram = placePointLabels(diagram, new Set(letteredIds.values()));
 
-  return { diagram, issues, curveIds, roles, levels, regionAreas, regionLabels, partLabels: labels };
+  // Every region's outline, drawn or not: a corner-named area is checked against them.
+  const regionPolygons = new Map<string, Array<{ x: number; y: number }>>();
+  for (const [id, b] of Object.entries(built.regions)) {
+    const poly = areaPolygon(diagram, { id: 'probe', band: { edges: b.edges, from: b.from, to: b.to, ...(b.cap ? { cap: b.cap } : {}) } });
+    if (poly) regionPolygons.set(id, poly);
+  }
+
+  return { diagram, issues, curveIds, roles, levels, regionAreas, regionLabels, partLabels: labels, pointLabels, pointPlaces, regionPolygons };
 }
 
 /** Ticks on the plot and apart, every region with area: the layout a teacher can read. */

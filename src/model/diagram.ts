@@ -315,6 +315,12 @@ export interface DiagramAxis {
    */
   titleOffset?: DiagramPoint;
   /**
+   * x-axis only: where the title prints. `end` past the arrowhead; `below` under the axis,
+   * right-aligned to its end (as HKDSE sets a long title). Absent = past the arrow, or under
+   * the axis when past the arrow it would be cut off (`render/diagram.ts:xTitleBelow`).
+   */
+  titleAt?: 'end' | 'below';
+  /**
    * The value the plot's far edge stands for (unit 1 = `max`), so the inspector reads
    * and types values (a PPF's 30 and 60). Storage stays unit space.
    */

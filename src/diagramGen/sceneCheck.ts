@@ -30,6 +30,219 @@ export function optionLetters(option: string): string[] | null {
 
 const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x) => b.includes(x));
 
+// ---- areas named by their corners: "area efj", "fgmj" (k-0577 round 2) ----
+
+/** Words that may follow "area" and are not corner letters. */
+const NOT_CORNERS = new Set(
+  'above below under over the that this these those which where from with and are will would can may must its each both lost gain loss shown also then has have had was for not all one two lies lie lying into onto less more equal is was bounded shaded marked formed enclosed between'.split(' '),
+);
+const AREA_WORD_EN = String.raw`\b(?:[Aa]reas?|[Rr]egions?|[Tt]riangles?|[Rr]ectangles?|[Tt]rapeziums?|[Qq]uadrilaterals?|[Ss]hapes?)`;
+const CORNERS_EN = new RegExp(String.raw`${AREA_WORD_EN}\s+((?:[a-z]{3,6}|[A-Z]{3,6})(?:\s*(?:,|and|or|\+|&)\s*(?:[a-z]{3,6}|[A-Z]{3,6}))*)(?![A-Za-z])`, 'g');
+const CORNERS_ZH = /(?:面積|區域|三角形|長方形|梯形|四邊形)\s*((?:[a-z]{3,6}|[A-Z]{3,6})(?:\s*(?:、|及|和|與|\+|＋)\s*(?:[a-z]{3,6}|[A-Z]{3,6}))*)(?![A-Za-z])/g;
+const POINT_LETTER_EN = /\b[Pp]oints?\s+([a-z](?:\s*(?:,|and|or|&)\s*[a-z])*)(?![A-Za-z])/g;
+const POINT_LETTER_ZH = /點\s*([a-z])(?![A-Za-z])|(?<![A-Za-z])([a-z])\s*點/g;
+
+const isCorners = (token: string) => !NOT_CORNERS.has(token.toLowerCase()) && new Set(token).size === token.length;
+
+/** The corner-named areas a text names ("efj", "fgmj"), in order, each once. */
+export function cornerAreasIn(text: string): string[] {
+  const out: string[] = [];
+  const add = (t: string) => {
+    if (isCorners(t) && !out.includes(t)) out.push(t);
+  };
+  for (const re of [CORNERS_EN, CORNERS_ZH]) for (const m of text.matchAll(re)) for (const t of m[1].match(/[A-Za-z]{3,6}/g) ?? []) add(t);
+  return out;
+}
+
+/** An option that is only a corner-named area ("fgk", "Area efj", "面積 egn"); null otherwise. */
+export function optionCorners(option: string): string | null {
+  const bare = option.replace(/[.。]\s*$/, '').replace(/\b(?:the\s+)?(?:areas?|regions?|triangles?)\b|面積|區域/gi, ' ').trim();
+  if (/^[a-z]{3,6}$/.test(bare) || /^[A-Z]{3,6}$/.test(bare)) return isCorners(bare) ? bare : null;
+  const named = cornerAreasIn(option);
+  return named.length === 1 ? named[0] : null;
+}
+
+/** Every letter a text uses as a corner or a point. */
+export function cornerLettersIn(text: string): string[] {
+  const out = new Set<string>();
+  for (const area of cornerAreasIn(text)) for (const l of area) out.add(l);
+  for (const re of [POINT_LETTER_EN, POINT_LETTER_ZH]) for (const m of text.matchAll(re)) for (const l of (m[1] ?? m[2] ?? '').match(/[a-z]/g) ?? []) out.add(l);
+  return [...out];
+}
+
+type Pt = { x: number; y: number };
+
+function hull(points: Pt[]): Pt[] {
+  const ps = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
+  if (ps.length < 3) return ps;
+  const cross = (o: Pt, a: Pt, b: Pt) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lower: Pt[] = [];
+  for (const p of ps) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 1e-12) lower.pop();
+    lower.push(p);
+  }
+  const upper: Pt[] = [];
+  for (const p of [...ps].reverse()) {
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 1e-12) upper.pop();
+    upper.push(p);
+  }
+  return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+}
+
+function inPolygon(p: Pt, poly: readonly Pt[]): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) {
+    const a = poly[i];
+    const b = poly[j];
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y || 1e-12) + a.x) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Whether the area with corners `corners` is the union of `regions`, sampled on a fine grid:
+ * the two may differ by at most 3% of the larger. Corner areas are convex (triangles,
+ * quadrilaterals), so the corners' hull is the area whatever order the letters come in.
+ */
+export function sameArea(corners: Pt[], regions: ReadonlyArray<readonly Pt[]>): boolean {
+  const shape = hull(corners);
+  if (shape.length < 3 || !regions.length) return false;
+  const all = [...shape, ...regions.flat()];
+  const [x0, x1] = [Math.min(...all.map((p) => p.x)), Math.max(...all.map((p) => p.x))];
+  const [y0, y1] = [Math.min(...all.map((p) => p.y)), Math.max(...all.map((p) => p.y))];
+  const N = 160;
+  let a = 0;
+  let b = 0;
+  let differ = 0;
+  for (let i = 0; i < N; i += 1) {
+    for (let j = 0; j < N; j += 1) {
+      const p = { x: x0 + ((i + 0.5) / N) * (x1 - x0), y: y0 + ((j + 0.5) / N) * (y1 - y0) };
+      const inA = inPolygon(p, shape);
+      const inB = regions.some((r) => inPolygon(p, r));
+      if (inA) a += 1;
+      if (inB) b += 1;
+      if (inA !== inB) differ += 1;
+    }
+  }
+  return differ <= 0.03 * Math.max(a, b, 1);
+}
+
+/** The figure's lines as polylines: its curves, and each dashed drop from a point to an axis. */
+function figureLines(diagram: Diagram): Pt[][] {
+  const out: Pt[][] = diagram.curves.map((c) => c.points);
+  for (const p of diagram.points) for (const axis of p.dropTo ?? []) out.push([p.at, axis === 'x' ? { x: p.at.x, y: 0 } : { x: 0, y: p.at.y }]);
+  return out;
+}
+
+function onLine(line: readonly Pt[], p: Pt): boolean {
+  for (let i = 1; i < line.length; i += 1) {
+    const a = line[i - 1];
+    const b = line[i];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len));
+    if (Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)) < 0.004) return true;
+  }
+  return false;
+}
+
+/** The catalogue points at the corners of a region union, by id (for a repair message). */
+function cornersOf(built: SceneBuilt, regions: readonly string[]): string[] {
+  const polys = regions.map((r) => built.regionPolygons.get(r)).filter((p): p is Pt[] => Boolean(p));
+  const ids = [...built.pointPlaces.keys()];
+  // The smallest set of catalogue points whose hull is the union: try every subset of 3 and 4.
+  for (const n of [3, 4]) {
+    const pick = (start: number, chosen: string[]): string[] | null => {
+      if (chosen.length === n) return sameArea(chosen.map((id) => built.pointPlaces.get(id)!), polys) ? chosen : null;
+      for (let i = start; i < ids.length; i += 1) {
+        const found = pick(i + 1, [...chosen, ids[i]]);
+        if (found) return found;
+      }
+      return null;
+    };
+    const found = pick(0, []);
+    if (found) return found;
+  }
+  return [];
+}
+
+/**
+ * The question's corner letters against the figure's lettered points: every letter the stem,
+ * statements, options or explanation use must be on a point; an area the keyed option names by
+ * its corners must be what the question asks; no other option may name the same area.
+ */
+export function checkSceneCorners(spec: DiagramSpec, built: SceneBuilt, mcq: McqWords, explanation: string): { issues: DiagramIssue[]; solved: SolvedKey | null; used: boolean } {
+  const issues: DiagramIssue[] = [];
+  const scene = spec.scene!;
+  const def = sceneDef(scene.type);
+  const texts = [mcq.stem, ...mcq.statements, ...mcq.options, explanation];
+  const named = [...new Set(texts.flatMap(cornerLettersIn))];
+  const keyedCorners = optionCorners(mcq.options[mcq.answer] ?? '');
+  const used = named.length > 0;
+  if (!def || !used) return { issues, solved: null, used };
+  const error = (code: string, text: string) => issues.push({ level: 'error', code, text });
+  const letterAt = new Map([...built.pointLabels].map(([id, l]) => [l, id]));
+  const missing = named.filter((l) => !letterAt.has(l));
+  if (missing.length) {
+    const areas = texts.flatMap(cornerAreasIn).filter((a, i, all) => all.indexOf(a) === i);
+    error(
+      'scene.cornerMissing',
+      `The question names ${areas.length ? `area${areas.length > 1 ? 's' : ''} ${areas.join(', ')}` : 'points'} by corner letters, but ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} on no point of the figure. Letter every corner the stem, options and explanation use on the scene point where the explanation's geometry puts it (scene.points: [{point, label}]; points: ${def.points.map((p) => p.id).join(', ')}).`,
+    );
+  }
+  // Each named area is a real area of the figure: every edge runs along a drawn line (u-fbsp v2: m and j on the wrong points made "efj" a triangle no line bounds).
+  if (!missing.length && built.diagram) {
+    const lines = figureLines(built.diagram);
+    for (const area of [...new Set(texts.flatMap(cornerAreasIn))]) {
+      const pts = [...area].map((l) => ({ l, at: built.pointPlaces.get(letterAt.get(l) ?? '') })).filter((p): p is { l: string; at: Pt } => Boolean(p.at));
+      if (pts.length !== area.length) continue;
+      const shape = hull(pts.map((p) => p.at));
+      if (shape.length < pts.length) {
+        error('scene.cornerShape', `Area ${area}: its corners do not make a ${area.length === 3 ? 'triangle' : 'shape'} (a letter lies on a side or inside). Put the letters where the explanation's geometry puts them.`);
+        continue;
+      }
+      const name = (at: Pt) => pts.find((p) => p.at === at)!.l;
+      const loose = shape.map((a, i) => [a, shape[(i + 1) % shape.length]] as const).filter(([a, b]) => !lines.some((line) => onLine(line, a) && onLine(line, b) && onLine(line, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })));
+      if (loose.length) {
+        error(
+          'scene.cornerEdge',
+          `Area ${area} has ${loose.length === 1 ? 'a side' : 'sides'} ${loose.map(([a, b]) => `${name(a)}–${name(b)}`).join(', ')} that ${loose.length === 1 ? 'runs' : 'run'} along no line of the figure, so the letters are on the wrong points. Each corner sits where two lines meet (or on a curve at a dashed line) so that every side of the area runs along a curve or a dashed line, as the explanation describes it.`,
+        );
+      }
+    }
+  }
+  if (!keyedCorners || scene.ask === 'none' || !def.measures[scene.ask]) return { issues, solved: null, used };
+  const regions = def.measures[scene.ask]!;
+  const polys = regions.map((r) => built.regionPolygons.get(r)).filter((p): p is Pt[] => Boolean(p));
+  const areaOf = (corners: string): Pt[] | null => {
+    const pts = [...corners].map((l) => letterAt.get(l)).map((id) => (id ? built.pointPlaces.get(id) : undefined));
+    return pts.every(Boolean) ? (pts as Pt[]) : null;
+  };
+  const want = cornersOf(built, regions);
+  const wantLetters = want.map((id) => built.pointLabels.get(id) ?? `(${id}, unlettered)`);
+  const keyedShape = areaOf(keyedCorners);
+  const keyedRight = keyedShape ? sameArea(keyedShape, polys) : false;
+  if (!missing.length && !keyedRight) {
+    error(
+      'scene.cornerKey',
+      `The key is option ${'ABCD'[mcq.answer]} (area ${keyedCorners}), but with these letters area ${keyedCorners} is not ${scene.ask}. ${scene.ask} is ${regions.join(' + ')}, whose corners are the points ${want.join(', ') || '(none found)'}${want.length ? ` (now lettered ${wantLetters.join(', ')})` : ''}. Put the letters on the points so area ${keyedCorners} is exactly those corners; the question's words are fixed.`,
+    );
+  }
+  const options = mcq.options.map(optionCorners);
+  const option = keyedRight ? mcq.answer : -1;
+  const twins = options
+    .map((c, i) => (c && i !== mcq.answer ? i : -1))
+    .filter((i) => i >= 0)
+    .filter((i) => {
+      const shape = areaOf(options[i]!);
+      return shape && keyedRight && sameArea(shape, polys);
+    });
+  if (twins.length) error('scene.twoKeys', `Options ${[mcq.answer, ...twins].map((i) => 'ABCD'[i]).join(' and ')} both name ${scene.ask}.`);
+  const solved: SolvedKey = { labels: [keyedCorners], option, why: `${scene.ask} is ${regions.join(' + ')}, the area with corners ${wantLetters.join(', ')}` };
+  return { issues, solved, used };
+}
+
 export interface McqWords {
   stem: string;
   statements: readonly string[];
@@ -38,11 +251,13 @@ export interface McqWords {
 }
 
 /** The answer from the drawing, against the keyed option. */
-export function checkSceneKey(spec: DiagramSpec, built: SceneBuilt, mcq: McqWords): { issues: DiagramIssue[]; solved: SolvedKey | null } {
+export function checkSceneKey(spec: DiagramSpec, built: SceneBuilt, mcq: McqWords, cornersUsed = false): { issues: DiagramIssue[]; solved: SolvedKey | null } {
   const issues: DiagramIssue[] = [];
   const scene = spec.scene!;
   const def = sceneDef(scene.type);
   if (!def || scene.ask === 'none') return { issues, solved: null };
+  // A question that names its areas by corners and no option by region letters: the corner check answered it.
+  if (cornersUsed && isArea(def, scene.ask) && !mcq.options.some((o) => optionLetters(o))) return { issues, solved: null };
   const error = (code: string, text: string) => issues.push({ level: 'error', code, text });
   const keyed = mcq.options[mcq.answer] ?? '';
 
@@ -94,12 +309,28 @@ export function checkSceneKey(spec: DiagramSpec, built: SceneBuilt, mcq: McqWord
   return { issues, solved: null };
 }
 
+// ---- how the scene reads ----
+
+/**
+ * A curve's name is a short symbol at its end (S_1, MSC, D = MPB = MSB): words in brackets
+ * ("S_2 (with tax = t_2)") crowd the other names (u-fbsp); the stem says what each curve is.
+ */
+export function checkSceneLook(spec: DiagramSpec): DiagramIssue[] {
+  const scene = spec.scene;
+  const def = scene ? sceneDef(scene.type) : undefined;
+  if (!scene || !def) return [];
+  const long = scene.labels.filter((l) => def.parts.find((p) => p.id === l.part)?.kind === 'curve' && (/[()（）]/.test(l.label) || l.label.replace(/[_{}\s]/g, '').length > 10));
+  return long.length
+    ? [{ level: 'error', code: 'scene.longName', text: `Curve names are short symbols at the curve's end: ${long.map((l) => `"${l.label}"`).join(', ')} ${long.length === 1 ? 'is' : 'are'} too long. Use the symbol alone (S_1, S_2); the stem says what each curve is.` }]
+    : [];
+}
+
 // ---- the question's words against the scene ----
 
 const WORDS: Array<{ re: RegExp; ok: (s: SpecScene) => boolean; says: string }> = [
   {
     re: /\b(?:unit|per[- ]unit|specific|sales|commodity) tax\b|\btax(?:es)? (?:of|on) (?!imports?)|從量稅|徵收.{0,8}(?<!關)稅/i,
-    ok: (s) => s.type === 'unitTax' || s.type === 'tariff' || s.type === 'externality',
+    ok: (s) => s.type === 'unitTax' || s.type === 'taxChange' || s.type === 'tariff' || s.type === 'externality',
     says: 'a per-unit tax (scene unitTax)',
   },
   { re: /\bsubsid(?:y|ies|ise|ize)\b|津貼|補貼|資助/i, ok: (s) => s.type === 'unitSubsidy' || s.type === 'externality', says: 'a subsidy (scene unitSubsidy)' },
@@ -170,6 +401,18 @@ export function sceneWords(spec: DiagramSpec, built: SceneBuilt, diagram: Diagra
   for (const [l, regions] of byLabel) {
     const shapes = regions.map((r) => fill(def.regions.find((k) => k.id === r)?.shape ?? r));
     lines.push(`Area ${l}: ${shapes.join(', together with ')}.`);
+  }
+  // Lettered corners (k-0577 round 2): where each sits, in the parts' printed names; the solver works out the areas.
+  for (const [id, letter] of built.pointLabels) {
+    const p = def.points.find((q) => q.id === id);
+    if (!p) continue;
+    const name = (part: string) => label(part === 'other' ? (scene.externality.endsWith('Production') ? 'D' : 'S') : part === 'private' ? (scene.externality.endsWith('Production') ? 'S' : 'D') : part);
+    const at = def.parts.find((q) => q.id === p.at);
+    const where =
+      !at || at.kind === 'curve'
+        ? `where ${name(p.on)} meets ${name(p.at)}`
+        : `on ${name(p.on)}, at the ${at.kind === 'xTick' ? 'quantity' : 'price'} of the point ${fill(at.place)} (on the same dashed line)`;
+    lines.push(`Point ${letter}: ${where}.`);
   }
   return lines.join('\n');
 }

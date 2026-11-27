@@ -24,6 +24,20 @@ export interface GraphCase {
 
 export const GRAPH_CASES: GraphCase[] = [
   {
+    // k-0577 round 2 (u-fbsp): the user's HKDSE 2018 P1 Q22 draft, areas named by their corners; the note is as vague as a writer's.
+    id: 'e-tax-raise',
+    type: 'Unit tax raised from t1 to t2: change in DWL (corner letters)',
+    family: 'E',
+    stem: 'The following diagram shows the demand and supply curves of Good Y.\nSuppose the government increases the unit tax on Good Y from t1 to t2. Which of the following statements is correct?',
+    options: ['The deadweight loss will decrease by area efj.', 'The new deadweight loss is area fgk.', 'The deadweight loss will increase by area fgmj.', 'The new deadweight loss is area egn.'],
+    answer: 2,
+    explanation:
+      'With the tax t1, the deadweight loss is area efj. When the tax increases to t2, the deadweight loss becomes area egm, so the deadweight loss increases by area fgmj. Option A is wrong because a higher unit tax increases, rather than decreases, the deadweight loss. Option B is wrong because area fgk only lies between S2 and S1 instead of between D and S0. Option D is wrong because area egn lies above the demand curve D.',
+    figure: 'Axes Price and Quantity. D, S0 (without tax), S1 (with tax t1) and S2 (with tax t2), each higher. Points e, f, g where D meets S0, S1, S2; j, k, m, n where the explanation needs them. Key: fgmj.',
+    want: 'taxChange: S0 < S1 < S2 up; e=D×S0, f=D×S1, g=D×S2, j on S0 below f, m on S0 below g, k on S1 below g, n on S2 above e; dashed lines at the three quantities; letters clear of lines; no other letters.',
+    labels: ['S_0', 'S_1', 'S_2', 'D', 'e', 'f', 'g', 'j', 'k', 'm', 'n'],
+  },
+  {
     id: 'e-cs-ps',
     type: 'Consumer and producer surplus',
     family: 'E',

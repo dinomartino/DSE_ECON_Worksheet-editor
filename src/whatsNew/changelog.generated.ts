@@ -331,6 +331,24 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **The Question studio letters the corners of an area where the answer needs them.** A question
+  that names areas by their corners (“the deadweight loss increases by area fgmj”, as HKDSE 2018
+  Paper 1 Q22 does) now gets every letter its options and explanation use, each on the right point:
+  where two curves meet, or on a curve at a dashed line, and no other letters. A tax raised from t1
+  to t2 is drawn with its three supply curves. Each letter sits beside its own point, clear of the
+  lines and arrows. The studio checks that every side of each named area runs along a line of the
+  diagram and that the keyed area is the one asked, and fixes the drawing before you see it.
+  <!-- zh: **擬題工作室會把面積各角的字母標在答案需要的位置。** 以角點命名面積的題目（例如「效率損失增加面積 fgmj」，如 HKDSE 2018 卷一第 22 題）現在會標出選項及解釋用到的每個字母，各在正確的點上：兩條曲線的交點，或曲線與虛線的交點，且不多標其他字母。稅款由 t1 提高至 t2 會畫出三條供應曲線。每個字母都放在其點旁，不會壓在線或箭咀上。工作室會檢查每個面積的每條邊都沿着圖中的線，以及答案的面積正是題目所問的，並在你看到前修正圖表。 -->
+- **AI questions no longer print “[picture]”.** A question written close to a past paper copied
+  the marker that stands for the paper's figure; it is now removed, from saved drafts too.
+  <!-- zh: **AI 擬題不再印出「[picture]」。** 仿照歷屆試題擬寫的題目曾抄入代表原題圖表的標記；現已刪除，已儲存的草稿亦然。 -->
+- **Long axis titles are no longer cut off, and curve names stay beside their curves.** On a
+  narrow diagram (under an option, in a grid) a long x-axis title such as “Aggregate output” is set
+  under the axis at its end, as HKDSE prints it, instead of running off the edge. A curve's name that
+  has to move to clear another stays above the x-axis next to its curve. The studio now warns when a
+  diagram's label would be cut off or sits away from its curve, instead of saying no problems were
+  found.
+  <!-- zh: **長的座標軸標題不再被截斷，曲線名稱留在曲線旁。** 在較窄的圖表（選項下方或圖組內），「Aggregate output」等較長的橫軸標題會像 HKDSE 一樣置於軸下、靠軸的末端，而不會超出邊界。須移開以免重疊的曲線名稱會留在橫軸之上、曲線旁邊。若圖表標籤會被截斷或離開其曲線，工作室現在會提示，而非顯示「未發現問題」。 -->
 - **Codes and keys show in a fixed-width font.** Your DSEcon Mentor sign-in code, API key
   fields and other codes in Settings were meant to use a fixed-width font but fell back to the
   ordinary one; they now line up character by character, so a key is easier to check.

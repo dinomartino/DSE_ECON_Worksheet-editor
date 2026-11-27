@@ -611,10 +611,22 @@ describe('projection inverse', () => {
   it('accounts for the room a long axis title takes, not just the padding constants', () => {
     const short = diagramPlot(supplyDemand(), { widthPx: 480, heightPx: 360, language: 'en' });
     const long = diagramPlot(
-      { ...supplyDemand(), x: { title: { en: [{ text: 'Quantity of Good X per period' }], zh: [] } } },
+      { ...supplyDemand(), x: { title: { en: [{ text: 'Quantity of Good X' }], zh: [] } } },
       { widthPx: 480, heightPx: 360, language: 'en' },
     );
     expect(long.plot.right).toBeLessThan(short.plot.right);
+  });
+
+  it('sets a title too long for the room past the arrow under the axis, so it reserves none (u-ewel)', () => {
+    const short = diagramPlot(
+      { ...supplyDemand(), x: { title: { en: [{ text: 'Quantity of Good X' }], zh: [] } } },
+      { widthPx: 480, heightPx: 360, language: 'en' },
+    );
+    const long = diagramPlot(
+      { ...supplyDemand(), x: { title: { en: [{ text: 'Quantity of Good X per period' }], zh: [] } } },
+      { widthPx: 480, heightPx: 360, language: 'en' },
+    );
+    expect(long.plot.right).toBeGreaterThan(short.plot.right);
   });
 });
 
