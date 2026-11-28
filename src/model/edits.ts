@@ -33,7 +33,13 @@ import type { EditTarget, SchemeAddress } from '@/render/ir';
 import { diagramSize } from '@/render/diagram';
 import { applyBandFieldSide, bandFieldSideText } from './bandSegments';
 import {
+  groupPoints,
   joinMarkPoint,
+  mapSchemePointBlocks,
+  pointBlocksOf,
+  routeGroups,
+  schemePointBlockLists,
+  schemeRoutes,
   schemeTextAt,
   splitMarkPoint,
   withSchemeText,
@@ -144,6 +150,18 @@ export function splitSchemePoint(
 /** Word's Enter on an empty mark point ends the list (§ `withoutEmptyMarkPoint`). */
 export function dropEmptySchemePoint(worksheet: Worksheet, target: SchemePointTarget): Worksheet {
   return applyScheme(worksheet, target, (scheme) => withoutEmptyMarkPoint(scheme, target.pointId));
+}
+
+/**
+ * Whether the point holds figures (`MarkPoint.blocks`, k-0595): Enter on its empty line
+ * starts the next point, as on a worded one, rather than ending the list.
+ */
+export function schemePointHasFigures(worksheet: Worksheet, target: SchemePointTarget): boolean {
+  return schemeRoutes(targetScheme(worksheet, target)).some((route) =>
+    routeGroups(route).some((group) =>
+      groupPoints(group).some((point) => point.id === target.pointId && pointBlocksOf(point).length > 0),
+    ),
+  );
 }
 
 /** Word's Backspace / Delete at a mark point's edge (§ `joinMarkPoint`); `undefined` where there is none to join. */
@@ -293,13 +311,18 @@ export function flattenBlocks(blocks: ContentBlock[]): ContentBlock[] {
   });
 }
 
-/** A leaf that may carry a model answer (§ `model/answerBlocks.ts`). */
-type AnswerDiagramOwner = AnswerOwner & { id: string };
+/**
+ * A leaf that may carry a model answer (§ `model/answerBlocks.ts`) and a marking scheme
+ * whose points hold figures (`MarkPoint.blocks`, k-0595). The helpers below are the one
+ * place every block walk reaches a leaf's teacher-only blocks, so the two kinds are found,
+ * patched, inserted beside and deleted by exactly the same routes as a stem's.
+ */
+type AnswerDiagramOwner = AnswerOwner & { id: string; scheme?: MarkScheme };
 
-/** A leaf's answer blocks as one list (none when empty), so every read walk finds them by id. */
+/** A leaf's answer blocks as one list (none when empty), then each point's figures, so every read walk finds them by id. */
 function answerDiagramList(owner: AnswerDiagramOwner): ContentBlock[][] {
   const blocks = answerBlocksOf(owner);
-  return blocks.length > 0 ? [blocks] : [];
+  return [...(blocks.length > 0 ? [blocks] : []), ...schemePointBlockLists(owner.scheme)];
 }
 
 /** Whether `blockId` sits anywhere in the leaf's answer blocks. */
@@ -307,22 +330,43 @@ function answerHolds(owner: AnswerDiagramOwner, blockId: string): boolean {
   return flattenBlocks(answerBlocksOf(owner)).some((block) => block.id === blockId);
 }
 
-/** Patch a block of a leaf's answer by id; the leaf itself when the answer does not hold it. */
+/** Whether `blockId` sits among the figures of one of the leaf's mark points. */
+function schemeHolds(owner: AnswerDiagramOwner, blockId: string): boolean {
+  return schemePointBlockLists(owner.scheme).some((blocks) => flattenBlocks(blocks).some((block) => block.id === blockId));
+}
+
+/** The leaf with its points' figure lists passed through `map`; the leaf itself when none changes. */
+function mapPointFigures<T extends AnswerDiagramOwner>(owner: T, map: (blocks: ContentBlock[]) => ContentBlock[]): T {
+  const scheme = mapSchemePointBlocks(owner.scheme, map);
+  return scheme === owner.scheme ? owner : { ...owner, scheme };
+}
+
+/** Patch a block of a leaf's answer or of a mark point by id; the leaf itself when neither holds it. */
 function patchAnswerDiagram<T extends AnswerDiagramOwner>(
   owner: T,
   blockId: string,
   patch: (block: ContentBlock) => ContentBlock,
 ): T {
+  if (schemeHolds(owner, blockId)) {
+    return mapPointFigures(owner, (blocks) =>
+      flattenBlocks(blocks).some((block) => block.id === blockId) ? patchBlocks(blocks, blockId, patch) : blocks,
+    );
+  }
   if (!answerHolds(owner, blockId)) return owner;
   return withAnswerBlocks(owner, patchBlocks(answerBlocksOf(owner), blockId, patch));
 }
 
-/** Drop `blockId` from a leaf's answer blocks with `strip` (the delete walk's own list rule). */
+/** Drop `blockId` from a leaf's answer blocks or a point's figures with `strip` (the delete walk's own list rule). */
 function clearAnswerDiagram<T extends AnswerDiagramOwner>(
   owner: T,
   blockId: string,
   strip: (blocks: ContentBlock[]) => ContentBlock[],
 ): T {
+  if (schemeHolds(owner, blockId)) {
+    return mapPointFigures(owner, (blocks) =>
+      flattenBlocks(blocks).some((block) => block.id === blockId) ? strip(blocks) : blocks,
+    );
+  }
   if (!answerHolds(owner, blockId)) return owner;
   return withAnswerBlocks(owner, strip(answerBlocksOf(owner)));
 }
@@ -571,11 +615,14 @@ export function insertBlockAfter(
 
   /** A leaf's answer blocks (§ `model/answerBlocks.ts`): inserting after the old model
    *  diagram turns the pair into a list, stored in the shape that holds it. */
-  const tryAnswer = <T extends AnswerOwner>(leaf: T): T => {
+  const tryAnswer = <T extends AnswerOwner & { scheme?: MarkScheme }>(leaf: T): T => {
     if (done) return leaf;
     const current = answerBlocksOf(leaf);
     const next = tryList(current);
-    return next === current ? leaf : withAnswerBlocks(leaf, next);
+    if (next !== current) return withAnswerBlocks(leaf, next);
+    // A mark point's figures (k-0595): a block inserted after one stays in that point.
+    const scheme = mapSchemePointBlocks(leaf.scheme, tryList);
+    return scheme === leaf.scheme ? leaf : { ...leaf, scheme };
   };
 
   const questions = worksheet.questions.map((question) => {

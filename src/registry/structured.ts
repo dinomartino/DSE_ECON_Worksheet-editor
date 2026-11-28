@@ -5,7 +5,7 @@ import { answeredDiagrams } from '@/model/diagramAnswers';
 import { createStructuredQuestion } from '@/model/factories';
 import { partRootOf } from '@/model/lineage';
 import { partMarks, questionMarks } from '@/model/marks';
-import { isSchemeEmpty } from '@/model/markScheme';
+import { isSchemeEmpty, schemePointBlockLists } from '@/model/markScheme';
 import type { MarkScheme } from '@/model/markSchemeTypes';
 import {
   partLabel,
@@ -182,6 +182,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         teacherOnly: true,
         at: { questionId: question.id },
         editing: context.mode.editing,
+        language: context.mode.language,
       }),
     );
   }
@@ -300,6 +301,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
         teacherOnly: true,
         at: { questionId: question.id, partId: part.id },
         editing: context.mode.editing,
+        language: context.mode.language,
       });
     if (!hasSubParts) {
       partAnswer();
@@ -376,6 +378,7 @@ function render(question: StructuredQuestion, context: RenderContext): RenderNod
           teacherOnly: true,
           at: { questionId: question.id, partId: part.id, subPartId: subPart.id },
           editing: context.mode.editing,
+          language: context.mode.language,
         }),
       );
 
@@ -689,9 +692,11 @@ function slotKeys(question: StructuredQuestion): Map<QuestionPart | QuestionSubP
   return keys;
 }
 
-const blockIdsOf = (blocks: ContentBlock[] | undefined, answer?: AnswerOwner): string[] => [
+const blockIdsOf = (blocks: ContentBlock[] | undefined, answer?: AnswerOwner & { scheme?: MarkScheme }): string[] => [
   ...flattenBlocks(blocks ?? []).map((block) => block.id),
   ...(answer ? flattenBlocks(answerBlocksOf(answer)).map((block) => block.id) : []),
+  // A mark point's figures (k-0595) belong to the leaf too.
+  ...(answer ? schemePointBlockLists(answer.scheme).flatMap((list) => flattenBlocks(list).map((block) => block.id)) : []),
 ];
 
 /** Topics per part: every part, then its sub-parts; a question with no parts has none. */

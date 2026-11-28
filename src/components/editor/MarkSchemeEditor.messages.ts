@@ -5,6 +5,25 @@ export const MARK_SCHEME_MESSAGES = defineMessages({
   moveUp: { en: 'Move up', zh: '上移' },
   moveDown: { en: 'Move down', zh: '下移' },
   deletePoint: { en: 'Delete point', zh: '刪除要點' },
+  /** k-0595: a diagram, table or picture that belongs to this point, under its line. */
+  addFigure: { en: 'Add diagram or table', zh: '加入圖表或表格' },
+  pointFigures: {
+    en: (n: number) => `In point ${n}`,
+    zh: (n: number) => `要點 ${n} 內`,
+  },
+  pointFiguresHint: { en: 'prints under the point, with its mark', zh: '印在要點下，連同其分數' },
+  moveDiagramIn: {
+    en: (n: number) => `Move answer diagram ${n} into this point`,
+    zh: (n: number) => `把答案圖表 ${n} 移入此要點`,
+  },
+  moveTableIn: {
+    en: (n: number) => `Move answer table ${n} into this point`,
+    zh: (n: number) => `把答案表格 ${n} 移入此要點`,
+  },
+  movePictureIn: {
+    en: (n: number) => `Move answer picture ${n} into this point`,
+    zh: (n: number) => `把答案圖片 ${n} 移入此要點`,
+  },
   eachPointTitle: {
     en: (each: number) => `Each point earns ${each} (${each}@)`,
     zh: (each: number) => `每個要點得 ${each} 分（${each}@）`,

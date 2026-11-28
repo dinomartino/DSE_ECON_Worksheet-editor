@@ -1,7 +1,7 @@
 import { newId } from './factories';
 import { joinApart } from './paragraphs';
 import { bi, emptyBiText, isBiTextEmpty, normalizeRuns, richTextLength, sliceRichText } from './text';
-import type { BiText } from './types';
+import type { BiText, ContentBlock } from './types';
 import type {
   MarkEc,
   MarkGroup,
@@ -170,6 +170,80 @@ export function routeGroups(route: MarkRoute | undefined): MarkGroup[] {
   return Array.isArray(route?.groups) ? route.groups : [];
 }
 
+const NO_BLOCKS: readonly ContentBlock[] = Object.freeze([]);
+
+/**
+ * A point's own figures (`MarkPoint.blocks`, k-0595): diagrams, tables, pictures printed
+ * under its wording. None when absent or unreadable (a hand-edited file).
+ */
+export function pointBlocksOf(point: MarkPoint | undefined): ContentBlock[] {
+  return Array.isArray(point?.blocks) && point.blocks.length > 0 ? point.blocks : (NO_BLOCKS as ContentBlock[]);
+}
+
+/** `point` holding `blocks` as its figures; an empty list removes the field, so none is stored. */
+export function withPointBlocks(point: MarkPoint, blocks: readonly ContentBlock[]): MarkPoint {
+  const { blocks: _previous, ...rest } = point;
+  void _previous;
+  return blocks.length > 0 ? { ...rest, blocks: [...blocks] } : rest;
+}
+
+/** Whether a point has anything to print: a wording on either side, a `/` wording, or a figure. */
+export function pointHasContent(point: MarkPoint): boolean {
+  return (
+    !isBiTextEmpty(point.text) ||
+    (point.alternatives ?? []).some((alt) => !isBiTextEmpty(alt)) ||
+    pointBlocksOf(point).length > 0
+  );
+}
+
+/** Every point's figure list in the scheme, in print order (only points that have any). */
+export function schemePointBlockLists(scheme: MarkScheme | undefined): ContentBlock[][] {
+  const lists: ContentBlock[][] = [];
+  for (const route of schemeRoutes(scheme)) {
+    for (const group of routeGroups(route)) {
+      for (const point of groupPoints(group)) {
+        const blocks = pointBlocksOf(point);
+        if (blocks.length > 0) lists.push(blocks);
+      }
+    }
+  }
+  return lists;
+}
+
+/**
+ * The scheme with every point's figure list passed through `map` (a block walk's patch,
+ * insert or delete). The same object when no list changes, so an untouched scheme stays
+ * shared; a list emptied removes the point's field (`withPointBlocks`).
+ */
+export function mapSchemePointBlocks<S extends MarkScheme | undefined>(
+  scheme: S,
+  map: (blocks: ContentBlock[]) => ContentBlock[],
+): S {
+  if (!scheme) return scheme;
+  let changed = false;
+  const routes = schemeRoutes(scheme).map((route) => {
+    let routeChanged = false;
+    const groups = routeGroups(route).map((group) => {
+      let groupChanged = false;
+      const points = groupPoints(group).map((point) => {
+        const blocks = pointBlocksOf(point);
+        if (blocks.length === 0) return point;
+        const next = map(blocks);
+        if (next === blocks) return point;
+        groupChanged = true;
+        return withPointBlocks(point, next);
+      });
+      if (!groupChanged) return group;
+      routeChanged = true;
+      return { ...group, points };
+    });
+    if (!routeChanged) return route;
+    changed = true;
+    return { ...route, groups };
+  });
+  return changed ? ({ ...scheme, routes } as S) : scheme;
+}
+
 export function schemeLevels(scheme: MarkScheme | undefined): MarkLevel[] {
   return Array.isArray(scheme?.levels) ? scheme.levels : [];
 }
@@ -246,18 +320,14 @@ export function routesDisagree(scheme: MarkScheme): boolean {
   return totals.size > 1;
 }
 
-/** Nothing a co-marker could read: no point text, no level, no EC. */
+/** Nothing a co-marker could read: no point text or figure, no level, no EC. */
 export function isSchemeEmpty(scheme: MarkScheme | undefined): boolean {
   if (!scheme) return true;
   if (schemeLevels(scheme).length > 0 || scheme.ec) return false;
   return !schemeRoutes(scheme).some((route) =>
     routeGroups(route).some((group) =>
       groupHeading(group) !== undefined ||
-      groupPoints(group).some(
-        (point) =>
-          !isBiTextEmpty(point.text) ||
-          (point.alternatives ?? []).some((alt) => !isBiTextEmpty(alt)),
-      ),
+      groupPoints(group).some(pointHasContent),
     ),
   );
 }
@@ -379,7 +449,8 @@ export function withSchemeText(scheme: MarkScheme, slot: SchemeTextSlot, text: B
  * next — a teacher typing a scheme line by line gets "(1)" on each — so the derived total
  * can rise, which the panel's mismatch note reports. The `/` alternatives stay with the
  * first point; the side not being typed stays with it too, and the new point asks for its
- * own. The same object when the point is not found.
+ * own. The point's figures (`blocks`) go with the words after the caret, and stay when
+ * there are none. The same object when the point is not found.
  */
 export function splitMarkPoint(
   scheme: MarkScheme,
@@ -403,11 +474,17 @@ export function splitMarkPoint(
       const from = Math.max(0, Math.min(start, end, length));
       const to = Math.min(length, Math.max(start, end));
       const after = sliceRichText(runs, to, length);
-      const first: MarkPoint = { ...point, text: { ...point.text, [side]: sliceRichText(runs, 0, from) } };
+      // The point's figures print after its words, so they go with the words that end it:
+      // the new point, unless the split leaves it no words (Enter at the end, the usual way
+      // to start the next point), when they stay where they were (k-0595).
+      const figuresMove = pointBlocksOf(point).length > 0 && richTextLength(after) > 0;
+      const head: MarkPoint = { ...point, text: { ...point.text, [side]: sliceRichText(runs, 0, from) } };
+      const first = figuresMove ? withPointBlocks(head, []) : head;
       const second: MarkPoint = {
         id: newId,
         text: side === 'en' ? { en: after, zh: [] } : { en: [], zh: after },
         ...(point.marks !== undefined ? { marks: point.marks } : {}),
+        ...(figuresMove ? { blocks: pointBlocksOf(point) } : {}),
       };
       return { ...group, points: [...points.slice(0, index), first, second, ...points.slice(index + 1)] };
     }),
@@ -426,7 +503,7 @@ export interface MarkPointJoin {
  * Word's Backspace at a point's start (`backward`, into the point before) and Delete at its
  * end (`forward`, pulling the next one in): two points of one group become one. The joined
  * point keeps the first point's mark — so a split joined straight back is the scheme it
- * was — and both points' `/` alternatives; the side not being typed keeps both texts, a
+ * was — and both points' `/` alternatives and figures; the side not being typed keeps both texts, a
  * line break apart, as a paragraph join does. `undefined` at a group's edge: points marked
  * by different rules are never merged by a keystroke.
  */
@@ -449,8 +526,10 @@ export function joinMarkPoint(
       if (!head || !tail) return group;
       const other = side === 'en' ? 'zh' : 'en';
       const alternatives = [...(head.alternatives ?? []), ...(tail.alternatives ?? [])];
+      const blocks = [...pointBlocksOf(head), ...pointBlocksOf(tail)];
       const joined: MarkPoint = {
         ...head,
+        ...(blocks.length > 0 ? { blocks } : {}),
         text: {
           ...head.text,
           [side]: normalizeRuns([...(head.text[side] ?? []), ...(tail.text[side] ?? [])]),
@@ -468,7 +547,7 @@ export function joinMarkPoint(
 /**
  * Word's Enter on an empty list item ends the list: Enter on an empty mark point removes it,
  * so a second Enter leaves no stray "(1)" adding to the total. Only a point with no words on
- * either side and no `/` alternatives goes, and never a group's last point (the group would
+ * either side, no `/` alternatives and no figure goes, and never a group's last point (the group would
  * go with it); otherwise the same object.
  */
 export function withoutEmptyMarkPoint(scheme: MarkScheme, pointId: string): MarkScheme {
@@ -478,7 +557,15 @@ export function withoutEmptyMarkPoint(scheme: MarkScheme, pointId: string): Mark
     groups: routeGroups(route).map((group) => {
       const points = groupPoints(group);
       const point = points.find((entry) => entry.id === pointId);
-      if (!point || points.length < 2 || !isBiTextEmpty(point.text) || (point.alternatives ?? []).length > 0) return group;
+      if (
+        !point ||
+        points.length < 2 ||
+        !isBiTextEmpty(point.text) ||
+        (point.alternatives ?? []).length > 0 ||
+        pointBlocksOf(point).length > 0
+      ) {
+        return group;
+      }
       found = true;
       return { ...group, points: points.filter((entry) => entry !== point) };
     }),

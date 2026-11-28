@@ -15,8 +15,11 @@ import type { AnswerKeyLayout, StructuredQuestion, Worksheet } from '@/model/typ
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import { renderAnswerKey } from './answerKey';
 import { trailLabel, type RenderNode, type TableNode, type TextNode } from './ir';
-import { renderMarkScheme, schemeParagraphs } from './markScheme';
+import { renderMarkScheme as renderSchemeNodes, schemeParagraphs } from './markScheme';
 import { renderWorksheet } from './worksheet';
+
+/** These schemes hold no figures (k-0595), so every node is a line. */
+const renderMarkScheme = (...args: Parameters<typeof renderSchemeNodes>) => renderSchemeNodes(...args) as TextNode[];
 
 /**
  * k-0470 (issue #7 point 3): a DRQ marking scheme in HKEAA's paragraph style — the points

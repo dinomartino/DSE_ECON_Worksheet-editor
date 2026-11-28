@@ -26,8 +26,11 @@ import type { AnswerKeyLayout, BiText, StructuredQuestion, Worksheet } from '@/m
 import { withFlow } from '@/test/fixtures';
 import { renderAnswerKey } from './answerKey';
 import { trailLabel, type RenderNode, type TableNode, type TextNode } from './ir';
-import { MARK_SCHEME_WORDING, renderMarkScheme, schemePointGroups } from './markScheme';
+import { MARK_SCHEME_WORDING, renderMarkScheme as renderSchemeNodes, schemePointGroups } from './markScheme';
 import { renderWorksheet } from './worksheet';
+
+/** These schemes hold no figures (k-0595), so every node is a line. */
+const renderMarkScheme = (...args: Parameters<typeof renderSchemeNodes>) => renderSchemeNodes(...args) as TextNode[];
 
 /**
  * k-0475: a DRQ's marking scheme as HKEAA's 2022–2026 Paper 2 schemes mark it — group

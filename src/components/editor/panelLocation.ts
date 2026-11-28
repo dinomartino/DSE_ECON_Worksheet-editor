@@ -1,5 +1,7 @@
 import { flattenBlocks } from '@/model/edits';
 import { answerBlocksOf, type AnswerOwner } from '@/model/answerBlocks';
+import { schemePointBlockLists } from '@/model/markScheme';
+import type { MarkScheme } from '@/model/markSchemeTypes';
 import { sourceLetter } from '@/model/drq';
 import { partLabel, subPartLabel } from '@/model/numbering';
 import type { ContentBlock, StructuredQuestion } from '@/model/types';
@@ -49,7 +51,10 @@ const holds = (blocks: readonly ContentBlock[] | undefined, id: string) =>
 function inTeacherArea(leaf: AnswerOwner & { id: string; scheme?: unknown }, kind: string, id: string): boolean {
   if (kind === 'partAnswer' || kind === 'subPartAnswer' || kind === 'questionAnswer') return id === leaf.id;
   // The answer's blocks (u-0c5q): a table, picture, diagram or paragraph inside the answer.
-  if (BLOCK_KINDS.has(kind)) return holds(answerBlocksOf(leaf), id);
+  // A mark point's figures (k-0595) sit in the teacher area too.
+  if (BLOCK_KINDS.has(kind)) {
+    return holds(answerBlocksOf(leaf), id) || schemePointBlockLists(leaf.scheme as MarkScheme | undefined).some((list) => holds(list, id));
+  }
   // A scheme's points, levels and descriptors carry their own ids somewhere inside it.
   return leaf.scheme !== undefined && JSON.stringify(leaf.scheme).includes(`"${id}"`);
 }

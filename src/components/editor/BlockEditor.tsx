@@ -105,6 +105,12 @@ interface Props {
    * panel belongs to the question, and its letter would count among the stem's.
    */
   answer?: { label: string; translate?: FieldTranslate };
+  /**
+   * A mark point's figures (`MarkPoint.blocks`, k-0595): the Add row offers only what a
+   * point's words cannot hold — a table, a picture, a diagram — no Text (the point has its
+   * own words) and no Source (a source belongs to the question).
+   */
+  figuresOnly?: boolean;
 }
 
 export function BlockEditor({
@@ -115,6 +121,7 @@ export function BlockEditor({
   figureWidth,
   nested,
   answer,
+  figuresOnly,
 }: Props) {
   const m = useMessages(BLOCK_EDITOR_MESSAGES);
   const dm = useMessages(DRQ_PANEL_MESSAGES);
@@ -357,15 +364,17 @@ export function BlockEditor({
         <span aria-hidden className="pr-1 text-[11px] text-ink-subtle">
           {m.add}
         </span>
-        <Button
-          size="sm"
-          variant="subtle"
-          aria-label={m.addText}
-          title={m.addParagraph}
-          onClick={() => onChange([...blocks, createParagraphBlock(emptyBiText())])}
-        >
-          {m.text}
-        </Button>
+        {!figuresOnly && (
+          <Button
+            size="sm"
+            variant="subtle"
+            aria-label={m.addText}
+            title={m.addParagraph}
+            onClick={() => onChange([...blocks, createParagraphBlock(emptyBiText())])}
+          >
+            {m.text}
+          </Button>
+        )}
         <TableInsertButton
           onPick={(rows, columns) =>
             onChange([
@@ -415,7 +424,7 @@ export function BlockEditor({
             views already in it, rather than an empty frame and a second Add row. Seeded with
             the next free letter as a convenience only — nothing stores an index, and
             reordering relabels nothing (§`SourceBlock`). */}
-        {!nested && !answer && (
+        {!nested && !answer && !figuresOnly && (
           <Menu
             align="left"
             label={dm.addSourceOf}

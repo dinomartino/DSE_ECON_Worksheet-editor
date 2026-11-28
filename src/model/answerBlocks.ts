@@ -1,3 +1,5 @@
+import { groupPoints, pointBlocksOf, routeGroups, schemeRoutes, withPointBlocks } from './markScheme';
+import type { MarkScheme } from './markSchemeTypes';
 import { isBiTextEmpty } from './text';
 import type { BiText, ContentBlock, DiagramBlock } from './types';
 
@@ -45,4 +47,38 @@ export function withAnswerBlocks<T extends AnswerOwner>(owner: T, blocks: readon
 /** Whether the answer says anything: text, or any block. */
 export function hasAnswer(owner: AnswerOwner): boolean {
   return !isBiTextEmpty(owner.answer) || answerBlocksOf(owner).length > 0;
+}
+
+/**
+ * One of the answer's blocks moved into mark point `pointId` (k-0595): a diagram or table
+ * that was added beside the scheme but belongs to one point goes under that point's line,
+ * after any figures it has, and leaves the answer (stored again in the oldest shape that
+ * holds what is left). The same leaf when the block is not one of the answer's own or the
+ * point is not in the leaf's scheme.
+ */
+export function moveAnswerBlockToPoint<T extends AnswerOwner & { scheme?: MarkScheme }>(
+  leaf: T,
+  blockId: string,
+  pointId: string,
+): T {
+  const blocks = answerBlocksOf(leaf);
+  const block = blocks.find((entry) => entry.id === blockId);
+  if (!block || !leaf.scheme) return leaf;
+  let found = false;
+  const routes = schemeRoutes(leaf.scheme).map((route) => ({
+    ...route,
+    groups: routeGroups(route).map((group) => ({
+      ...group,
+      points: groupPoints(group).map((point) => {
+        if (point.id !== pointId) return point;
+        found = true;
+        return withPointBlocks(point, [...pointBlocksOf(point), block]);
+      }),
+    })),
+  }));
+  if (!found) return leaf;
+  return withAnswerBlocks(
+    { ...leaf, scheme: { ...leaf.scheme, routes } },
+    blocks.filter((entry) => entry !== block),
+  );
 }

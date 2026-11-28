@@ -15,6 +15,13 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **A marking point can hold its own diagram or table.** In a point's ⋯ menu, Add diagram or table
+  puts a diagram, table or picture under that point's line, so "(1) Correct diagram: D shifts
+  right…" carries the diagram with its mark. It moves, splits, joins and is deleted with the point,
+  prints under it in the teacher version, every Marking scheme style and Word, and never on the
+  student copy. A diagram or table you already added to the answer can be moved into a point from
+  the same menu. A paper using this opens read-only in versions before it.
+  <!-- zh: **評分要點可包含自己的圖表或表格。** 在要點的 ⋯ 選單選「加入圖表或表格」，即可在該要點下加入圖表、表格或圖片，令「(1) 正確圖表：D 右移……」連同圖表一起計分。圖表會隨要點移動、分拆、合併及刪除，印在教師版、所有評卷參考樣式及 Word 中該要點之下，學生版不會出現。已加入答案的圖表或表格，亦可在同一選單移入要點。使用此功能的試卷在較舊版本只能以唯讀方式開啟。 -->
 - **The Question studio draws import quotas with the question's own labels.** Demand, domestic
   supply, the world price and the supply with the quota (kinked at the world price, flat for the
   quota, and it keeps that shape when you drag supply or the world price), the price with the

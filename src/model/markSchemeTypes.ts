@@ -1,4 +1,4 @@
-import type { BiText } from './types';
+import type { BiText, ContentBlock } from './types';
 
 /**
  * A structured leaf's marking scheme in HKEAA notation (§ A marking scheme is notation,
@@ -70,6 +70,17 @@ export interface MarkPoint {
   marks?: number;
   /** `/` — other wordings that earn the same mark; accept any one. */
   alternatives?: BiText[];
+  /**
+   * The point's own figures (k-0595, u-m9g9): diagrams and tables (and pictures) that
+   * belong to this point — "(1) Correct diagram: D shifts right…" with the diagram under
+   * its line. They print straight under the point's wording, carry its mark, and move,
+   * split, join and delete with it. The same blocks a stem holds, so every block walk
+   * (edit, resize, delete, copy, translate) reaches them (`model/edits.ts:questionBlockLists`).
+   * Absent or empty = none; written only through `model/markScheme.ts:withPointBlocks`.
+   * A point with any is schema v4 (`model/migrations.ts`: older builds open the paper
+   * read-only, the point's words still showing).
+   */
+  blocks?: ContentBlock[];
 }
 
 export interface MarkLevel {
