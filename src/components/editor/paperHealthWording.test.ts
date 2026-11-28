@@ -31,17 +31,12 @@ describe('the Paper check wording', () => {
   const en = resolveMessages(PAPER_CHECK_MESSAGES, 'en');
   const zh = resolveMessages(PAPER_CHECK_MESSAGES, 'zh-HK');
 
-  it('says in English exactly what the model says', () => {
+  it('says in English exactly what the model says, the scheme/marks mismatch and an unchecked studio question included', () => {
     expect(report.findings.length).toBeGreaterThan(4);
-    for (const finding of report.findings) expect(wording(finding, report.summary, en, false)).toBe(finding.message);
-  });
-
-  it('includes the scheme/marks mismatch', () => {
+    // The paper above must raise these two, or the wording below is not checked for them.
     expect(report.findings.map((f) => f.id)).toContain('schemeMarks');
-  });
-
-  it('includes a question the studio wrote that nobody has checked', () => {
     expect(report.findings.map((f) => f.id)).toContain('aiMade');
+    for (const finding of report.findings) expect(wording(finding, report.summary, en, false)).toBe(finding.message);
   });
 
   it('says every finding in Chinese', () => {
