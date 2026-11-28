@@ -383,6 +383,22 @@ After any UI work, open an exported `.docx` in Word: it is the load-bearing outp
 
 Guard: `npm test`, `npm run typecheck`, `npm run lint` (41 pre-existing problems).
 
+## Write a property test
+
+A property states a rule from the spec that must hold for every generated input
+(fast-check, k-0607). Three suites so far: `src/model/markScheme.property.test.ts` (totals),
+`src/components/preview/pagination.property.test.ts` (sheets, answer-key keep chains) and
+`src/storage/saveLoad.property.test.ts` (round trip, older and newer files).
+
+- Name the file `*.property.test.ts` and assert with `holds` from `src/test/property.ts`:
+  a fixed seed, so `npm test` and CI run the same cases, and a bounded case count (100 by
+  default; fewer for whole documents). Give the `describe` a long `timeout`.
+- Write the rule from what the feature promises, not from reading the function. A property
+  that looks wrong is argued, never loosened to pass.
+- Explore beyond the fixed cases before merging: `FC_SEED=<n> FC_RUNS=10 npx vitest run <file>`.
+  A failure prints the seed and the shrunk counterexample; replay with that `FC_SEED`.
+- Plant a bug in the code under test once and see the property go red, then put it back.
+
 ## Record the demo video and screenshots
 
 ```bash

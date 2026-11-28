@@ -386,6 +386,11 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **A marking point's table no longer starts a page without its point.** When a point held a table,
+  the page could break between the point's line and the table, leaving "(1)" at the foot of one page
+  and its table on the next. The line and its table now move together, in the marking scheme and the
+  teacher's copy, on screen, in the PDF and in Word.
+  <!-- zh: **評分要點的表格不會再與要點分開，獨自排到下一頁。** 以往評分要點附有表格時，分頁可能落在要點與表格之間，令「(1)」留在一頁底部，表格卻在下一頁。現在要點與其表格會一同移動，評分參考及教師版本、螢幕、PDF 及 Word 均如此。 -->
 - **A studio diagram that leaves out the letters its question uses no longer passes.** A question
   naming an area by its corners, the origin included ("area 0abc"), in its options or in its
   statements (1)–(3), now fails the diagram check when the figure does not print those letters,
