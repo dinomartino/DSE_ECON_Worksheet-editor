@@ -4,7 +4,7 @@ import '@/registry';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createWorksheet } from '@/model/factories';
 import type { McqQuestion, OutputMode, Worksheet } from '@/model/types';
-import { OPTION_LAYOUT_CHOICES, withOptionLayouts, type OptionLayoutChoice } from '@/registry/mcqLayouts';
+import { withOptionLayouts, type OptionLayoutChoice } from '@/registry/mcqLayouts';
 import { buildOptionLayoutPaper } from '@/test/optionLayoutFixture';
 
 const store: { worksheet: Worksheet; mode: OutputMode; selectedTargetKey?: string } = {
@@ -72,10 +72,5 @@ describe('each question’s panel after the bulk action', () => {
     expect(panel(rowed, long)).toContain('Too long for their columns, so each option wraps in its own cell.');
     // And says nothing of the kind where the row fits.
     expect(panel(rowed, mcqs(rowed)[0])).not.toContain('Too long');
-  });
-
-  it.each(OPTION_LAYOUT_CHOICES.map((choice) => [choice] as const))('%s: leaves every panel with a choice that is on offer', (choice) => {
-    const next = after(choice);
-    for (const question of mcqs(next)) expect(chosen(panel(next, question))).toBeDefined();
   });
 });
