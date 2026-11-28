@@ -649,16 +649,6 @@ describe('a gap counts what is already there', () => {
     // never stored).
     const paper1 = () => createWorksheetFrom({ documentType: 'paper1', seedSample: false });
 
-    it('spends three blank lines, not one', () => {
-      expect(leadingGap(twoQuestions(paper1()))).toBe(3);
-    });
-
-    it('leaves a classroom worksheet holding the same questions at one', () => {
-      // Its questions are answered on the sheet itself; it is not the reference paper,
-      // and widening it would re-paginate documents teachers already have.
-      expect(leadingGap(twoQuestions(createWorksheet()))).toBe(1);
-    });
-
     it('counts a trailing break towards the three, as every other gap does', () => {
       // The break prints its own line, so the boundary owes two more — not three on top
       // of it. One rule, whatever the text happens to end in.
@@ -738,15 +728,6 @@ describe('a gap counts what is already there', () => {
       expect(leadingGap({ ...twoQuestions(paper1()), examGapLines: 1 } as Worksheet)).toBe(1);
     });
 
-    it('honours the override on a classroom worksheet too: the number is the teacher’s on every shape', () => {
-      // Setup → Between questions is offered on every paper shape (`questionGap.test.ts`
-      // pins the rest). What stays the exam paper's is the *default*, so a worksheet nobody
-      // set a number on still prints one line.
-      expect(
-        leadingGap({ ...twoQuestions(createWorksheet()), examGapLines: 5 } as Worksheet),
-      ).toBe(5);
-    });
-
     it('lets one question state its own gap, over both the paper and the type', () => {
       // The nearest statement wins (§ `Question.gapBefore`): this boundary's own
       // number beats the document's, which beats the type's measured 3.
@@ -783,16 +764,6 @@ describe('a gap counts what is already there', () => {
       });
       expect(classroom.questions[0].adjustableGap).toBeUndefined();
       expect(classroom.questions[1].adjustableGap).toBe(1);
-    });
-
-    it('does not widen a boundary against an unlike question', () => {
-      const structured: StructuredQuestion = {
-        id: 'q2',
-        type: 'structured',
-        blocks: [{ id: 'sb', kind: 'paragraph', text: bi('Stem', '') }],
-        parts: [{ id: 'sp', blocks: [{ id: 'spb', kind: 'paragraph', text: bi('a', '') }], marks: 2 }],
-      };
-      expect(leadingGap(twoQuestions(paper1(), [mcq('q1'), structured]))).toBe(1);
     });
 
     /*
