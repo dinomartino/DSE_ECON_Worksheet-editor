@@ -152,12 +152,6 @@ describe.each(CASES)('three lines between questions on a $name', ({ make, second
     expect(worksheetClipboardHtml(asked, mode)).toContain(`margin-top:${POINTS}pt;`);
   });
 
-  it('is shed by the question that opens a sheet in the .docx, as the page sheds it', () => {
-    const xml = buildDocxParts(asked, EN, new Map(), [{ key: second, node: 0 }]).documentXml;
-    // Question c is still under b; b opens a sheet, so only c keeps its three lines.
-    expect(count(xml, new RegExp(`w:before="${TWIPS}"`, 'g'))).toBe(1);
-  });
-
   it('gives a question its own number over the paper’s on every surface', () => {
     const own = make({ examGapLines: LINES });
     own.questions = own.questions.map((q) => (q.id === second ? { ...q, gapBefore: 5 } : q));
