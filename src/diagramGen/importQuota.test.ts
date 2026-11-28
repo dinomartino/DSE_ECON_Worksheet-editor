@@ -12,6 +12,7 @@ import { SCENE_SAMPLES } from './sceneSamples';
 import { emptyScene, emptySpec, parseSpec } from './schema';
 import { plainOf } from './text';
 import { SIZES, SLOPES, type DiagramSpec, type SpecScene } from './types';
+import { slopeSizeTriples } from '@/test/sample';
 
 /**
  * The import quota scene (k-0589, audit k-0583 task C): S with the quota as the editor's kinked
@@ -76,9 +77,8 @@ describe('the economics', () => {
 describe('every stage, slope and size draws', () => {
   for (const stage of STAGES) {
     it(`${stage}: no error, every region has area, the regions do not overlap`, () => {
-      for (const demand of SLOPES)
-        for (const supply of SLOPES)
-          for (const size of SIZES) {
+      // Sampled in the fast lane, every triple under TEST_FULL (`src/test/sample.ts`).
+      for (const { demand, supply, size } of slopeSizeTriples(SLOPES, SLOPES, SIZES)) {
             const where = `${stage}/${demand}/${supply}/${size}`;
             const built = compileScene(spec({ stage, demand, supply, size }));
             expect(errors(built), where).toEqual([]);

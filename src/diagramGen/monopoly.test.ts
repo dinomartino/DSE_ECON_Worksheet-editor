@@ -12,6 +12,7 @@ import { SCENE_SAMPLES } from './sceneSamples';
 import { emptyScene, emptySpec, parseSpec } from './schema';
 import { plainOf } from './text';
 import { MC_SHAPES, MONOPOLY_STAGES, SLOPES, SIZES, type DiagramSpec, type SpecScene } from './types';
+import { slopeSizeTriples } from '@/test/sample';
 
 /**
  * The monopoly scene (k-0589, audit k-0583 task C): MR derived from D, Qm where MR = MC and Pm on
@@ -32,9 +33,8 @@ const COMBOS = MC_SHAPES.flatMap((mc) => STAGES.filter((stage) => mc !== 'zero' 
 describe('every MC shape, stage, slope and size draws', () => {
   for (const { mc, stage } of COMBOS) {
     it(`${mc} / ${stage}: no error, every region has area, the regions do not overlap`, () => {
-      for (const demand of SLOPES)
-        for (const supply of mc === 'rising' || mc === 'uShaped' ? SLOPES : (['normal'] as const))
-          for (const size of SIZES) {
+      // Sampled in the fast lane, every triple under TEST_FULL (`src/test/sample.ts`).
+      for (const { demand, supply, size } of slopeSizeTriples(SLOPES, mc === 'rising' || mc === 'uShaped' ? SLOPES : (['normal'] as const), SIZES)) {
             const s = spec({ mc, stage, demand, supply, size });
             const def = compileScene(s);
             const where = `${mc}/${stage}/${demand}/${supply}/${size}`;

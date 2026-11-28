@@ -4,6 +4,7 @@ import { contentOf } from './content';
 import { folderConnect } from './folderTestKit';
 import { MemoryCloud } from './memorySource';
 import { computer, edit, library, memoryConnect, openEditor, paper, settle, type Computer, type Connect } from './testKit';
+import { seedCount } from '@/test/sample';
 
 /**
  * Random interleavings of edits, trashes, restores, syncs, deliveries and offline
@@ -17,10 +18,11 @@ import { computer, edit, library, memoryConnect, openEditor, paper, settle, type
  * (`RunOptions.isBusy`); its edits count once saved, and leaving saves them. With outside
  * writers, a save not from the editor (an outgoing document's, a 題庫 write) lands just
  * before or after the engine writes a download, made from what was stored before the run:
- * it counts the moment it is written. `SYNC_SEEDS` raises the seed count for a long run.
+ * it counts the moment it is written. 30 seeds in the fast lane, 120 under `TEST_FULL`
+ * (`npm run test:full`, k-0611); `SYNC_SEEDS` sets any count for a long run.
  */
 
-const SEEDS = Number(process.env.SYNC_SEEDS) || 120;
+const SEEDS = seedCount(process.env.SYNC_SEEDS, 30, 120);
 
 const FROZEN = '2026-10-05T06:32:00.000Z';
 

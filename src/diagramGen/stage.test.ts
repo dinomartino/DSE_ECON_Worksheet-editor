@@ -8,6 +8,7 @@ import { stageDef, stagePlan, isPlan } from './stageCatalogue';
 import { emptyScene, emptySpec } from './schema';
 import { plainOf } from './text';
 import { SCENE_BINDS, SCENE_STAGES, SIZES, SLOPES, type DiagramSpec, type SpecScene } from './types';
+import { slopeSizeTriples } from '@/test/sample';
 
 /**
  * Two-state control scenes (k-0587, audit k-0583 task B): every drawable combination of
@@ -74,7 +75,8 @@ describe('two-state control scenes: which combinations draw (k-0587)', () => {
 
 describe('every two-state scene draws, for every slope and size (k-0587)', () => {
   const variants: Array<Partial<SpecScene>> = [];
-  for (const c of STAGE_COMBOS) for (const demand of SLOPES) for (const supply of SLOPES) for (const size of SIZES) variants.push({ ...c, demand, supply, size });
+  // Sampled in the fast lane, every triple under TEST_FULL (`src/test/sample.ts`).
+  for (const c of STAGE_COMBOS) for (const t of slopeSizeTriples(SLOPES, SLOPES, SIZES)) variants.push({ ...c, ...t });
 
   it.each(variants.map((v) => [`${v.type} ${v.stage} ${v.binds} D:${v.demand} S:${v.supply} ${v.size}`, v]))('%s', (_, v) => {
     const plan = stagePlan(v as SpecScene);

@@ -11,6 +11,7 @@ import { SCENE_SAMPLES } from './sceneSamples';
 import { emptyScene, emptySpec, parseSpec } from './schema';
 import { EXTERNALITIES, SIZES, SLOPES, type DiagramSpec, type SpecScene } from './types';
 import { figureWords } from './words';
+import { slopeSizeTriples } from '@/test/sample';
 
 const spec = (scene: Partial<SpecScene>, placement: DiagramSpec['placement'] = 'question'): DiagramSpec => ({ ...emptySpec('scene'), placement, scene: { ...emptyScene(), ...scene } });
 const L = (l: string) => ({ en: l, zh: l });
@@ -31,7 +32,8 @@ describe('every scene draws, for every slope and size (k-0577)', () => {
   // A trade figure has no slopes or sizes: it draws from its numbers (k-0589: trade.test.ts).
   for (const def of SCENES.filter((d) => d.type !== 'ppfTrade')) {
     const kinds = def.type === 'externality' ? EXTERNALITIES.filter((e) => e !== 'none') : ['none' as const];
-    for (const externality of kinds) for (const demand of SLOPES) for (const supply of SLOPES) for (const size of SIZES) variants.push({ type: def.type, externality, demand, supply, size });
+    // Sampled in the fast lane, every triple under TEST_FULL (`src/test/sample.ts`).
+    for (const externality of kinds) for (const t of slopeSizeTriples(SLOPES, SLOPES, SIZES)) variants.push({ type: def.type, externality, ...t });
   }
 
   it.each(variants.map((v) => [`${v.type} ${v.externality} D:${v.demand} S:${v.supply} ${v.size}`, v]))('%s', (_, v) => {
