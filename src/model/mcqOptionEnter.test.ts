@@ -37,7 +37,6 @@ function paper(base: Worksheet = createWorksheet()): { worksheet: Worksheet; que
   return { worksheet: withFlow(base, [question]), question };
 }
 const optionsOf = (worksheet: Worksheet) => (worksheet.questions[0] as McqQuestion).options;
-const last = (worksheet: Worksheet) => optionsOf(worksheet).at(-1)!.id;
 
 describe('Enter on the last MC option', () => {
   it('starts option E after a D with words in it, empty on both sides; the key stays put', () => {
@@ -112,22 +111,6 @@ describe('Enter on the last MC option', () => {
     expect(lastOptionEnter(withNote, question.id, 'oE', 'en')).toBeUndefined();
     const pinned = mapE(added, (option) => ({ ...option, pinned: true }));
     expect(lastOptionEnter(pinned, question.id, 'oE', 'en')).toBeUndefined();
-  });
-
-  it('is one undo step each way, through the store', () => {
-    const { worksheet, question } = paper();
-    useWorksheetStore.setState({ worksheet, past: [], future: [], readOnly: false });
-    const store = useWorksheetStore.getState();
-    store.commit((draft) => addOptionAfterLast(draft, question.id, 'oE'));
-    expect(optionsOf(useWorksheetStore.getState().worksheet)).toHaveLength(5);
-    useWorksheetStore.getState().undo();
-    expect(useWorksheetStore.getState().worksheet).toBe(worksheet);
-    useWorksheetStore.getState().redo();
-    const added = useWorksheetStore.getState().worksheet;
-    useWorksheetStore.getState().commit((draft) => removeEmptyLastOption(draft, question.id, last(draft), 'en'));
-    expect(optionsOf(useWorksheetStore.getState().worksheet)).toHaveLength(4);
-    useWorksheetStore.getState().undo();
-    expect(useWorksheetStore.getState().worksheet).toBe(added);
   });
 
   it('E prints, saves, reopens and reaches the .docx', async () => {

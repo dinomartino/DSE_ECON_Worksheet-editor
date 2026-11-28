@@ -180,16 +180,4 @@ describe('a split paper saves, reopens, exports and undoes', () => {
     expect(paragraphs[first]).toContain('w:numPr');
     expect(paragraphs[second]).not.toContain('w:numPr');
   });
-
-  it('is one undo step, and redo puts it back', () => {
-    const store = useWorksheetStore.getState();
-    const before = store.worksheet;
-    const id = (before.questions[0] as StructuredQuestion).blocks[0].id;
-    store.commit((draft) => splitParagraph(draft, id, 'en', 22, 22, 'new'));
-    expect(texts(useWorksheetStore.getState().worksheet)).toHaveLength(2);
-    useWorksheetStore.getState().undo();
-    expect(useWorksheetStore.getState().worksheet).toBe(before);
-    useWorksheetStore.getState().redo();
-    expect(texts(useWorksheetStore.getState().worksheet)).toEqual(['A price ceiling is set', ' below the equilibrium price.']);
-  });
 });

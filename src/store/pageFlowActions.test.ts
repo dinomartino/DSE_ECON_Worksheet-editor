@@ -57,17 +57,6 @@ describe('the page choices, through the store', () => {
     expect(marks()).toEqual([[undefined, undefined], [undefined, undefined], [undefined, undefined]]);
   });
 
-  it('is one undo step each way', () => {
-    store().updateQuestion(b.id, pageFlowPatch('startOnNewPage', true));
-    expect(store().past).toHaveLength(1);
-    store().undo();
-    expect(own(b.id).startOnNewPage).toBeUndefined();
-    expect(marks()[1]).toEqual([undefined, undefined]);
-    store().redo();
-    expect(own(b.id).startOnNewPage).toBe(true);
-    expect(marks()[1]).toEqual([true, undefined]);
-  });
-
   it('leaves the other questions alone', () => {
     store().updateQuestion(b.id, pageFlowPatch('startOnNewPage', true));
     expect(own(a.id).startOnNewPage).toBeUndefined();

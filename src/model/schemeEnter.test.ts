@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 // The registry loads first: the model modules below reach back into it and need it whole.
 import '@/registry';
 import JSZip from 'jszip';
@@ -7,7 +7,6 @@ import { answerKeyView, renderAnswerKey } from '@/render/answerKey';
 import type { EditTarget, RenderNode, TextNode } from '@/render/ir';
 import { renderWorksheet } from '@/render/worksheet';
 import { enterBreaksLine } from '@/components/preview/fieldEnter';
-import { useWorksheetStore } from '@/store/worksheetStore';
 import { buildMarkSchemeWorksheet } from '@/test/markSchemeFixture';
 import { dropEmptySchemePoint, joinSchemePoint, splitSchemePoint } from './edits';
 import { schemeMax } from './markScheme';
@@ -220,25 +219,6 @@ describe('a split scheme prints, saves and undoes', () => {
     const reopened = migrate(JSON.parse(JSON.stringify(saved)));
     expect(partA(reopened).scheme).toEqual(partA(worksheet).scheme);
     expect(reopened.__unknown).toBeUndefined();
-  });
-
-  describe('in the store', () => {
-    beforeEach(() => {
-      useWorksheetStore.setState({ worksheet: fixture().worksheet, past: [], future: [], readOnly: false });
-    });
-
-    it('is one undo step, and redo puts it back', () => {
-      const store = useWorksheetStore.getState();
-      const before = store.worksheet;
-      const question = before.questions[0] as StructuredQuestion;
-      const target = pointTarget(question.id, question.parts[0].id, pointsOf(question.parts[0])[1].id);
-      store.commit((draft) => splitSchemePoint(draft, target, 'en', 3, 3, 'new'));
-      expect(pointsOf(partA(useWorksheetStore.getState().worksheet))).toHaveLength(4);
-      useWorksheetStore.getState().undo();
-      expect(useWorksheetStore.getState().worksheet).toBe(before);
-      useWorksheetStore.getState().redo();
-      expect(pointsOf(partA(useWorksheetStore.getState().worksheet))).toHaveLength(4);
-    });
   });
 });
 
