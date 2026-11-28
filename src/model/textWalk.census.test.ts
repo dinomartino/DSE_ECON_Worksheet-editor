@@ -81,25 +81,31 @@ function censusDocuments(): Array<[string, Worksheet]> {
 }
 
 describe('text walk census', () => {
-  it.each(censusDocuments())('every {en, zh} in the %s is a slot, and nothing else is', (_, ws) => {
-    const slots = collectTexts(ws);
-    const walked = new Set(slots.map((slot) => slot.text));
-    const structural = structuralTexts(ws);
-    expect(structural.size).toBeGreaterThan(0);
-    const missed = [...structural].filter((text) => !walked.has(text));
-    const extra = [...walked].filter((text) => !structural.has(text));
-    expect(missed, 'BiTexts the walker never visits').toEqual([]);
-    expect(extra, 'slots that are not stored BiTexts').toEqual([]);
-    expect(new Set(slots.map((slot) => slot.path)).size, 'paths are unique').toBe(slots.length);
+  // Each check loops the census documents, each named in its assertions (k-0611: was one
+  // generated test per document).
+  it('every {en, zh} in every census document is a slot, and nothing else is', () => {
+    for (const [name, ws] of censusDocuments()) {
+      const slots = collectTexts(ws);
+      const walked = new Set(slots.map((slot) => slot.text));
+      const structural = structuralTexts(ws);
+      expect(structural.size, name).toBeGreaterThan(0);
+      const missed = [...structural].filter((text) => !walked.has(text));
+      const extra = [...walked].filter((text) => !structural.has(text));
+      expect(missed, `${name}: BiTexts the walker never visits`).toEqual([]);
+      expect(extra, `${name}: slots that are not stored BiTexts`).toEqual([]);
+      expect(new Set(slots.map((slot) => slot.path)).size, `${name}: paths are unique`).toBe(slots.length);
+    }
   });
 
-  it.each(censusDocuments())('no page text in the %s pairs a symbol-only English side with other Chinese', (_, ws) => {
+  it('no page text in any census document pairs a symbol-only English side with other Chinese', () => {
     const plain = (runs: RichText) => runs.map((run) => run.text).join('');
-    const misread = collectTexts(ws)
-      .filter((slot) => !slot.fallsBack && plain(slot.text.zh).trim() && plain(slot.text.en) !== plain(slot.text.zh))
-      .filter((slot) => isSymbolOnly(slot.text.en))
-      .map((slot) => `${plain(slot.text.en)} | ${plain(slot.text.zh)}`);
-    expect(misread).toEqual([]);
+    for (const [name, ws] of censusDocuments()) {
+      const misread = collectTexts(ws)
+        .filter((slot) => !slot.fallsBack && plain(slot.text.zh).trim() && plain(slot.text.en) !== plain(slot.text.zh))
+        .filter((slot) => isSymbolOnly(slot.text.en))
+        .map((slot) => `${plain(slot.text.en)} | ${plain(slot.text.zh)}`);
+      expect(misread, name).toEqual([]);
+    }
   });
 
   it('the gallery carries every template and some preset areas', () => {

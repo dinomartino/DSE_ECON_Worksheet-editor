@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { spaceAbovePatch } from '@/components/editor/SpaceAboveField';
 import { createMcqQuestion } from '@/model/factories';
 import { createWorksheetFrom, type DocumentType } from '@/model/newWorksheet';
@@ -38,49 +38,66 @@ function gapAboveB(): number {
 
 const own = () => store().worksheet.questions.find((q) => q.id === b.id)!.gapBefore;
 
-describe.each<DocumentType>(['classroom', 'lqMock', 'paper1'])('between questions on a %s, through the store', (documentType) => {
-  beforeEach(() => open(documentType));
+// Each check runs on every document type, each assertion naming it (k-0611: was
+// describe.each, the same five tests three times).
+const TYPES: DocumentType[] = ['classroom', 'lqMock', 'paper1'];
 
+describe('between questions, through the store, on every document type', () => {
   it('stores the paper’s number, and drops the key for the default', () => {
-    store().setExamGapLines(4);
-    expect(store().worksheet.examGapLines).toBe(4);
-    expect(gapAboveB()).toBe(4);
-    store().setExamGapLines(undefined);
-    expect('examGapLines' in store().worksheet).toBe(false);
-    expect(gapAboveB()).toBe(documentType === 'paper1' ? 3 : 1);
+    for (const documentType of TYPES) {
+      open(documentType);
+      store().setExamGapLines(4);
+      expect(store().worksheet.examGapLines, documentType).toBe(4);
+      expect(gapAboveB(), documentType).toBe(4);
+      store().setExamGapLines(undefined);
+      expect('examGapLines' in store().worksheet, documentType).toBe(false);
+      expect(gapAboveB(), documentType).toBe(documentType === 'paper1' ? 3 : 1);
+    }
   });
 
   it('keeps at least one whole line', () => {
-    store().setExamGapLines(0.2);
-    expect(store().worksheet.examGapLines).toBe(1);
-    store().setExamGapLines(3.6);
-    expect(store().worksheet.examGapLines).toBe(4);
+    for (const documentType of TYPES) {
+      open(documentType);
+      store().setExamGapLines(0.2);
+      expect(store().worksheet.examGapLines, documentType).toBe(1);
+      store().setExamGapLines(3.6);
+      expect(store().worksheet.examGapLines, documentType).toBe(4);
+    }
   });
 
   it('is one undo step each way', () => {
-    store().setExamGapLines(5);
-    expect(store().past).toHaveLength(1);
-    store().undo();
-    expect(store().worksheet.examGapLines).toBeUndefined();
-    store().redo();
-    expect(store().worksheet.examGapLines).toBe(5);
+    for (const documentType of TYPES) {
+      open(documentType);
+      store().setExamGapLines(5);
+      expect(store().past, documentType).toHaveLength(1);
+      store().undo();
+      expect(store().worksheet.examGapLines, documentType).toBeUndefined();
+      store().redo();
+      expect(store().worksheet.examGapLines, documentType).toBe(5);
+    }
   });
 
   it('lets a question state its own number, and return to following the paper’s', () => {
-    store().setExamGapLines(4);
-    store().updateQuestion(b.id, spaceAbovePatch(2));
-    expect(own()).toBe(2);
-    expect(gapAboveB()).toBe(2);
-    store().updateQuestion(b.id, spaceAbovePatch(0));
-    expect(own()).toBeUndefined();
-    // Following the paper again: a later change of the paper’s number reaches it.
-    expect(gapAboveB()).toBe(4);
-    store().setExamGapLines(6);
-    expect(gapAboveB()).toBe(6);
+    for (const documentType of TYPES) {
+      open(documentType);
+      store().setExamGapLines(4);
+      store().updateQuestion(b.id, spaceAbovePatch(2));
+      expect(own(), documentType).toBe(2);
+      expect(gapAboveB(), documentType).toBe(2);
+      store().updateQuestion(b.id, spaceAbovePatch(0));
+      expect(own(), documentType).toBeUndefined();
+      // Following the paper again: a later change of the paper’s number reaches it.
+      expect(gapAboveB(), documentType).toBe(4);
+      store().setExamGapLines(6);
+      expect(gapAboveB(), documentType).toBe(6);
+    }
   });
 
   it('commits what a drag on the page commits: a whole number of lines on the question', () => {
-    store().updateQuestion(b.id, { gapBefore: 7 });
-    expect(gapAboveB()).toBe(7);
+    for (const documentType of TYPES) {
+      open(documentType);
+      store().updateQuestion(b.id, { gapBefore: 7 });
+      expect(gapAboveB(), documentType).toBe(7);
+    }
   });
 });

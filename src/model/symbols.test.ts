@@ -22,8 +22,9 @@ describe('isSymbolOnly', () => {
     ['A', rt('A')],
     ['Pw', rt('Pw')],
   ];
-  it.each(symbols)('%s is symbol-only', (_, runs) => {
-    expect(isSymbolOnly(runs)).toBe(true);
+  // One test per table, each row named in its assertion (k-0611: was one test per row).
+  it('labels and symbols are symbol-only', () => {
+    for (const [label, runs] of symbols) expect(isSymbolOnly(runs), label).toBe(true);
   });
 
   const words: Array<[string, RichText]> = [
@@ -45,7 +46,7 @@ describe('isSymbolOnly', () => {
     ['blank', []],
     ['whitespace', rt('  \n')],
   ];
-  it.each(words)('%s is not', (_, runs) => {
-    expect(isSymbolOnly(runs)).toBe(false);
+  it('words, blanks and whitespace are not', () => {
+    for (const [label, runs] of words) expect(isSymbolOnly(runs), label).toBe(false);
   });
 });

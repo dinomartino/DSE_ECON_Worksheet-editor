@@ -152,50 +152,62 @@ describe('fit each question', () => {
 });
 
 describe('every choice', () => {
+  // Each check loops the four choices, each assertion naming its choice (k-0611: was one
+  // generated test per choice).
   const choices = OPTION_LAYOUT_CHOICES as readonly OptionLayoutChoice[];
 
   it('offers fit first, then the three layouts', () => {
     expect(choices).toEqual(['fit', 'stacked', 'inline', 'columns2']);
   });
 
-  it.each(choices.map((choice) => [choice] as const))('%s: never edits the paper it is given', (choice) => {
-    const { worksheet } = paper();
-    const before = JSON.stringify(worksheet);
-    withOptionLayouts(worksheet, choice, 'en');
-    expect(JSON.stringify(worksheet)).toBe(before);
+  it('every choice: never edits the paper it is given', () => {
+    for (const choice of choices) {
+      const { worksheet } = paper();
+      const before = JSON.stringify(worksheet);
+      withOptionLayouts(worksheet, choice, 'en');
+      expect(JSON.stringify(worksheet), choice).toBe(before);
+    }
   });
 
-  it.each(choices.map((choice) => [choice] as const))('%s: the plan counts what the change changes', (choice) => {
-    const { worksheet } = paper();
-    const next = withOptionLayouts(worksheet, choice, 'en');
-    const changed = worksheet.questions.filter((question, index) => question !== next.questions[index]);
-    expect(planOptionLayouts(worksheet, choice, 'en').changes).toBe(changed.length);
+  it('every choice: the plan counts what the change changes', () => {
+    for (const choice of choices) {
+      const { worksheet } = paper();
+      const next = withOptionLayouts(worksheet, choice, 'en');
+      const changed = worksheet.questions.filter((question, index) => question !== next.questions[index]);
+      expect(planOptionLayouts(worksheet, choice, 'en').changes, choice).toBe(changed.length);
+    }
   });
 
-  it.each(choices.map((choice) => [choice] as const))('%s: touches nothing but the layout', (choice) => {
-    const { worksheet } = paper();
-    const next = withOptionLayouts(worksheet, choice, 'en');
-    const strip = (question: Question) => {
-      const copy: Record<string, unknown> = { ...question };
-      delete copy.optionLayout;
-      return copy;
-    };
-    expect(next.questions.map(strip)).toEqual(worksheet.questions.map(strip));
-    expect(next.flow).toBe(worksheet.flow);
-    expect(next.layout).toBe(worksheet.layout);
+  it('every choice: touches nothing but the layout', () => {
+    for (const choice of choices) {
+      const { worksheet } = paper();
+      const next = withOptionLayouts(worksheet, choice, 'en');
+      const strip = (question: Question) => {
+        const copy: Record<string, unknown> = { ...question };
+        delete copy.optionLayout;
+        return copy;
+      };
+      expect(next.questions.map(strip), choice).toEqual(worksheet.questions.map(strip));
+      expect(next.flow, choice).toBe(worksheet.flow);
+      expect(next.layout, choice).toBe(worksheet.layout);
+    }
   });
 
-  it.each(choices.map((choice) => [choice] as const))('%s: survives save and reload', (choice) => {
-    const next = withOptionLayouts(paper().worksheet, choice, 'en');
-    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(next))));
-    expect(layoutsOf(reloaded)).toEqual(layoutsOf(next));
-    expect(reloaded.__unknown).toBeUndefined();
+  it('every choice: survives save and reload', () => {
+    for (const choice of choices) {
+      const next = withOptionLayouts(paper().worksheet, choice, 'en');
+      const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(next))));
+      expect(layoutsOf(reloaded), choice).toEqual(layoutsOf(next));
+      expect(reloaded.__unknown, choice).toBeUndefined();
+    }
   });
 
-  it.each(choices.map((choice) => [choice] as const))('%s: a paper with no MC question is left alone', (choice) => {
-    const worksheet = withFlow(createWorksheet(), [createStructuredQuestion()]);
-    expect(withOptionLayouts(worksheet, choice, 'en')).toBe(worksheet);
-    expect(planOptionLayouts(worksheet, choice, 'en')).toEqual({ total: 0, changes: 0, skipped: 0 });
+  it('every choice: a paper with no MC question is left alone', () => {
+    for (const choice of choices) {
+      const worksheet = withFlow(createWorksheet(), [createStructuredQuestion()]);
+      expect(withOptionLayouts(worksheet, choice, 'en'), choice).toBe(worksheet);
+      expect(planOptionLayouts(worksheet, choice, 'en'), choice).toEqual({ total: 0, changes: 0, skipped: 0 });
+    }
   });
 });
 

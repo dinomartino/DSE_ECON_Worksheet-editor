@@ -50,37 +50,45 @@ describe('theme files', () => {
     expect(classic.selector).toBe(':root, [data-theme="light"]');
   });
 
-  for (const { id } of THEMES) {
-    describe(id, () => {
-      const css = read(`${id}.css`);
-      const theme = block(css);
+  // Each check runs over every registered theme, the theme named in each assertion (k-0611:
+  // one describe per theme generated the same five tests seven times).
+  const themes = THEMES.map(({ id }) => {
+    const css = read(`${id}.css`);
+    return { id, css, theme: block(css) };
+  });
 
-      it('is imported by globals.css, for the screen only unless it is the default', () => {
-        expect(GLOBALS).toContain(`@import "./themes/${id}.css"${id === 'light' ? '' : ' screen'};`);
-      });
+  it('every theme is imported by globals.css, for the screen only unless it is the default', () => {
+    for (const { id } of themes) {
+      expect(GLOBALS, id).toContain(`@import "./themes/${id}.css"${id === 'light' ? '' : ' screen'};`);
+    }
+  });
 
-      it('never shadows the sheet above: a later sheet paints its lift over the one before', () => {
-        for (const layer of shadowLayers(theme.vars.get('--sheet-shadow') ?? '')) {
-          expect(layer.reachAbove, layer.text).toBeLessThanOrEqual(MAX_REACH);
-        }
-      });
-
-      if (id !== 'light') {
-        it('is one block on its own data-theme, at html and for a preview subtree', () => {
-          expect(theme.selector).toBe(`:root[data-theme="${id}"], :root [data-theme="${id}"]`);
-        });
+  it('no theme shadows the sheet above: a later sheet paints its lift over the one before', () => {
+    for (const { id, theme } of themes) {
+      for (const layer of shadowLayers(theme.vars.get('--sheet-shadow') ?? '')) {
+        expect(layer.reachAbove, `${id}: ${layer.text}`).toBeLessThanOrEqual(MAX_REACH);
       }
+    }
+  });
 
-      it("sets exactly Classic's variables", () => {
-        expect([...theme.vars.keys()].sort()).toEqual([...classic.vars.keys()].sort());
-      });
+  it('every theme but Classic is one block on its own data-theme, at html and for a preview subtree', () => {
+    for (const { id, theme } of themes.filter((t) => t.id !== 'light')) {
+      expect(theme.selector, id).toBe(`:root[data-theme="${id}"], :root [data-theme="${id}"]`);
+    }
+  });
 
-      it('sets only custom properties, and loads nothing', () => {
-        for (const name of theme.vars.keys()) expect(name).toMatch(/^--[a-z0-9-]+$/);
-        expect(stripComments(css)).not.toMatch(/url\(|@import|@font-face|!important|\.paper/);
-      });
-    });
-  }
+  it("every theme sets exactly Classic's variables", () => {
+    for (const { id, theme } of themes) {
+      expect([...theme.vars.keys()].sort(), id).toEqual([...classic.vars.keys()].sort());
+    }
+  });
+
+  it('every theme sets only custom properties, and loads nothing', () => {
+    for (const { id, css, theme } of themes) {
+      for (const name of theme.vars.keys()) expect(name, id).toMatch(/^--[a-z0-9-]+$/);
+      expect(stripComments(css), id).not.toMatch(/url\(|@import|@font-face|!important|\.paper/);
+    }
+  });
 
   it('globals.css imports no theme file that is not registered', () => {
     const imported = [...GLOBALS.matchAll(/@import "\.\/themes\/([a-z-]+)\.css"( screen)?;/g)].map((m) => m[1]);

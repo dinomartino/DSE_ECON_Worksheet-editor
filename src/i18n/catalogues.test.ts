@@ -91,17 +91,19 @@ describe('interface catalogues', () => {
     expect(empty).toEqual([]);
   });
 
-  for (const [file, list] of byFile) {
-    it(`${file}: every entry has Hong Kong Chinese that keeps the English terms`, () => {
-      const found: string[] = [];
+  // One test over every catalogue, each problem named by its file and key (k-0611: it was
+  // one generated test per file, the same check).
+  it('every entry has Hong Kong Chinese that keeps the English terms', () => {
+    const found: string[] = [];
+    for (const [file, list] of byFile) {
       for (const catalogue of list) {
         for (const [key, entry] of Object.entries(catalogue)) {
-          for (const problem of problems(entry)) found.push(`${key}: ${problem}`);
+          for (const problem of problems(entry)) found.push(`${file}: ${key}: ${problem}`);
         }
       }
-      expect(found).toEqual([]);
-    });
-  }
+    }
+    expect(found).toEqual([]);
+  });
 });
 
 describe('the guard itself', () => {
