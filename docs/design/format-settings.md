@@ -239,7 +239,7 @@ saved paper moves. Backends need nothing: the gap is stamped on the next questio
 paragraph (`withLeadingGap` in `src/render/ir.ts`), the `.docx` writes `w:before`, the clipboard
 writes a margin, and it disappears at the top of a page (`withoutBoundaryGap` in
 `src/export/docx/pageBreaks.ts`). The effort is the rule change and its tests
-(`src/render/gaps.test.ts`, `src/model/paper1.test.ts`, `src/export/docx/docx.test.ts`).
+(`src/render/questionGap.test.ts`, `src/model/paper1.test.ts`, `src/export/docx/docx.test.ts`).
 
 A paragraph-level **Space after** in points (`TextFormat.spaceAfter`) already prints in all three
 backends but no control sets it. Real papers keep the gap *inside* a question fixed (stem to first
