@@ -83,12 +83,33 @@ function lastOf(spec: DiagramSpec, id: string): string {
 export function marketsOf(spec: DiagramSpec): SpecMarket[] {
   const given = spec.asks.markets ?? [];
   if (given.length) return given;
-  const demand = spec.curves.find((c) => DEMAND_LIKE.has(c.role))?.id ?? '';
-  const supply = spec.curves.find((c) => SUPPLY_LIKE.has(c.role))?.id ?? '';
+  // A horizontal line is perfectly elastic demand (or supply) when no ordinary one is drawn (k-0600: HKDSE 2025 P1 Q22).
+  const flat = spec.curves.find((c) => c.role === 'horizontal')?.id ?? '';
+  const demandLike = spec.curves.find((c) => DEMAND_LIKE.has(c.role))?.id ?? '';
+  const supplyLike = spec.curves.find((c) => SUPPLY_LIKE.has(c.role))?.id ?? '';
+  const demand = demandLike || (supplyLike ? flat : '');
+  const supply = supplyLike || (demandLike ? flat : '');
   const control = spec.levels.find((l) => l.kind === 'ceiling' || l.kind === 'floor' || l.kind === 'quota')?.id ?? '';
   const before = { demand, supply, cost: '', benefit: '', socialCost: '', control };
   const after = { ...before, demand: demand && lastOf(spec, demand), supply: supply && lastOf(spec, supply) };
   return [before, after];
+}
+
+/**
+ * The markets an area claim reads (k-0600 follow-up): the plan's own, else the defaults, with
+ * one thing the words tell: under a per-unit tax or subsidy the shifted supply is the supply
+ * with the wedge, and the cost is the supply before it. Without that the producer surplus after
+ * a subsidy was measured against S1 at the market price, and the parallelogram between S0 and
+ * S1 read as the increase in producer surplus (it is that increase less the deadweight loss).
+ */
+export function marketsFor(spec: DiagramSpec, words: string): SpecMarket[] {
+  if (spec.asks.markets?.length) return spec.asks.markets;
+  const markets = marketsOf(spec);
+  if (markets.length < 2) return markets;
+  const [before, after] = markets;
+  const policy = /\b(?:tax|taxes|taxed|subsid(?:y|ies|ised|ized|ises|izes))\b|稅|津貼/i.test(words);
+  if (!policy || !before.supply || after.supply === before.supply) return markets;
+  return [before, { ...after, cost: before.supply }];
 }
 
 function resolveState(spec: DiagramSpec, compiled: Compiled, diagram: Diagram, m: SpecMarket): State | string {
@@ -282,6 +303,26 @@ export function sameShape(a: (p: Pt) => boolean, b: (p: Pt) => boolean): boolean
 
 const isEmpty = (a: (p: Pt) => boolean) => !sameShape(a, a);
 
+/**
+ * Whether two areas are the same size (within 3% of the larger), sampled as `sameShape` is. An
+ * area claim is about a size (k-0600 follow-up): with a unit tax the region between S0 and S1
+ * below the price is the producers' loss, though the solver draws that loss between the two
+ * price lines.
+ */
+export function sameSize(a: (p: Pt) => boolean, b: (p: Pt) => boolean): boolean {
+  let na = 0;
+  let nb = 0;
+  for (let i = 0; i < GRID; i += 1) {
+    const x = (i + 0.5) / GRID;
+    for (let j = 0; j < GRID; j += 1) {
+      const p = { x, y: (j + 0.5) / GRID };
+      if (a(p)) na += 1;
+      if (b(p)) nb += 1;
+    }
+  }
+  return na > 0 && nb > 0 && Math.abs(na - nb) <= 0.03 * Math.max(na, nb);
+}
+
 /** Where each one-letter point name sits on the figure. */
 export function letterPlaces(diagram: Diagram): Map<string, Pt> {
   const out = new Map<string, Pt>();
@@ -327,6 +368,11 @@ function shapeOfOption(option: string, diagram: Diagram, compiled: Compiled): Sh
     return { name: letters.length > 1 ? `areas ${letters.join(' + ')}` : `area ${letters[0]}`, inside: (p) => polys.some((poly) => inPolygon(p, poly)) };
   }
   return null;
+}
+
+/** The area "area 0abc" / "area A" names on this figure, for a claim in the words (k-0600 follow-up). */
+export function claimShape(area: string, diagram: Diagram, compiled: Compiled): Shape | string | null {
+  return shapeOfOption(area, diagram, compiled);
 }
 
 /** The lettered points on an area's edge (in, with a neighbour out), for the repair text. */
@@ -396,7 +442,8 @@ export function checkPlanAreas(spec: DiagramSpec, compiled: Compiled, mcq: McqWo
     error('area.option', `The key is option ${LETTERS[mcq.answer]}, but ${keyed}.`);
     return { issues, solved: null };
   }
-  const measure = measureOf(spec, compiled, diagram);
+  // A tax or subsidy in the words: the shifted supply carries the wedge (k-0600 follow-up).
+  const measure = measureOf({ ...spec, asks: { ...spec.asks, markets: marketsFor(spec, [mcq.stem, ...mcq.statements, ...mcq.options].join('\n')) } }, compiled, diagram);
   if (typeof measure === 'string') {
     error('area.market', `The question asks for ${MEASURE_WORDS[spec.asks.what as AreaAsk]}, but on this drawing ${measure}. Fix asks.markets or the drawing.`);
     return { issues, solved: null };

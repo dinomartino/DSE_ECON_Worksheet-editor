@@ -138,6 +138,27 @@ function countingClient(client: AiClient, usage: Usage): AiClient {
   };
 }
 
+/** The diagram issues that say the words are wrong about an area, not the figure (k-0600 follow-up). */
+const CLAIM_CODES = new Set(['area.claim', 'area.statement']);
+const claimIssues = (d: DraftDiagram | undefined) => (d && !d.edited ? d.issues.filter((i) => CLAIM_CODES.has(i.code)) : []);
+
+/**
+ * What the explanation or a statement says an area is, against the market on the drawing, on the
+ * key's row (k-0600 follow-up): a statement the key treats wrongly is a red warning; an
+ * explanation that misnames an area is one to read. Replaces the row's earlier verdict on it.
+ */
+export function applyAreaClaims(slot: { checks: CheckRow[]; diagram?: DraftDiagram }): void {
+  const key = slot.checks.find((c) => c.id === 'key');
+  if (!key) return;
+  key.findings = key.findings.filter((f) => f.id !== 'key.areaClaim');
+  const codes = new Set(claimIssues(slot.diagram).map((i) => i.code));
+  const kinds = [codes.has('area.statement') ? 'statement' : '', codes.has('area.claim') ? 'explanation' : ''].filter(Boolean);
+  for (const kind of kinds) key.findings.push({ id: 'key.areaClaim', params: { kind } });
+  if (kinds.includes('statement')) key.state = 'fail';
+  else if (kinds.length && (key.state === 'pass' || key.state === 'skipped')) key.state = 'look';
+  else if (!kinds.length && !key.findings.length && key.state !== 'skipped') key.state = 'pass';
+}
+
 /** What the diagram maker reads of a draft: the question in one language (labels are the same in both), its key, the writer's note. */
 function diagramInput(d: McqDraft, sides: readonly Side[], figure?: string): DiagramGenInput {
   const side: Side = sides.includes('en') ? 'en' : 'zh';
@@ -498,6 +519,7 @@ export async function writeDrafts(
       key.state = 'skipped';
       key.findings = [];
       delete slot.solve;
+      applyAreaClaims(slot);
       return;
     }
     slot.solve = result;
@@ -506,6 +528,7 @@ export async function writeDrafts(
     else if (result.ambiguous) findings.push({ id: 'key.ambiguous' });
     key.findings = findings;
     key.state = findings.length ? 'look' : 'pass';
+    applyAreaClaims(slot);
   };
 
   /**
@@ -553,6 +576,7 @@ export async function writeDrafts(
     if (solved instanceof Map) standing.forEach((s, at) => applySolve(s, at, solved.get(s.id)));
     else {
       standing.forEach((s, at) => applyTopic(s, at, undefined));
+      standing.forEach((s) => applyAreaClaims(s));
       if (!signal.aborted) notes.push({ id: 'run.keyNotChecked', params: { message: solved.message } });
     }
     emitDrafts(slots);
@@ -560,7 +584,9 @@ export async function writeDrafts(
 
     // 5. One rewrite of drafts whose key the solver disagreed with, or that left their concept (k-0554), their figures, and their solve.
     const keyOff = (s: Slot) => Boolean(s.solve && s.solve.answer !== s.draft.answerIndex);
-    const differing = solved instanceof Map ? standing.filter((s) => keyOff(s) || offTopic(s)) : [];
+    // k-0600 follow-up: words that misname an area on the figure are rewritten too (the figure stays the plan).
+    const claimOff = (s: Slot) => claimIssues(s.diagram).length > 0;
+    const differing = solved instanceof Map ? standing.filter((s) => keyOff(s) || offTopic(s) || claimOff(s)) : standing.filter(claimOff);
     if (differing.length && !opts.rewrite) {
       total += 2;
       const redo = differing.map((s) => ({
@@ -569,6 +595,7 @@ export async function writeDrafts(
           keyOff(s)
             ? `A student solving it from the text alone chose option ${letter(s.solve!.answer)}, but you marked option ${letter(s.draft.answerIndex)}. Their working: ${plain(toRuns(s.solve!.working)).slice(0, 300)} Make exactly one option correct and the others clearly wrong.`
             : '',
+          claimOff(s) ? `On its diagram: ${claimIssues(s.diagram).map((i) => i.text).join(' ')}`.slice(0, 900) : '',
         ].filter(Boolean).join(' '),
         draft: textOf(s),
       }));
@@ -588,7 +615,10 @@ export async function writeDrafts(
           const solvedAgain = await solveOf(replaced.map(({ slot, at }) => ({ slot, at })));
           for (const { at, slot } of replaced) {
             if (solvedAgain instanceof Map) applySolve(slot, at, solvedAgain.get(slot.id));
-            else applyTopic(slot, at, undefined);
+            else {
+              applyTopic(slot, at, undefined);
+              applyAreaClaims(slot);
+            }
             slots[at] = slot;
           }
         } else {
@@ -748,13 +778,10 @@ async function changeWithFigure(
     shape.findings = shape.findings.filter((f) => f.id !== 'shape.figureFailed');
     if (!shape.findings.length) shape.state = 'pass';
   }
-  const draft: StudioDraft = {
-    ...target,
-    id: newId(),
-    checks,
-    diagram: edited.block || !target.diagram ? edited : { ...target.diagram, status: 'look', issues: edited.issues },
-    status: statusOf(checks),
-  };
+  const diagram = edited.block || !target.diagram ? edited : { ...target.diagram, status: 'look' as const, issues: edited.issues };
+  // The words against the new figure (k-0600 follow-up): an area they misname is said on the key's row.
+  applyAreaClaims({ checks, diagram });
+  const draft: StudioDraft = { ...target, id: newId(), checks, diagram, status: statusOf(checks) };
   emit({ type: 'draft', index: 0, draft });
   emit({ type: 'diagram', index: 0, state: 'done' });
   hooks.progress?.(1, 1, 'diagram');

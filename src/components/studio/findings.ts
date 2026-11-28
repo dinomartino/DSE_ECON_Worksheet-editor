@@ -58,6 +58,8 @@ export function findingText(finding: Finding, m: FindingMessages): string {
       return m.keyDiffers(str(p.solver), str(p.key));
     case 'key.edited':
       return m.keyEdited;
+    case 'key.areaClaim':
+      return p.kind === 'statement' ? m.keyAreaStatement : m.keyAreaExplanation;
     case 'check.edited':
       return m.checkEdited;
     case 'key.ambiguous':
@@ -112,7 +114,7 @@ export function findingText(finding: Finding, m: FindingMessages): string {
 /** Every code `findingText` knows, for the test that holds the engine to it. */
 export const KNOWN_FINDINGS: readonly string[] = [
   'shape.stemEmpty', 'shape.optionCount', 'shape.optionEmpty', 'shape.optionsSame', 'shape.keyRange', 'shape.statementEmpty',
-  'shape.statementCount', 'shape.notCombination', 'shape.narrates', 'shape.figureFailed', 'shape.figuresSame', 'shape.figureSet', 'shape.referenceForm', 'key.differs', 'key.ambiguous', 'key.edited', 'check.edited', 'topic.off', 'topic.notChecked', 'numbers.differ', 'terms.note', 'syllabus.limited',
+  'shape.statementCount', 'shape.notCombination', 'shape.narrates', 'shape.figureFailed', 'shape.figuresSame', 'shape.figureSet', 'shape.referenceForm', 'key.differs', 'key.ambiguous', 'key.edited', 'key.areaClaim', 'check.edited', 'topic.off', 'topic.notChecked', 'numbers.differ', 'terms.note', 'syllabus.limited',
   'lint.keyLongest', 'lint.uneven', 'lint.allNone', 'lint.negativeStem', 'lint.shapeAsked', 'lint.keySpread', 'copy.close', 'copy.wordsOnly', 'copy.reference',
   'run.fewer', 'run.stopped', 'run.keyNotChecked', 'run.referenceShape', 'run.figureNotRedrawn',
 ];

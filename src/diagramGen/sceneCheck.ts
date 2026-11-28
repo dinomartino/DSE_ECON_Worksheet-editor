@@ -325,10 +325,12 @@ export function checkCornerLettersDrawn(diagram: Diagram, mcq: McqWords, explana
       const covered = (a: Pt, b: Pt) => Array.from({ length: 9 }, (_, k) => ({ x: a.x + ((b.x - a.x) * k) / 8, y: a.y + ((b.y - a.y) * k) / 8 })).every((p) => lines.some((line) => onLine(line, p)));
       const loose = shape.map((a, i) => [a, shape[(i + 1) % shape.length]] as const).filter(([a, b]) => !covered(a, b));
       if (loose.length) {
+        // Corner 0 (k-0600 follow-up): its sides run along an axis or a supply drawn from the origin.
+        const origin = area.includes(ORIGIN_CORNER) ? ' A side from corner 0 runs along an axis or along a supply drawn from the origin (through ["origin"]); a corner on an axis is a point with b "xAxis" or "yAxis".' : '';
         out.push({
           level: 'error',
           code: 'figure.cornerEdge',
-          text: `Area ${area} has ${loose.length === 1 ? 'a side' : 'sides'} ${loose.map(([a, b]) => `${name(a)}–${name(b)}`).join(', ')} that ${loose.length === 1 ? 'runs' : 'run'} along no line of the figure, so the letters are on the wrong points. Each corner sits where two lines meet (or on a curve straight above or below another point) so that every side runs along a curve or a dashed line.`,
+          text: `Area ${area} has ${loose.length === 1 ? 'a side' : 'sides'} ${loose.map(([a, b]) => `${name(a)}–${name(b)}`).join(', ')} that ${loose.length === 1 ? 'runs' : 'run'} along no line of the figure, so the letters are on the wrong points. Each corner sits where two lines meet (or on a curve straight above or below another point) so that every side runs along a curve or a dashed line.${origin}`,
         });
       }
     }
@@ -339,7 +341,7 @@ export function checkCornerLettersDrawn(diagram: Diagram, mcq: McqWords, explana
         {
           level: 'error',
           code: 'figure.cornerMissing',
-          text: `The question names areas or points by corner letters, but ${missing.map((l) => (l === ORIGIN_CORNER ? '0 (the origin, hidden on this figure)' : l)).join(', ')} ${missing.length === 1 ? 'is' : 'are'} not on the figure. Every letter the question or its key names must be a point's name on the figure: give each spec point the name the question uses for it (points[].name). Use a scene that has the points (scene.points: a tax raised from t1 to t2 is taxChange, a ceiling made effective by a rise in demand is priceCeiling with stage demandRise, binds after), or name each point where the explanation puts it.`,
+          text: `The question names areas or points by corner letters, but ${missing.map((l) => (l === ORIGIN_CORNER ? '0 (the origin, hidden on this figure)' : l)).join(', ')} ${missing.length === 1 ? 'is' : 'are'} not on the figure. Every letter the question or its key names must be a point's name on the figure: give each spec point the name the question uses for it (points[].name); a corner where a curve meets an axis is a point with b "xAxis" or "yAxis". Use a scene that has the points (scene.points: a tax raised from t1 to t2 is taxChange, a ceiling made effective by a rise in demand is priceCeiling with stage demandRise, binds after), or name each point where the explanation puts it.`,
         },
       ]
     : [];

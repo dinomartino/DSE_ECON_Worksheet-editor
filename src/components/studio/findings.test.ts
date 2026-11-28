@@ -28,6 +28,8 @@ const SAMPLES: Finding[] = [
   { id: 'key.differs', params: { solver: 'C', key: 'B' } },
   { id: 'key.ambiguous' },
   { id: 'key.edited' },
+  { id: 'key.areaClaim', params: { kind: 'explanation' } },
+  { id: 'key.areaClaim', params: { kind: 'statement' } },
   { id: 'check.edited' },
   { id: 'topic.off', params: { tests: 'the effect of fiscal policy on output and price', conceptEn: 'the structure of a tax', conceptZh: '稅制結構' } },
   { id: 'topic.notChecked' },

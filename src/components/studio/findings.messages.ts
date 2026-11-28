@@ -75,6 +75,14 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
     en: (solver: string, key: string) => `Solved again from the text alone, the check chose ${solver}, but the key says ${key}. Work it out before you use this question.`,
     zh: (solver: string, key: string) => `只憑題目文字重新作答，檢查選了 ${solver}，但答案是 ${key}。使用這條題目前，請自己計算一次。`,
   },
+  keyAreaExplanation: {
+    en: 'The explanation calls an area on the diagram something it is not. Point at "Read the diagram" to see which.',
+    zh: '解說對圖中某面積的描述與圖表不符。將指標移到「請細閱圖表」可看是哪一處。',
+  },
+  keyAreaStatement: {
+    en: 'On the diagram, a statement about an area is true where the key treats it as false, or false where it treats it as true. Work it out before you use this question.',
+    zh: '按圖表，某項關於面積的陳述的對錯與答案所定的不符。使用這條題目前，請自己計算一次。',
+  },
   keyEdited: {
     en: 'You edited this question after the AI checked its key: check again. Work the answer out yourself, or ask the AI to change the draft (that checks it again).',
     zh: '你在 AI 核對答案後修改了這條題目：請再檢查。請自己計算答案，或請 AI 修改草稿（會再次核對）。',

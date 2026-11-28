@@ -241,6 +241,13 @@ const text = (v: unknown): SpecText => (isRecord(v) ? { en: s(v.en), zh: s(v.zh)
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
 /** A crossing named by two ids: ["D1","S1"], or "D1×S1" / "D1 x S1" / "D1,S1" from a looser reply. */
+/** A curve's `through`: two crossing ids, or ["origin"] for a supply drawn from the origin (k-0600). */
+function curveThrough(v: unknown): string[] {
+  const one = Array.isArray(v) && v.length === 1 ? s(v[0]).trim() : typeof v === 'string' ? v.trim() : '';
+  if (/^(?:origin|0|O|the origin)$/i.test(one)) return ['origin'];
+  return crossingRef(v);
+}
+
 function crossingRef(v: unknown): string[] {
   const ids = Array.isArray(v) ? v.map(s) : typeof v === 'string' ? v.split(/\s*(?:×|\*|,|\/|&|\band\b|\s[xX]\s)\s*/) : [];
   const clean = ids.map((x) => x.trim()).filter(Boolean);
@@ -284,7 +291,7 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
       slope: pick(c.slope, SLOPES, 'normal', `curve ${s(c.id)} slope`),
       place: pick(c.place, PLACES, 'mid', `curve ${s(c.id)} place`),
       label: s(c.label),
-      through: crossingRef(c.through),
+      through: curveThrough(c.through),
     };
     // A graph line's shape (k-0545); other roles carry none, and an older spec has neither key.
     if (role === 'graph') {

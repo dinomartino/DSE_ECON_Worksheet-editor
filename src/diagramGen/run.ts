@@ -18,6 +18,7 @@ import { checkDiagram, checkStem } from './validate';
 import { checkLayout, separateNames } from './layoutCheck';
 import { checkCoincide } from './coincide';
 import { checkPlanAreas } from './market';
+import { checkAreaClaims } from './areaClaims';
 import { checkFlow } from './flow';
 import { checkLorenz, lorenzWidth } from './lorenz';
 import type { SceneBuilt } from './scene';
@@ -137,6 +138,8 @@ function evaluateDrawing(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides'
     const areas = checkPlanAreas(spec, compiled, input.mcq);
     issues.push(...areas.issues);
     solved = areas.solved ?? solved;
+    // What the explanation and the statements say an area is, against the market (k-0600 follow-up).
+    issues.push(...checkAreaClaims(spec, compiled, input.mcq, input.key));
   } else if (spec.kind === 'curves' && compiled.diagram) {
     issues.push(...checkPlanAreas(spec, compiled, undefined).issues);
   }

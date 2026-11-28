@@ -15,6 +15,14 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question studio draws a supply curve from the origin, and checks what the explanation says
+  an area is.** A question that names "area 0abc", as HKDSE 2025 Paper 1 Q22 does, now gets its
+  figure: S₀ from 0, the shifted supply starting at a on the quantity axis (or the price axis), and
+  every letter printed. When the explanation or a statement calls an area the increase in producer
+  surplus, the deadweight loss, the tax revenue or the subsidy spending, the studio works that area
+  out from the market on the figure; a draft that gets it wrong is written again once, and if it is
+  still wrong it is marked to check, never shown as passing.
+  <!-- zh: **擬題工作室能畫由原點開始的供應曲線，並核對解說所指的面積。** 題目若像 HKDSE 2025 年 Paper 1 第 22 題般提及「面積 0abc」，現在可畫出相應圖表：S₀ 由 0 開始，移動後的供應曲線由數量軸（或價格軸）上的 a 開始，所有字母均會印出。若解說或陳述指某面積是生產者盈餘的增加、效率損失、稅收或津貼開支，工作室會按圖中市場計出該面積；說錯的草稿會重寫一次，若仍然錯誤，會標示為需要檢查，絕不會顯示為通過。 -->
 - **The Question studio draws area questions that no ready figure covers, and still checks the key.**
   For two policies at once (a unit tax and a minimum price, a maximum price and then a tax) or one
   policy replaced by another, it draws the curves, letters the areas or their corners, and works the

@@ -1,6 +1,6 @@
 import type { Diagram, DiagramCurve } from '@/model/diagram';
 import { curveCrossing } from '@/model/diagramAreas';
-import { DEMAND_LIKE, SUPPLY_LIKE, tickKey } from './compile';
+import { axisRef, DEMAND_LIKE, fromOrigin, SUPPLY_LIKE, tickKey } from './compile';
 import { compileScene } from './scene';
 import { sceneWords } from './sceneCheck';
 import { lorenzWords } from './lorenz';
@@ -70,7 +70,7 @@ export function figureWords(spec: DiagramSpec, diagram: Diagram): string {
     return c ? sym(c.label) || id : sym(id);
   };
   const curveLines = [
-    ...spec.curves.map((c) => (c.role === 'graph' ? `${sym(c.label) || 'the line'}: ${graphWords(c.shape, c.rise)}` : `${sym(c.label)}: ${ROLE[c.role] ?? c.role}`)),
+    ...spec.curves.map((c) => (c.role === 'graph' ? `${sym(c.label) || 'the line'}: ${graphWords(c.shape, c.rise)}` : `${sym(c.label)}: ${ROLE[c.role] ?? c.role}${fromOrigin(c) ? ' from the origin' : ''}`)),
     ...spec.shifts.map((s) => `${sym(s.label)}: ${name(s.of)} shifted ${WAY[s.direction] ?? s.direction}`),
     ...spec.levels.map((l) => (l.kind === 'quota' ? `${sym(l.label)}: a quota, a fixed quantity` : `${sym(l.label)}: a fixed price (${l.kind === 'ceiling' ? 'a price ceiling' : l.kind === 'floor' ? 'a price floor' : l.kind === 'world' ? 'the world price' : 'a set price'})`)),
   ];
@@ -81,6 +81,8 @@ export function figureWords(spec: DiagramSpec, diagram: Diagram): string {
     const level = spec.levels.find((l) => l.id === p.a || l.id === p.b);
     const other = level ? (level.id === p.a ? p.b : p.a) : '';
     if (level) return level.kind === 'quota' ? `${name(other)} at the quota ${name(level.id)}` : `${name(other)} at the price ${name(level.id)}`;
+    const axis = axisRef(p.b);
+    if (axis) return `where ${name(p.a)} meets the ${axis === 'x' ? (spec.xAxis.en || spec.xAxis.zh || 'x').toLowerCase() : (spec.yAxis.en || spec.yAxis.zh || 'y').toLowerCase()} axis`;
     const isLine = (id: string) => spec.curves.some((c) => c.id === id) || spec.shifts.some((s) => s.id === id);
     if (isLine(p.b)) return `where ${name(p.a)} meets ${name(p.b)}`;
     return `on ${name(p.a)} at ${sym(p.b)}`;

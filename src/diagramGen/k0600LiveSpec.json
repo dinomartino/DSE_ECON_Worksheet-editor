@@ -1,0 +1,151 @@
+{
+  "kind": "curves",
+  "reason": "",
+  "placement": "question",
+  "template": "",
+  "title": {
+    "en": "",
+    "zh": ""
+  },
+  "xAxis": {
+    "en": "Quantity",
+    "zh": "數量"
+  },
+  "yAxis": {
+    "en": "Price",
+    "zh": "價格"
+  },
+  "curves": [
+    {
+      "id": "D",
+      "role": "horizontal",
+      "slope": "normal",
+      "place": "mid",
+      "label": "D",
+      "through": []
+    },
+    {
+      "id": "S0",
+      "role": "supply",
+      "slope": "normal",
+      "place": "mid",
+      "label": "S_0",
+      "through": [
+        "origin"
+      ]
+    }
+  ],
+  "shifts": [
+    {
+      "of": "S0",
+      "id": "S1",
+      "direction": "down",
+      "size": "normal",
+      "label": "S_1",
+      "through": []
+    }
+  ],
+  "levels": [],
+  "points": [
+    {
+      "a": "S1",
+      "b": "xAxis",
+      "name": "a",
+      "yTick": "",
+      "xTick": "",
+      "dot": false
+    },
+    {
+      "a": "D",
+      "b": "S0",
+      "name": "b",
+      "yTick": "",
+      "xTick": "",
+      "dot": false
+    },
+    {
+      "a": "D",
+      "b": "S1",
+      "name": "c",
+      "yTick": "",
+      "xTick": "",
+      "dot": false
+    }
+  ],
+  "gaps": [],
+  "brackets": [],
+  "bands": [],
+  "shades": [],
+  "marks": [],
+  "changeArrows": false,
+  "asks": {
+    "what": "none",
+    "state": "after",
+    "markets": []
+  },
+  "chart": {
+    "type": "bar",
+    "categories": [],
+    "series": [],
+    "yTitle": {
+      "en": "",
+      "zh": ""
+    },
+    "xTitle": {
+      "en": "",
+      "zh": ""
+    }
+  },
+  "scene": {
+    "type": "none",
+    "market": "goods",
+    "externality": "none",
+    "demand": "normal",
+    "supply": "normal",
+    "size": "normal",
+    "labels": [],
+    "areas": [],
+    "points": [],
+    "ask": "none",
+    "gap": false,
+    "stage": "none",
+    "binds": "both",
+    "mc": "flat",
+    "given": [],
+    "trade": {
+      "tot": 0,
+      "totLine": false,
+      "grow": 0,
+      "xGood": {
+        "en": "",
+        "zh": ""
+      },
+      "yGood": {
+        "en": "",
+        "zh": ""
+      },
+      "countries": []
+    }
+  },
+  "flow": {
+    "layout": "columns",
+    "nodes": [],
+    "arrows": [],
+    "key": {
+      "dashed": {
+        "en": "",
+        "zh": ""
+      },
+      "solid": {
+        "en": "",
+        "zh": ""
+      }
+    }
+  },
+  "lorenz": {
+    "panels": [],
+    "equality": true,
+    "grid": true,
+    "axes": "percent"
+  }
+}

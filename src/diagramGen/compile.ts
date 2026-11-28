@@ -83,6 +83,22 @@ const SUPPLY_LINES: Record<Slope, Pair[]> = {
   steep: [[0.28, 0.08], [0.56, 0.9]],
   flat: [[0.04, 0.3], [0.86, 0.62]],
 };
+/**
+ * A supply drawn from the origin (k-0600: HKDSE 2025 P1 Q22 names "area 0abc", 0 where S0 starts):
+ * `through: ["origin"]`. Same slopes as `SUPPLY_LINES`, starting at 0, so a horizontal demand at
+ * any `place` still meets it and a shift right starts on the quantity axis.
+ */
+const SUPPLY_FROM_ORIGIN: Record<Slope, Pair[]> = {
+  normal: [[0, 0], [0.72, 0.86]],
+  steep: [[0, 0], [0.4, 0.9]],
+  flat: [[0, 0], [0.86, 0.62]],
+};
+export const fromOrigin = (c: Pick<SpecCurve, 'through'>) => c.through?.length === 1 && c.through[0] === 'origin';
+/** A point's `b` naming an axis (k-0600): where line `a` meets it ("a" where S₁ starts on the quantity axis). */
+export function axisRef(id: string): 'x' | 'y' | null {
+  const m = /^(x|y)[-_ ]?axis$/i.exec(id.trim());
+  return m ? (m[1].toLowerCase() as 'x' | 'y') : null;
+}
 const VERTICAL_X: Record<Place, number> = { low: 0.3, mid: 0.46, high: 0.62 };
 const LEVEL_Y: Record<Place, number> = { low: 0.3, mid: 0.48, high: 0.66 };
 const FRONTIER: Record<Place, Pair> = { low: [0.46, 0.5], mid: [0.6, 0.66], high: [0.76, 0.82] };
@@ -150,6 +166,7 @@ function baseCurve(spec: SpecCurve): { curve: DiagramCurve; frontier?: Pair } {
       return { curve: curve(DEMAND_LINES[spec.slope] ?? DEMAND_LINES.normal, name) };
     case 'supply':
     case 'sras':
+      if (fromOrigin(spec)) return { curve: curve(SUPPLY_FROM_ORIGIN[spec.slope] ?? SUPPLY_FROM_ORIGIN.normal, name) };
       return { curve: curve(SUPPLY_LINES[spec.slope] ?? SUPPLY_LINES.normal, name) };
     case 'lras':
     case 'vertical':
@@ -496,6 +513,9 @@ export function compileSpec(given: DiagramSpec): Compiled {
   for (const spec_ of spec.curves) {
     try {
       const built = baseCurve(spec_);
+      if (fromOrigin(spec_) && spec_.role !== 'supply' && spec_.role !== 'sras') {
+        error('curve.origin', `"${spec_.id}" is a ${spec_.role} curve: only a supply curve is drawn from the origin (through ["origin"]).`);
+      }
       if (spec_.through?.length === 2 && !placeThrough(spec_, built.curve)) continue;
       add(spec_.id, built.curve, spec_.role);
       if (built.frontier) frontiers.set(spec_.id, built.frontier);
@@ -722,6 +742,18 @@ export function compileSpec(given: DiagramSpec): Compiled {
     }
     const a = bySpecId.get(p.a);
     if (!a) return `Point ${pointName(p)} names "${p.a}", which is not drawn.`;
+    // On an axis (k-0600): where a meets the quantity axis (y = 0) or the price axis (x = 0).
+    const axis = axisRef(p.b);
+    if (axis === 'x') {
+      const x = curveXAt(a, 0);
+      if (x === null || x < 0.01 || x > 1) return `Point ${pointName(p)}: "${p.a}" does not meet the x-axis inside the plot (a supply from the origin shifted right does, at the shift).`;
+      return { at: { x, y: 0 }, anchor: { on: a.id, y: 0 } };
+    }
+    if (axis === 'y') {
+      const y = curveYAt(a, 0);
+      if (y === null || y < 0.01 || y > 1) return `Point ${pointName(p)}: "${p.a}" does not meet the y-axis inside the plot (a supply from the origin shifted up does, at the shift).`;
+      return { at: { x: 0, y }, anchor: { on: a.id, x: { x: 0, y: 0 } } };
+    }
     const b = bySpecId.get(p.b);
     if (b) {
       const hit = curveCrossing(a, b);
@@ -806,7 +838,7 @@ export function compileSpec(given: DiagramSpec): Compiled {
   for (const e of spec.points) {
     const placed = placePoint(e, parts);
     if (typeof placed === 'string') {
-      error(bySpecId.get(e.a) && (bySpecId.get(e.b) || guides.has(e.b) || !e.b) ? 'eq.cross' : 'eq.ref', placed);
+      error(bySpecId.get(e.a) && (bySpecId.get(e.b) || guides.has(e.b) || !e.b || axisRef(e.b)) ? 'eq.cross' : 'eq.ref', placed);
       continue;
     }
     // A guide's own tick is printed once, by its furthest point (below).
