@@ -4,7 +4,7 @@ import { curveCrossing } from '@/model/diagramAreas';
 import { DEMAND_LIKE, SUPPLY_LIKE, tickKey, type Compiled } from './compile';
 import { optionLabels } from './labels';
 import { plainOf } from './text';
-import type { AskWhat, DiagramIssue, DiagramSpec, SolvedKey } from './types';
+import { isAreaAsk, type AskWhat, type DiagramIssue, type DiagramSpec, type SolvedKey } from './types';
 
 /**
  * The key worked out again from the drawing (k-0534). The question says what it asks
@@ -33,6 +33,13 @@ const WHAT_WORDS: Record<AskWhat, string> = {
   marketPrice: 'the market price',
   buyersPay: 'the price buyers pay',
   sellersGet: 'the price sellers receive',
+  dwl: 'the deadweight loss',
+  cs: 'the consumer surplus',
+  ps: 'the producer surplus',
+  taxRevenue: 'the tax revenue (or subsidy spending)',
+  consumerBurden: "the consumers' share of the tax",
+  producerBurden: "the producers' share of the tax",
+  spending: "buyers' total spending",
 };
 
 type Target = { axis: 'x' | 'y'; at: number[]; why: string };
@@ -127,7 +134,7 @@ function target(spec: DiagramSpec, compiled: Compiled, diagram: Diagram): Target
       if (y === null) return `${labelOf(spec, s.before)} does not reach the quantity transacted`;
       return { axis: 'y', at: [y], why: `${priceWhy}; sellers receive the price on the original supply ${labelOf(spec, s.before)} at the quantity transacted` };
     }
-    case 'none':
+    default:
       return 'nothing to solve';
   }
 }
@@ -163,7 +170,8 @@ export interface SolveInput {
  */
 export function solveKey(spec: DiagramSpec, compiled: Compiled, mcq: SolveInput | undefined): { solved: SolvedKey | null; issues: DiagramIssue[] } {
   const diagram = compiled.diagram;
-  if (spec.kind !== 'curves' || spec.asks.what === 'none' || !diagram) return { solved: null, issues: [] };
+  // Areas are `market.ts`'s (k-0596).
+  if (spec.kind !== 'curves' || spec.asks.what === 'none' || isAreaAsk(spec.asks.what) || !diagram) return { solved: null, issues: [] };
   const words = WHAT_WORDS[spec.asks.what];
   const found = target(spec, compiled, diagram);
   const optionKeys = (mcq?.options ?? []).map(optionLabels);

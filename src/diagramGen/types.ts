@@ -140,7 +140,8 @@ export interface SpecLevel {
  * A marked point where two lines meet (k-0534: any two drawn lines, a price line or quota
  * included), with dashed drops and ticks. `b` may also name an earlier point's x tick
  * ("Q_1": the point on `a` above that quantity, a producer price under a tax) or y tick
- * ("P_1": the point on `a` at that price).
+ * ("P_1": the point on `a` at that price), or an earlier point's name (k-0596: "b on D₂
+ * directly above a", joined to it by a dashed line).
  */
 export interface SpecPoint {
   a: string;
@@ -172,13 +173,68 @@ export const ASKS = [
   'marketPrice',
   'buyersPay',
   'sellersGet',
+  // Areas (k-0596): worked out by `market.ts` from the market state(s), never from the AI's bands.
+  'dwl',
+  'cs',
+  'ps',
+  'taxRevenue',
+  'consumerBurden',
+  'producerBurden',
+  'spending',
 ] as const;
 export type AskWhat = (typeof ASKS)[number];
 
+/** The asks that are areas (k-0596): the keyed option's area must be this measure of the market state. */
+export const AREA_ASKS = ['dwl', 'cs', 'ps', 'taxRevenue', 'consumerBurden', 'producerBurden', 'spending'] as const;
+export type AreaAsk = (typeof AREA_ASKS)[number];
+export const isAreaAsk = (what: string): what is AreaAsk => (AREA_ASKS as readonly string[]).includes(what);
+
+/**
+ * One state of a market for the area check (k-0596): which drawn lines are in force. Every id
+ * names a curve, shift or level of the spec; '' = the default.
+ * - demand, supply: the curves buyers and sellers trade on (supply = with a tax or subsidy, S₁).
+ * - cost: the sellers' own costs, the supply without the tax or subsidy (S₀); '' = supply.
+ * - benefit / socialCost: the social curves (MSB, MSC) for the deadweight loss; '' = demand / cost.
+ * - control: a ceiling, floor or quota level in force; '' = none.
+ */
+export interface SpecMarket {
+  demand: string;
+  supply: string;
+  cost: string;
+  benefit: string;
+  socialCost: string;
+  control: string;
+}
+
 export interface SpecAsks {
   what: AskWhat;
-  /** before: the curves as first drawn; after: each curve's last shift in their place. */
-  state: 'before' | 'after';
+  /**
+   * before: the curves as first drawn; after: each curve's last shift in their place.
+   * change (k-0596, areas only): the area between the before and after measures.
+   */
+  state: 'before' | 'after' | 'change';
+  /**
+   * The market states an area ask reads (k-0596): [before] or [before, after]; [] / absent =
+   * the first demand and supply curves before, their last shifts after, the first control.
+   */
+  markets?: SpecMarket[];
+}
+
+/**
+ * An area as a planned band (k-0596): the region between two drawn lines across a stretch of
+ * quantity. The AI names the area; code works out its corners from the drawing. top, bottom:
+ * drawn ids (curve, shift or level); bottom '' = the x-axis. from, to: a point's name or a tick
+ * label on the figure; from '' = the y-axis, to '' = where top and bottom meet.
+ */
+export interface SpecBand {
+  /** The letter printed in the region ("A"), '' = none (an area named by its corners). */
+  label: string;
+  /** The corner letters the question names this area by ("abc"), '' = none. */
+  corners: string;
+  top: string;
+  bottom: string;
+  from: string;
+  to: string;
 }
 
 /** The quantity gap at a price line between the demand and supply curves: a shortage or surplus. */
@@ -541,6 +597,8 @@ export interface DiagramSpec {
   gaps: SpecGap[];
   /** Brackets between two ticks (k-0586); absent in a spec saved before = []. */
   brackets?: SpecBracket[];
+  /** Areas as planned bands (k-0596); absent in a spec saved before = []. */
+  bands?: SpecBand[];
   shades: SpecShade[];
   marks: SpecMark[];
   /** Arrows along the axes from the first equilibrium's P and Q to the second's. */

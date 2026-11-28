@@ -101,7 +101,12 @@ export const DIAGRAM_SPEC_SCHEMA: JsonSchema = obj({
   shades: list(obj({ preset: str, label: TEXT })),
   marks: list(obj({ of: str, where: { type: 'string', enum: ['inside', 'on', 'outside'] }, label: str })),
   changeArrows: { type: 'boolean' },
-  asks: obj({ what: { type: 'string', enum: [...ASKS] }, state: { type: 'string', enum: ['before', 'after'] } }),
+  bands: list(obj({ label: str, corners: str, top: str, bottom: str, from: str, to: str })),
+  asks: obj({
+    what: { type: 'string', enum: [...ASKS] },
+    state: { type: 'string', enum: ['before', 'after', 'change'] },
+    markets: list(obj({ demand: str, supply: str, cost: str, benefit: str, socialCost: str, control: str })),
+  }),
   chart: obj({
     type: { type: 'string', enum: ['bar', 'line', 'pie'] },
     categories: list(TEXT),
@@ -178,7 +183,7 @@ export const DIAGRAM_EDIT_SCHEMA: JsonSchema = {
 
 /** For the rungs that do not enforce the schema (json_object, prompt). */
 export const DIAGRAM_SHAPE_HINT =
-  'Reply with one JSON object only, with exactly these keys: kind, reason, placement, template, title, xAxis, yAxis, curves, shifts, levels, points, gaps, brackets, shades, marks, changeArrows, asks, chart, scene, lorenz, flow (see the shape described above). Every key is always present; use "" or [] for unused ones.';
+  'Reply with one JSON object only, with exactly these keys: kind, reason, placement, template, title, xAxis, yAxis, curves, shifts, levels, points, gaps, brackets, bands, shades, marks, changeArrows, asks, chart, scene, lorenz, flow (see the shape described above). Every key is always present; use "" or [] for unused ones.';
 
 export const EDIT_SHAPE_HINT = DIAGRAM_SHAPE_HINT.replace('changeArrows, asks, chart, scene, lorenz, flow', 'changeArrows, asks, chart, scene, lorenz, flow, questionChange');
 
@@ -211,10 +216,11 @@ export function emptySpec(kind: DiagramSpec['kind'] = 'none'): DiagramSpec {
     points: [],
     gaps: [],
     brackets: [],
+    bands: [],
     shades: [],
     marks: [],
     changeArrows: false,
-    asks: { what: 'none', state: 'after' },
+    asks: { what: 'none', state: 'after', markets: [] },
     chart: { type: 'bar', categories: [], series: [], yTitle: { ...EMPTY_TEXT }, xTitle: { ...EMPTY_TEXT } },
     scene: emptyScene(),
     flow: emptyFlow(),
@@ -323,6 +329,14 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
   }));
   spec.gaps = arr(raw.gaps).filter(isRecord).map((c) => ({ level: s(c.level).trim(), label: text(c.label) }));
   spec.brackets = arr(raw.brackets).filter(isRecord).map((c) => ({ from: s(c.from).trim(), to: s(c.to).trim(), label: text(c.label) }));
+  spec.bands = arr(raw.bands).filter(isRecord).map((c) => ({
+    label: s(c.label).trim(),
+    corners: s(c.corners).trim(),
+    top: s(c.top).trim(),
+    bottom: s(c.bottom).trim(),
+    from: s(c.from).trim(),
+    to: s(c.to).trim(),
+  }));
   spec.shades = arr(raw.shades).filter(isRecord).map((c) => ({ preset: s(c.preset).trim(), label: text(c.label) }));
   spec.marks = arr(raw.marks).filter(isRecord).map((c) => ({
     of: s(c.of).trim(),
@@ -333,7 +347,11 @@ export function parseSpec(reply: string): { spec: DiagramSpec; issues: DiagramIs
   if (isRecord(raw.asks)) {
     spec.asks = {
       what: pick(raw.asks.what, ASKS, 'none', 'asks what'),
-      state: pick(raw.asks.state, ['before', 'after'] as const, 'after', 'asks state'),
+      state: pick(raw.asks.state, ['before', 'after', 'change'] as const, 'after', 'asks state'),
+      markets: arr(raw.asks.markets)
+        .filter(isRecord)
+        .slice(0, 2)
+        .map((m) => ({ demand: s(m.demand).trim(), supply: s(m.supply).trim(), cost: s(m.cost).trim(), benefit: s(m.benefit).trim(), socialCost: s(m.socialCost).trim(), control: s(m.control).trim() })),
     };
   }
   if (isRecord(raw.chart)) {

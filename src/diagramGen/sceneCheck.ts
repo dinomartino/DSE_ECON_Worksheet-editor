@@ -283,6 +283,37 @@ export function checkCornerLettersDrawn(diagram: Diagram, mcq: McqWords, explana
   for (const p of diagram.points) for (const side of ['en', 'zh'] as const) p.label?.[side].forEach((r) => printed.add(r.text.trim()));
   for (const l of diagram.labels) for (const side of ['en', 'zh'] as const) l.text?.[side].forEach((r) => printed.add(r.text.trim()));
   const missing = named.filter((l) => !printed.has(l));
+  // Every side of each corner-named area runs along a line of the figure, as on a scene (k-0596, path A).
+  if (!missing.length) {
+    const at = new Map<string, Pt>();
+    for (const p of diagram.points) {
+      const l = plainOf(p.label ?? { en: [], zh: [] }).trim();
+      if (/^[A-Za-z]$/.test(l) && !at.has(l)) at.set(l, p.at);
+    }
+    const lines = figureLines(diagram);
+    const out: DiagramIssue[] = [];
+    for (const area of namedCorners(mcq, explanation).areas) {
+      const pts = [...area].map((l) => ({ l, at: at.get(l) })).filter((p): p is { l: string; at: Pt } => Boolean(p.at));
+      if (pts.length !== area.length) continue;
+      const shape = hull(pts.map((p) => p.at));
+      if (shape.length < pts.length) {
+        out.push({ level: 'error', code: 'figure.cornerShape', text: `Area ${area}: its corners do not make a ${area.length === 3 ? 'triangle' : 'shape'} (a letter lies on a side or inside). Put the letters where the explanation's geometry puts them.` });
+        continue;
+      }
+      const name = (p: Pt) => pts.find((q) => q.at === p)!.l;
+      // A side may run along two lines end to end (b–a and a–c dashed make the side b–c): every stretch on some line.
+      const covered = (a: Pt, b: Pt) => Array.from({ length: 9 }, (_, k) => ({ x: a.x + ((b.x - a.x) * k) / 8, y: a.y + ((b.y - a.y) * k) / 8 })).every((p) => lines.some((line) => onLine(line, p)));
+      const loose = shape.map((a, i) => [a, shape[(i + 1) % shape.length]] as const).filter(([a, b]) => !covered(a, b));
+      if (loose.length) {
+        out.push({
+          level: 'error',
+          code: 'figure.cornerEdge',
+          text: `Area ${area} has ${loose.length === 1 ? 'a side' : 'sides'} ${loose.map(([a, b]) => `${name(a)}–${name(b)}`).join(', ')} that ${loose.length === 1 ? 'runs' : 'run'} along no line of the figure, so the letters are on the wrong points. Each corner sits where two lines meet (or on a curve straight above or below another point) so that every side runs along a curve or a dashed line.`,
+        });
+      }
+    }
+    return out;
+  }
   return missing.length
     ? [
         {

@@ -132,6 +132,11 @@ without one (`src/ai/providers.ts`). Never embed a key; never send student scrip
   Design `docs/design/ai-pattern-questions.md`, 6 questions.
 - **E5 Differentiated copy** (M), **E6 data-response builder** with diagrams from a preset
   vocabulary, never raw model coordinates (L).
+- **Enhanced diagram mode: decided, not built** (user u-a587, 2026-11-28: "dont"). No toggle for a
+  stronger model or a second picture-checking pass. The studio's diagram maker stays one path: the
+  AI only plans, code works out areas, positions and labels and checks the key (user's "code", same
+  decision; `Outbox/k-0577/round3/APPROACHES.md` §3). Still open from that plan: a spacing search
+  for plain curves (M, ~1 day: three close supply curves print cramped, HKDSE 2018 P1 Q22 as a plan).
 - **E8 Answer-key diagrams, batch** (M): ✦ reads every "with the aid of a diagram" part and
   its marking scheme, picks a template and fills shifts, elasticity, shading and labels;
   inserted as ordinary editable diagrams, reviewed after. One diagram alone saves little over

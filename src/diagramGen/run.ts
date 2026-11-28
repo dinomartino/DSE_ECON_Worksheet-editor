@@ -17,6 +17,7 @@ import type { DiagramGenDeps, DiagramGenInput, DiagramGenOutcome, DiagramIssue, 
 import { checkDiagram, checkStem } from './validate';
 import { checkLayout, separateNames } from './layoutCheck';
 import { checkCoincide } from './coincide';
+import { checkPlanAreas } from './market';
 import { checkFlow } from './flow';
 import { checkLorenz, lorenzWidth } from './lorenz';
 import type { SceneBuilt } from './scene';
@@ -106,6 +107,12 @@ function evaluateDrawing(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides'
     const solvedKey = solveKey(spec, compiled, input.mcq);
     solved = solvedKey.solved;
     issues.push(...solvedKey.issues);
+    // The plan path's areas (k-0596): options naming areas run only behind an answer worked out from the market.
+    const areas = checkPlanAreas(spec, compiled, input.mcq);
+    issues.push(...areas.issues);
+    solved = areas.solved ?? solved;
+  } else if (spec.kind === 'curves' && compiled.diagram) {
+    issues.push(...checkPlanAreas(spec, compiled, undefined).issues);
   }
   // A model answer's flow chart: only its languages are checked (k-0588).
   if (spec.kind === 'flow' && compiled.diagram && !(input.mcq && spec.placement === 'question')) {

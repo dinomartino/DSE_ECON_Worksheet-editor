@@ -373,7 +373,8 @@ export function checkDiagram(spec: DiagramSpec, compiled: Compiled, sides: reado
     // A plain graph's line may go unnamed (k-0545: the axes say what it is).
     const graphIds = new Set(spec.curves.filter((c) => c.role === 'graph').map((c) => compiled.curveIds.get(c.id)));
     for (const c of diagram.curves) {
-      if (!plainOf(c.label).trim() && !graphIds.has(c.id)) error('curve.unnamed', 'A curve has no name.');
+      // The dashed line from a point to the one it stands above (k-0596) is unnamed, as on the paper.
+      if (!plainOf(c.label).trim() && !graphIds.has(c.id) && !compiled.guideIds?.has(c.id)) error('curve.unnamed', 'A curve has no name.');
     }
     const names = diagram.curves.map((c) => plainOf(c.label).trim()).filter(Boolean);
     const dupes = [...new Set(names.filter((n, i) => names.indexOf(n) !== i))];

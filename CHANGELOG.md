@@ -13,6 +13,12 @@ a version heading is edited afterwards.
 ## Unreleased
 
 ### Added
+- **The Question studio draws area questions that no ready figure covers, and still checks the key.**
+  For two policies at once (a unit tax and a minimum price, a maximum price and then a tax) or one
+  policy replaced by another, it draws the curves, letters the areas or their corners, and works the
+  deadweight loss, the surpluses, the tax revenue or the tax burdens out from the market itself. A
+  figure whose keyed area is not that area is refused and shown as a warning, never as right.
+  <!-- zh: **擬題工作室能繪畫沒有現成圖形的面積題，並仍會核對答案。** 若題目同時有兩項政策（如從量稅加最低價格、先設最高價格再徵稅），或由一項政策改為另一項，它會畫出曲線、以字母標出面積或其頂點，並按市場本身計出效率損失、消費者剩餘與生產者剩餘、稅收或稅負。若答案所指的面積不是該面積，該圖會被拒絕並以警告顯示，絕不會當作正確。 -->
 - **The Question studio draws import quotas with the question's own labels.** Demand, domestic
   supply, the world price and the supply with the quota (kinked at the world price, flat for the
   quota, and it keeps that shape when you drag supply or the world price), the price with the

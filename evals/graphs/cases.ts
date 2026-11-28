@@ -496,6 +496,52 @@ const STAGE_CASES: GraphCase[] = [
   },
 ];
 
+/**
+ * k-0596 (u-a587 "code"): area questions no scene draws, so the model must plan them in kind
+ * "curves" with bands and an area ask; the editor works the answer out from the market.
+ */
+const PLAN_CASES: GraphCase[] = [
+  {
+    id: 'p-tax-floor',
+    type: 'Unit tax and a minimum price at once: DWL by lettered areas (plan path)',
+    family: 'E',
+    stem: 'The government imposes a unit tax on Good Z, so that the supply curve shifts from S_0 to S_1. It also sets a minimum price at P_f, which is above the market price after the tax. Refer to the diagram. Which area represents the deadweight loss?',
+    options: ['Area A', 'Area A + B', 'Area A + B + C', 'Area B + C'],
+    answer: 1,
+    explanation:
+      'At the minimum price P_f buyers buy only Q_1. The efficient output is Q_0, where D meets S_0, the supply without the tax (the tax is a transfer, not a cost to society). The deadweight loss is the area between D and S_0 from Q_1 to Q_0: areas A + B. Area C lies between P_f and S_1 to the left of Q_1, which is not a loss of surplus.',
+    figure: 'D, S_0 and S_1 (S_0 shifted up by the tax), P_f a line above where D meets S_1. Q_1 where D meets P_f, Q_0 where D meets S_0. Area A between D and S_0 from Q_1 to where D meets S_1; area B between D and S_0 from there to Q_0; area C between P_f and S_1 from the price axis to Q_1. Key B.',
+    want: 'curves with bands: D, S0, S1 up, Pf above D×S1; Q1 at D×Pf, Q0 at D×S0; A, B, C lettered regions as described; key from the market (A + B)',
+    labels: ['D', 'S_0', 'S_1', 'P_f', 'Q_1', 'Q_0', 'A', 'B', 'C'],
+  },
+  {
+    id: 'p-ceiling-tax',
+    type: 'A ceiling at the old equilibrium price, then a unit tax: DWL by corner letters (plan path)',
+    family: 'E',
+    stem: 'The government sets a maximum price of Good V at P_c, its equilibrium price. It then imposes a unit tax on Good V, so that the supply curve shifts from S_0 to S_1. Refer to the diagram. Which area represents the deadweight loss after the tax?',
+    options: ['Area abe', 'Area ace', 'Area bce', 'Area abf'],
+    answer: 2,
+    explanation:
+      'P_c is the price at e, where D meets S_0. After the tax, sellers supply only the quantity at a, where S_1 meets P_c. The efficient quantity is still at e, because the tax is a transfer, not a cost to society. The deadweight loss is the area between D and S_0 from the quantity at a to the quantity at e: area bce, where b is on D directly above a and c is on S_0 directly below a.',
+    figure: 'D, S_0 and S_1 (S_0 shifted up by the tax). P_c a line through e, where D meets S_0. a where S_1 meets P_c; b on D above a; c on S_0 below a; f where D meets S_1. Key C (bce).',
+    want: 'curves: P_c through D×S0 at e; a = S1×Pc; b on D above a; c on S0 below a; f = D×S1; dashed b–c; key from the market (bce)',
+    labels: ['D', 'S_0', 'S_1', 'P_c', 'a', 'b', 'c', 'e', 'f'],
+  },
+  {
+    id: 'p-tax-to-floor',
+    type: 'A unit tax replaced by a minimum price: change in DWL by lettered areas (plan path)',
+    family: 'E',
+    stem: 'A unit tax on Good W shifts its supply curve from S_0 to S_1. The government then abolishes the tax and sets a minimum price at P_f, which is above the price buyers paid under the tax. Refer to the diagram. Which of the following is correct?',
+    options: ['The deadweight loss decreases by area A.', 'The deadweight loss increases by area A.', 'The deadweight loss increases by area B.', 'The deadweight loss does not change.'],
+    answer: 1,
+    explanation:
+      'Under the tax, output is Q_1, where D meets S_1, and the deadweight loss is area B, between D and S_0 from Q_1 to Q_0. Under the minimum price P_f with no tax, buyers buy only Q_2, where D meets P_f, so the deadweight loss is areas A + B, between D and S_0 from Q_2 to Q_0. The deadweight loss increases by area A.',
+    figure: 'D, S_0 and S_1 (S_0 shifted up by the tax), P_f a line above where D meets S_1. Q_2 where D meets P_f, Q_1 where D meets S_1, Q_0 where D meets S_0. Area A between D and S_0 from Q_2 to Q_1; area B between D and S_0 from Q_1 to Q_0. Key B.',
+    want: 'curves with bands: two markets (D, S1, cost S0) then (D, S0, floor Pf); A, B lettered; change in DWL = A',
+    labels: ['D', 'S_0', 'S_1', 'P_f', 'Q_0', 'Q_1', 'Q_2', 'A', 'B'],
+  },
+];
+
 export const GRAPH_CASES: GraphCase[] = [
   ...LORENZ_GRAPH_CASES,
   {
@@ -751,4 +797,5 @@ export const GRAPH_CASES: GraphCase[] = [
   ...STAGE_CASES,
   ...MONOPOLY_CASES,
   ...TRADE_CASES,
+  ...PLAN_CASES,
 ];

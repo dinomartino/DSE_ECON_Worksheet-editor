@@ -1,5 +1,5 @@
 import { compileLorenz } from './lorenz';
-import type { Diagram, DiagramAnchorRef, DiagramArea, DiagramArrow, DiagramCurve, DiagramPlace, DiagramPointMark, DiagramSpan } from '@/model/diagram';
+import type { Diagram, DiagramAnchorRef, DiagramArea, DiagramAreaEdge, DiagramAreaX, DiagramArrow, DiagramCurve, DiagramPlace, DiagramPointMark, DiagramSpan } from '@/model/diagram';
 import { MAX_CHART_CATEGORIES, MAX_CHART_SERIES } from '@/model/diagram';
 import { curveXAt, curveYAt, resolveAnchor } from '@/model/diagramAnchors';
 import { curveCrossing, revenueArea } from '@/model/diagramAreas';
@@ -44,7 +44,10 @@ import {
   type SpecLevel,
   type SpecPoint,
   type SpecShift,
+  type SpecBand,
 } from './types';
+import { placePointLabels } from './pointLabels';
+import { areaPolygon } from '@/model/diagramAreas';
 
 /**
  * Spec → editor diagram. Everything a scheme marks is a relation, as in the templates: a
@@ -64,6 +67,10 @@ export interface Compiled {
   roles: Map<string, CurveRole>;
   /** Spec level id → where it sits (y for a price, x for a quota), drawn as a line or not (a guide). */
   levels: Map<string, { vertical: boolean; at: number }>;
+  /** The planned bands (k-0596), in spec order: each one's outline on the drawing, null when it has none. */
+  bands?: Array<{ band: SpecBand; polygon: Array<{ x: number; y: number }> | null }>;
+  /** Editor ids of the unnamed dashed lines joining a point to the one it stands above (k-0596). */
+  guideIds?: Set<string>;
 }
 
 const DEMAND_LINES: Record<Slope, Pair[]> = {
@@ -693,8 +700,10 @@ export function compileSpec(given: DiagramSpec): Compiled {
 
   // ---- points ----
   /** A point's two references → where it is and the anchor that keeps it there; a tick name refers to an earlier point. */
-  type Placed = { at: { x: number; y: number }; anchor: DiagramAnchorRef; guide?: string };
+  type Placed = { at: { x: number; y: number }; anchor: DiagramAnchorRef; guide?: string; under?: DiagramPointMark };
   const marksByTick = new Map<string, DiagramPointMark>();
+  /** Points by their own name ("a"), for a point above or below one (k-0596) and a band's ends. */
+  const marksByName = new Map<string, DiagramPointMark>();
   const placePoint = (p: SpecPoint, scratch: Array<DiagramCurve | DiagramPointMark>): Placed | string => {
     // A guide level holds no line: the point is on the other curve at the guide's height.
     const guideId = guides.has(p.b) ? p.b : guides.has(p.a) ? p.a : '';
@@ -719,8 +728,16 @@ export function compileSpec(given: DiagramSpec): Compiled {
       if (!hit) return `"${p.a}" and "${p.b}" do not cross inside the plot.`;
       return { at: hit, anchor: cross(a, b) };
     }
+    // b names an earlier point (k-0596): on a, directly above or below it (HKDSE 2023 P1 Q21: b on D₂ above a).
+    const byName = p.b.trim() && !marksByTick.has(`x:${tickKey(p.b)}`) && !marksByTick.has(`y:${tickKey(p.b)}`) ? marksByName.get(p.b.trim()) : undefined;
+    if (byName) {
+      const anchor: DiagramAnchorRef = { on: a.id, x: { point: byName.id } };
+      const at = resolveAnchor({ x: {}, y: {}, curves: scratch.filter((k): k is DiagramCurve => 'points' in k), points: scratch.filter((k): k is DiagramPointMark => 'at' in k), labels: [], arrows: [] }, anchor);
+      if (!at) return `Point ${pointName(p)}: "${p.a}" does not pass above or below point ${p.b}.`;
+      return { at, anchor, under: byName };
+    }
     const ref = marksByTick.get(`x:${tickKey(p.b)}`) ?? marksByTick.get(`y:${tickKey(p.b)}`);
-    if (!ref) return `Point ${pointName(p)} names "${p.b}", which is neither a drawn line nor an earlier point's tick.`;
+    if (!ref) return `Point ${pointName(p)} names "${p.b}", which is neither a drawn line nor an earlier point's tick or name.`;
     const byX = marksByTick.get(`x:${tickKey(p.b)}`) === ref;
     const anchor: DiagramAnchorRef = byX ? { on: a.id, x: { point: ref.id } } : { on: a.id, y: { point: ref.id } };
     const at = resolveAnchor({ x: {}, y: {}, curves: scratch.filter((k): k is DiagramCurve => 'points' in k), points: scratch.filter((k): k is DiagramPointMark => 'at' in k), labels: [], arrows: [] }, anchor);
@@ -744,6 +761,7 @@ export function compileSpec(given: DiagramSpec): Compiled {
       if (typeof placed === 'string') continue;
       const mark = point(placed.at.x, placed.at.y, undefined, { anchor: placed.anchor });
       scratch.push(mark);
+      if (p.name.trim()) marksByName.set(p.name.trim(), mark);
       if (p.xTick.trim()) {
         xs.push([placed.at.x, tickKey(p.xTick)]);
         marksByTick.set(`x:${tickKey(p.xTick)}`, mark);
@@ -780,6 +798,8 @@ export function compileSpec(given: DiagramSpec): Compiled {
     placeLevel(level, best.at);
   }
   marksByTick.clear();
+  marksByName.clear();
+  const guideIds = new Set<string>();
 
   const equilibriumMarks: DiagramPointMark[] = [];
   const onGuide = new Map<string, DiagramPointMark[]>();
@@ -809,6 +829,23 @@ export function compileSpec(given: DiagramSpec): Compiled {
     });
     if (e.xTick.trim()) marksByTick.set(`x:${tickKey(e.xTick)}`, mark);
     if (e.yTick.trim()) marksByTick.set(`y:${tickKey(e.yTick)}`, mark);
+    if (e.name.trim()) marksByName.set(e.name.trim(), mark);
+    // The dashed line from a point to the one it stands above (b–a), unless a drop to the x-axis already runs through both.
+    const under = placed.under;
+    if (under) {
+      const upper = under.at.y > placed.at.y ? under : mark;
+      if (!upper.dropTo?.includes('x')) {
+        try {
+          const lo = Math.min(under.at.y, placed.at.y);
+          const hi = Math.max(under.at.y, placed.at.y);
+          const line = derived({ kind: 'vertical', x: { point: under.id }, from: lo, to: hi }, [...parts, mark], undefined, { stroke: 'dashed', weight: 0.8 });
+          guideIds.add(line.id);
+          curves.push(line);
+        } catch {
+          // Not drawable: the point still stands.
+        }
+      }
+    }
     if (guide) onGuide.set(guide.id, [...(onGuide.get(guide.id) ?? []), mark]);
     // Equilibria (two curves, not a level) are what the change arrows run between.
     if (!levelAt.has(e.a) && !levelAt.has(e.b) && bySpecId.has(e.b)) equilibriumMarks.push(mark);
@@ -959,6 +996,44 @@ export function compileSpec(given: DiagramSpec): Compiled {
     } else look('shift.arrow', `No room for the arrow of "${pending.id}".`);
   }
 
+  // ---- planned bands (k-0596): the AI names the lines and the stretch, code finds the outline ----
+  const bandPlans: Array<{ band: SpecBand; area: DiagramArea | null }> = [];
+  for (const band of spec.bands ?? []) {
+    const where = `Band ${bandName(band)}`;
+    const edgeOf = (id: string): DiagramAreaEdge | string => {
+      if (!id) return { level: 0 };
+      const c = bySpecId.get(id);
+      if (c) return { curve: c.id };
+      const guide = guides.get(id);
+      const marks = guide ? onGuide.get(id) ?? [] : [];
+      if (guide && marks.length && !levelAt.get(id)?.vertical) return { level: { point: marks[0].id } };
+      return `${where} names "${id}", which is not a drawn line (a curve, a shift or a price line).`;
+    };
+    const top = edgeOf(band.top);
+    const bottom = edgeOf(band.bottom);
+    const endOf = (ref: string, end: 'from' | 'to'): DiagramAreaX | string => {
+      if (!ref) {
+        if (end === 'from') return 0;
+        if (typeof top !== 'string' && typeof bottom !== 'string' && 'curve' in top && 'curve' in bottom) return { cross: [top.curve, bottom.curve] };
+        return `${where}: "to" is "" (where top and bottom meet), but ${band.bottom ? 'one of them is not a curve' : 'its bottom is the x-axis'}. Name the point or tick where it ends.`;
+      }
+      const mark = marksByName.get(ref) ?? marksByTick.get(`x:${tickKey(ref)}`);
+      if (mark) return { point: mark.id };
+      const quota = bySpecId.get(ref);
+      if (quota && levelAt.get(ref)?.vertical) return levelAt.get(ref)!.at;
+      return `${where}: "${end}" is "${ref}", which is neither a point's name nor a quantity tick on the figure.`;
+    };
+    const from = endOf(band.from, 'from');
+    const to = endOf(band.to, 'to');
+    const broken = [top, bottom, from, to].find((x): x is string => typeof x === 'string');
+    if (broken) {
+      error('band.ref', broken);
+      bandPlans.push({ band, area: null });
+      continue;
+    }
+    bandPlans.push({ band, area: { id: newId(), band: { edges: [top as DiagramAreaEdge, bottom as DiagramAreaEdge], from: from as DiagramAreaX, to: to as DiagramAreaX } } });
+  }
+
   const title = phrase(spec.title);
   const body = axes(phrase(spec.xAxis) ?? { en: [], zh: [] }, phrase(spec.yAxis) ?? { en: [], zh: [] }, {
     curves,
@@ -1019,11 +1094,39 @@ export function compileSpec(given: DiagramSpec): Compiled {
           error('shade.build', `Shade ${why}.`);
         }
       }
+      // Planned bands (k-0596): a lettered one is drawn, hatched, with its letter; a corner-named one only checked.
+      let pattern = 0;
+      for (const b of bandPlans) {
+        if (!b.area || !b.band.label) continue;
+        b.area.fill = 'hatch';
+        b.area.pattern = BAND_PATTERNS[pattern++ % BAND_PATTERNS.length];
+        b.area.label = symbol(b.band.label);
+        areas.push(b.area);
+      }
       return areas;
     });
   } catch {
     error('diagram.resolve', 'The diagram could not be resolved.');
     return { diagram: null, issues, curveIds, roles, levels: levelAt };
   }
-  return { diagram, issues, curveIds, roles, levels: levelAt };
+  // Each one-letter point name beside its own dot, clear of every line (k-0596: the scenes' placer, on every figure).
+  const lettered = new Set(diagram.points.filter((p) => /^[A-Za-z]$/.test(plainOf(p.label ?? { en: [], zh: [] }).trim())).map((p) => p.id));
+  if (lettered.size) diagram = placePointLabels(diagram, lettered);
+  const bandOutlines = bandPlans.map((b) => ({ band: b.band, polygon: b.area ? areaPolygon(diagram, { ...b.area, id: 'probe' }) : null }));
+  for (const b of bandOutlines) {
+    if (bandPlans.find((p) => p.band === b.band)?.area && (!b.polygon || polygonSize(b.polygon) < 1e-4)) {
+      error('band.empty', `The band ${bandName(b.band)} (between ${b.band.top} and ${b.band.bottom || 'the x-axis'}${b.band.from || b.band.to ? `, from ${b.band.from || 'the y-axis'} to ${b.band.to || 'where they meet'}` : ''}) has no area on this drawing.`);
+    }
+  }
+  return { diagram, issues, curveIds, roles, levels: levelAt, ...(bandOutlines.length ? { bands: bandOutlines } : {}), ...(guideIds.size ? { guideIds } : {}) };
+}
+
+const BAND_PATTERNS = ['diagonal', 'reverse', 'horizontal', 'vertical', 'cross', 'dots'] as const;
+
+export const bandName = (b: SpecBand) => (b.label ? `"${b.label}"` : b.corners ? `"${b.corners}"` : `${b.top}/${b.bottom || 'axis'}`);
+
+function polygonSize(poly: ReadonlyArray<{ x: number; y: number }>): number {
+  let a = 0;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) a += (poly[j].x + poly[i].x) * (poly[j].y - poly[i].y);
+  return Math.abs(a) / 2;
 }
