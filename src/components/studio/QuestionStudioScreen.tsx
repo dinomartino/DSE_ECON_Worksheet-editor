@@ -18,6 +18,7 @@ import { useDismiss } from './dismiss';
 import { QUESTION_STUDIO_MESSAGES } from './messages';
 import { chatReferences } from './referenceItem';
 import { ReferencePicker } from './ReferencePicker';
+import { ChatNoteBox, ExportReviewButton, TurnNoteBox, useReviewAvailable } from './review/ReviewTools';
 import { Tray } from './Tray';
 
 /**
@@ -58,6 +59,8 @@ export function QuestionStudioScreen({
   const [picker, setPicker] = useState(false);
   const [focus, setFocus] = useState<{ id: string; at: number }>();
   const [view, setView] = useState<CanvasView>('paper');
+  // The review tools (k-0598): a develop build on the desktop only.
+  const review = useReviewAvailable();
   const log = useRef<HTMLDivElement>(null);
   const running = run !== undefined;
   const runningHere = run?.chatId === chat.id ? run : undefined;
@@ -112,6 +115,7 @@ export function QuestionStudioScreen({
           ＋ {m.newChat}
         </button>
         <span className="flex-1" />
+        {review && <ExportReviewButton chat={chat} chats={chats} list="studio" disabled={running} />}
         <AiStatusChip where="header" />
         {settings}
       </header>
@@ -130,17 +134,21 @@ export function QuestionStudioScreen({
                 onDescribe={() => setHint({ text: m.describeHint, at: Date.now() })}
               />
             ) : (
-              <ChatTurns
-                chat={chat}
-                runningTurn={runningHere?.turnId}
-                language={chat.settings.language}
-                onJump={(id) => setFocus({ id, at: Date.now() })}
-                onRetry={(turnId) => void store.retry(turnId)}
-                onDismiss={(turnId) => store.dismissError(turnId)}
-                onChangePick={(code) => store.changePick(code)}
-                onAnswer={(turnId, answer) => void store.answerRewrite(turnId, answer)}
-                onWhich={(turnId, choice) => void store.answerWhich(turnId, choice)}
-              />
+              <>
+                {review && <ChatNoteBox chatId={chat.id} />}
+                <ChatTurns
+                  chat={chat}
+                  runningTurn={runningHere?.turnId}
+                  language={chat.settings.language}
+                  onJump={(id) => setFocus({ id, at: Date.now() })}
+                  onRetry={(turnId) => void store.retry(turnId)}
+                  onDismiss={(turnId) => store.dismissError(turnId)}
+                  onChangePick={(code) => store.changePick(code)}
+                  onAnswer={(turnId, answer) => void store.answerRewrite(turnId, answer)}
+                  onWhich={(turnId, choice) => void store.answerWhich(turnId, choice)}
+                  noteSlot={review ? (turnId) => <TurnNoteBox chatId={chat.id} turnId={turnId} /> : undefined}
+                />
+              </>
             )}
           </div>
           <Composer

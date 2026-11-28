@@ -1,5 +1,6 @@
 import { buildsOf, insertIntoOpenPaper, type InsertResult } from '@/questionStudio/deliver';
 import { liveEnv, useTrialLog } from '@/questionStudio/live';
+import { liveTrace } from '../review/live';
 import { MINE } from '@/questionStudio/trialLog';
 import { flowOf } from '@/model/flow';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -24,6 +25,7 @@ export const usePaperChat = createChatStore({
   storage: localChatStorage(undefined, PAPER_CHATS_KEY),
   language: () => useWorksheetStore.getState().mode.language,
   onRun: (info) => useTrialLog.getState().record({ label: MINE, ...info }),
+  trace: liveTrace,
 });
 
 export const activePaperChat = (): Chat => {

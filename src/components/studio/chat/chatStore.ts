@@ -17,6 +17,8 @@ import { firstVersion, showing, undoEdit, withAiVersion, withEdit } from './vers
 import type { LiveState, SourceQuestion as Source, StudioEvent } from '@/questionStudio/types';
 import type { KeyPick, PickOutcome, StudioEngine } from './engine';
 import { briefsOf, decide, editable, readLocally, recentOf, type IntentKind, type LocalRead, type TurnIntent } from './intent';
+import type { TraceInput, TraceSink } from '../review/recorder';
+import { outcomeNote, requestNote } from '../review/summary';
 
 /**
  * The chat studio's one store (k-0516): every chat, the open one, and the run in progress.
@@ -119,6 +121,11 @@ export interface ChatDeps {
   newId?: () => string;
   /** After every run that reached the provider (the Trial kit records the teacher's own requests). A throw is ignored. */
   onRun?: (info: RunInfo) => void;
+  /**
+   * The review record (k-0598, develop builds on the desktop only): every reply's decisions and
+   * AI calls, kept on this computer for "Export for review". Absent or off = nothing recorded.
+   */
+  trace?: TraceSink;
 }
 
 /** A message being read with the drafts (k-0535): the computer's read, and the chip's draft. */
@@ -211,6 +218,15 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
     const addNote = (chatId: string, turnId: string, note: Note) => editTurn(chatId, turnId, (t) => ({ ...t, notes: [...t.notes, note] }));
     const running = () => get().run !== undefined;
 
+    /** A line in the reply's review record (k-0598). Never throws. */
+    const trace = (chatId: string, turnId: string, event: TraceInput | (() => TraceInput)) => {
+      try {
+        if (deps.trace?.on()) deps.trace.event(chatId, turnId, typeof event === 'function' ? event() : event);
+      } catch {
+        // A record that cannot be kept never takes the run down.
+      }
+    };
+
     const pushTurns = (chatId: string, ...turns: Turn[]) => edit(chatId, (c) => ({ ...c, turns: [...c.turns, ...turns] }));
 
     /** The examples with their pictures read (the engine sends them to a provider that reads pictures). Never throws. */
@@ -250,10 +266,18 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       const resolved = await deps.env.resolve();
       if (signal.aborted) return undefined;
       if (!resolved.ok) {
+        trace(chatId, turnId, { t: 'info', text: 'no provider', error: { kind: resolved.error.kind, message: resolved.error.message } });
         editTurn(chatId, turnId, (t) => ({ ...t, error: resolved.error }));
         return undefined;
       }
-      return { deps: resolved.deps, compared: resolved.compared };
+      // Every call of the reply goes into its review record (k-0598), when recording.
+      let client = resolved.deps.client;
+      try {
+        if (deps.trace?.on()) client = deps.trace.client(chatId, turnId, client, resolved.deps.preset.id);
+      } catch {
+        // Unrecorded, never broken.
+      }
+      return { deps: client === resolved.deps.client ? resolved.deps : { ...resolved.deps, client }, compared: resolved.compared };
     }
 
     const record = (info: RunInfo) => {
@@ -268,8 +292,10 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
     const settle = (chatId: string, turnId: string) =>
       editTurn(chatId, turnId, (t) => ({ ...t, steps: t.steps.map((s) => (s.state === 'run' ? { ...s, state: 'done' } : s)) }));
 
-    const failTurn = (chatId: string, turnId: string, error: AiErrorInfo) =>
+    const failTurn = (chatId: string, turnId: string, error: AiErrorInfo) => {
+      trace(chatId, turnId, { t: 'info', text: 'reply failed', error: { kind: error.kind, message: error.message, ...(error.detail ? { detail: error.detail } : {}) } });
       editTurn(chatId, turnId, (t) => ({ ...t, error, steps: t.steps.map((s) => (s.state === 'run' ? { ...s, state: 'fail' } : s)) }));
+    };
 
     /** Runs `body` as the one run; settles the run state whatever happens. */
     async function exclusive(chatId: string, turnId: string, count: number, body: (signal: AbortSignal) => Promise<void>, target?: string) {
@@ -278,10 +304,20 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       controller = mine;
       set({ run: { chatId, turnId, live: emptyLive(), count, ...(target ? { target } : {}) } });
       try {
+        if (deps.trace?.on()) deps.trace.begin(chatId, turnId);
+      } catch {
+        // Unrecorded.
+      }
+      try {
         await body(mine.signal);
       } finally {
         if (controller === mine) controller = undefined;
         set({ run: undefined });
+        try {
+          deps.trace?.end(chatId, turnId);
+        } catch {
+          // Unrecorded.
+        }
       }
     }
 
@@ -294,6 +330,9 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         } else if (stage !== 'references' && !change) setStep(chatId, turnId, { kind: 'write', state: 'run', count, done, total });
       },
       onEvent: (event: StudioEvent) => {
+        if (event.type === 'stage') trace(chatId, turnId, { t: 'stage', stage: event.stage });
+        else if (event.type === 'write') trace(chatId, turnId, { t: 'stage', stage: 'write', mode: event.mode, attempt: event.attempt });
+        else if (event.type === 'references') trace(chatId, turnId, { t: 'stage', stage: `references found: ${event.count}` });
         const run = get().run;
         if (!run || run.turnId !== turnId) return;
         if (event.type === 'stage' && event.stage === 'diagram') {
@@ -334,6 +373,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       const run = get().run;
       if (run?.turnId === turnId) set({ run: { ...run, request } });
       const avoid = (get().chats.find((c) => c.id === chatId)?.drafts ?? []).filter((d) => d.state !== 'rejected').map((d) => d.entry.draft);
+      trace(chatId, turnId, () => ({ t: 'request', kind: 'write', request: { ...requestNote(request), avoid: replace ? 0 : avoid.length } }));
       let outcome: StudioOutcome;
       try {
         outcome = await deps.engine.write(request, ready.deps, hooksFor(chatId, turnId, count, signal), replace ? [] : avoid);
@@ -342,6 +382,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         return;
       }
       record({ kind: 'write', request, outcome, compared: ready.compared });
+      trace(chatId, turnId, () => outcomeNote('write', outcome));
       if (!outcome.ok) {
         if (outcome.error.kind === 'cancelled') {
           editTurn(chatId, turnId, (t) => ({ ...t, steps: t.steps.map((s) => (s.state === 'run' ? { ...s, state: 'fail' } : s)) }));
@@ -396,6 +437,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         ready.deps,
         signal,
       );
+      trace(chatId, turnId, () => ({ t: 'decision', what: 'pick', value: picked }));
       if (!picked.ok) {
         failTurn(chatId, turnId, picked.error);
         return;
@@ -433,6 +475,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       // The draft is known (the chip): only an answer is wanted, no key point, no syllabus.
       const onlyRead = reading.chip !== undefined;
       setStep(chatId, turnId, { kind: 'understand', state: 'run' });
+      trace(chatId, turnId, { t: 'decision', what: 'localRead', value: { ...reading.local, ...(reading.chip !== undefined ? { chip: reading.chip } : {}) } });
       const ready = await resolve(chatId, turnId, signal);
       if (!ready) return;
       // The pre-router (k-0567, u-5sy9): on Mentor credits Jev reads it first; an edit, one more
@@ -442,8 +485,10 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       if (!onlyRead && deps.engine.read && reading.local.kind !== 'new') {
         const route = await deps.engine.read({ text, drafts: briefsOf(chat), recent: recentOf(chat), localParts: reading.local.parts }, ready.deps, signal);
         if (signal.aborted) return;
+        trace(chatId, turnId, { t: 'decision', what: 'route', value: route ?? 'no answer (read by the main model)' });
         if (route?.route === 'act') {
           const intent: TurnIntent = { kind: route.kind, drafts: route.drafts, how: route.how ?? reading.local.how, parts: route.parts ?? reading.local.parts };
+          trace(chatId, turnId, { t: 'decision', what: 'intent', value: { ...intent, by: 'jev' } });
           setStep(chatId, turnId, { kind: 'understand', state: 'done', intent: intent.kind, drafts: intent.drafts, by: 'ai' });
           return act(chatId, turnId, intent, text, route.wanted, signal);
         }
@@ -465,11 +510,13 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         ready.deps,
         signal,
       );
+      trace(chatId, turnId, () => ({ t: 'decision', what: 'pick', value: picked }));
       if (!picked.ok) {
         failTurn(chatId, turnId, picked.error);
         return;
       }
       const intent = decide(reading.local, picked.turn);
+      trace(chatId, turnId, { t: 'decision', what: 'intent', value: { ...intent, by: picked.turn ? 'ai' : 'computer' } });
       setStep(chatId, turnId, { kind: 'understand', state: 'done', intent: intent.kind, drafts: intent.drafts, by: picked.turn ? 'ai' : 'computer' });
       if (intent.kind !== 'new') return act(chatId, turnId, intent, text, reading.local.kind, signal);
       patchRun(turnId, { count: chat.settings.count });
@@ -519,6 +566,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         setStep(chatId, turnId, { kind: 'change', state: 'run', draftNo: target.no, how });
         // The current version is what changes (an older one the teacher picked back, too).
         const others = chat.drafts.filter((d) => d.id !== draftId && d.state !== 'rejected').map((d) => d.entry.draft);
+        trace(chatId, turnId, () => ({ t: 'request', kind: 'refine', request: requestNote(target.entry.request), refinement, target: { no: target.no, id: target.entry.draft.id } }));
         let outcome: StudioOutcome;
         try {
           outcome = await deps.engine.refine(target.entry.request, target.entry.draft, refinement, others, ready.deps, hooksFor(chatId, turnId, 1, signal, true));
@@ -527,6 +575,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
           return;
         }
         record({ kind: 'refine', request: target.entry.request, outcome, compared: ready.compared });
+        trace(chatId, turnId, () => outcomeNote('refine', outcome));
         if (!outcome.ok) {
           if (outcome.error.kind === 'cancelled') {
             editTurn(chatId, turnId, (t) => ({ ...t, steps: t.steps.map((s) => (s.state === 'run' ? { ...s, state: 'fail' } : s)) }));
@@ -607,7 +656,16 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
       const ai = aiTurn();
       pushTurns(chatId, user, ai);
       lastAction.set(ai.id, () => changeDrafts(draftIds, refinement, said));
-      await exclusive(chatId, ai.id, 1, (signal) => changeIn(chatId, ai.id, targets.map((d) => d.id), refinement, signal), targets[0].id);
+      await exclusive(
+        chatId,
+        ai.id,
+        1,
+        (signal) => {
+          trace(chatId, ai.id, { t: 'decision', what: 'localRead', value: { acted: said ? 'clear words, read on this computer (no AI read)' : "the draft's own button", drafts: targets.map((d) => d.no), refinement } });
+          return changeIn(chatId, ai.id, targets.map((d) => d.id), refinement, signal);
+        },
+        targets[0].id,
+      );
     }
 
     return {
@@ -644,6 +702,11 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
         if (get().chats.some((c) => c.id === id)) set({ activeId: id, chats: get().chats.filter((c) => c.id === id || c.turns.length > 0 || c.refs.length > 0) });
       },
       deleteChat: (id) => {
+        try {
+          deps.trace?.forget(id);
+        } catch {
+          // Left behind: an export reads only the chats that exist.
+        }
         const chats = get().chats.filter((c) => c.id !== id);
         if (chats.length === 0) chats.push(blank());
         set({ chats, activeId: get().activeId === id ? chats[0].id : get().activeId });

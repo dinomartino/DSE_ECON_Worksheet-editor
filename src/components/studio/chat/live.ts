@@ -1,4 +1,5 @@
 import { liveEnv, useTrialLog } from '@/questionStudio/live';
+import { liveTrace } from '../review/live';
 import { MINE } from '@/questionStudio/trialLog';
 import { paperLanguage } from '@/settings/paperLanguage';
 import { localChatStorage } from './chatStorage';
@@ -16,4 +17,5 @@ export const useChat = createChatStore({
   storage: localChatStorage(),
   language: () => (typeof window === 'undefined' ? 'en' : paperLanguage()),
   onRun: (info) => useTrialLog.getState().record({ label: MINE, ...info }),
+  trace: liveTrace,
 });

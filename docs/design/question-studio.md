@@ -338,6 +338,56 @@ view). Sticky like 題庫: a click on the page moves the insert anchor and stays
 - **Browser proof** `scripts/studio-panel-verify.mjs`: opener and gap, the anchor, drafts after Q4,
   never saved or printed, Accept / ⌘Z / Reject / Accept all, a change from the page, reload, 中文.
 
+## Export for review: notes and the record behind each reply (k-0598, user u-575f)
+
+A develop-only tool for improving the studio: the teacher writes, in their own words, what
+they wanted from a reply and what was wrong, and exports the chats with everything that
+happened behind them, so an agent can read the export and change the studio.
+
+- **Where it shows** (`src/components/studio/review/available.ts:reviewAvailable`): a develop
+  build only, never a release build (u-u4av, the same channel switch as the studio,
+  `platform/buildChannel.ts`), and only in the desktop app (u-5fy1). A browser on a develop
+  build shows it only when localStorage holds `econgen.studioReview.web` = `1` (the screenshot
+  script sets it). Each control wears a dashed **Dev** mark. Nothing to pause at release time,
+  and no CHANGELOG line: it never reaches teachers.
+- **On screen** (`src/components/studio/review/ReviewTools.tsx`): under every finished reply a
+  Note box with quick tags Good / Wrong / Unclear (`TurnNoteBox`, through `ChatTurns`'
+  `noteSlot`); at the top of the chat a Note on this chat (`ChatNoteBox`); in the studio header
+  **Export for review ▾** → This chat / All chats (`ExportReviewButton`). The ✦ Write panel has
+  the same notes, and its export button beside the chat note. Words in
+  `src/components/studio/review/review.messages.ts:REVIEW_MESSAGES`.
+- **The record** (`src/components/studio/review/recorder.ts:createRecorder`, wired as the chat
+  store's `trace` dep, `src/components/studio/review/live.ts:liveTrace`): the chat store opens a
+  record per reply (`exclusive`), wraps the reply's AI client in `resolve` so that every
+  `complete`, `stream` and Jev `decide` is kept as sent (system, turns, schema, pictures by
+  fingerprint and size, max tokens, feature) with the raw reply, finish, model, ms, tokens and
+  Mentor's receipt (`charged`, `balance`), or the error and what had streamed; and it adds the
+  decisions (the computer's read, Jev's route, the intent acted on, the pick with its concept),
+  the engine's stages (a write at attempt 2 / `rewrite` = a check failed and it was rewritten),
+  each write/refine request (`src/components/studio/review/summary.ts:requestNote`: references by
+  label) and outcome (`:draftNote`: words, every check row, the blind solve, the figure's spec and
+  issues). The engine is not touched. No key, token or sign-in: a request carries none, and every
+  string passes `src/components/studio/review/redact.ts:lean` (key-shaped text, secret-named
+  fields, picture data dropped). A text of 400+ characters (system prompts, schemas) is kept once
+  by fingerprint (`prompts`) and pointed to.
+- **Storage** (`src/components/studio/review/reviewStore.ts:createIdbReviewStore`): IndexedDB
+  `econ-studio-review` (stores `turns`, `prompts`, `notes`), never localStorage (k-0551's
+  quota). Deleting a chat deletes its records and notes. `prompts` is never pruned (a handful of
+  distinct texts). Notes: `src/components/studio/review/notes.ts:useReviewNotes`, written 0.5 s
+  after typing stops and always before an export.
+- **The export** (`src/components/studio/review/exportReview.ts:exportForReview`, files by
+  `src/components/studio/review/exportFiles.ts:buildReviewFiles`): the save sheet first, then one
+  `.zip` holding `studio-review-<date>/` with `HOW-TO-READ.md` (for the agent), `index.md`,
+  `prompts/<id>.txt`, and per chat `chats/NN-<slug>/conversation.md` (turns in order; under each
+  reply its steps, words, drafts with checks, then the teacher's note and tag, then a folded
+  "Behind the scenes" with the timeline and every call's prompt and raw reply) and `raw.json`
+  (the chat, notes, records; format `econ-studio-review/1`). All chats = both lists (the studio's
+  and the panel's). A reply with no record (before k-0598, a release build, a browser) says
+  "No behind-the-scenes record"; replies a Retry dropped are listed at the end.
+- Proof: `src/components/studio/review/review.test.ts`; browser run
+  `scripts/studio-review-verify.mjs` (mock AI, export read back, reload, 中文, off without the
+  switch).
+
 ## The AI-made label (package 3, decision 5)
 
 One optional question field, `Question.aiMade` (`true` or absent, never `false`), on

@@ -27,6 +27,7 @@ import { STUDIO_FINDING_MESSAGES } from '../findings.messages';
 import { QUESTION_STUDIO_MESSAGES } from '../messages';
 import { CHECK_LABEL, Chip, StateGlyph, toneOf } from '../parts';
 import { ReferencePicker } from '../ReferencePicker';
+import { ChatNoteBox, ExportReviewButton, TurnNoteBox, useReviewAvailable } from '../review/ReviewTools';
 import { syllabusName } from '../studioView';
 import { paperCoverage } from './coverage';
 import { acceptable, GHOST_PREFIX } from './ghosts';
@@ -70,6 +71,8 @@ export function WritePanel() {
   const chat = chats.find((each) => each.id === activeId);
   const mine = chat?.paper === worksheet.id ? chat : undefined;
   const running = run !== undefined;
+  // The review tools (k-0598): a develop build on the desktop only.
+  const review = useReviewAvailable();
   const runningHere = run && mine && run.chatId === mine.id ? run : undefined;
   const draftChip = mine?.drafts.find((d) => d.id === ask && d.state !== 'added');
 
@@ -105,6 +108,14 @@ export function WritePanel() {
           />
         ) : (
           <>
+            {review && (
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <ChatNoteBox chatId={mine.id} />
+                </div>
+                <ExportReviewButton chat={mine} chats={chats} list="panel" disabled={running} />
+              </div>
+            )}
             <ChatTurns
               chat={mine}
               runningTurn={runningHere?.turnId}
@@ -115,6 +126,7 @@ export function WritePanel() {
               onChangePick={(code) => store.changePick(code)}
               onAnswer={(turnId, answer) => void store.answerRewrite(turnId, answer)}
               onWhich={(turnId, choice) => void store.answerWhich(turnId, choice)}
+              noteSlot={review ? (turnId) => <TurnNoteBox chatId={mine.id} turnId={turnId} /> : undefined}
             />
             <DraftList drafts={mine.drafts} worksheet={worksheet} readOnly={readOnly} busy={running} />
           </>

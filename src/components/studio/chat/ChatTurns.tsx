@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment, type ReactNode } from 'react';
 import { useMessages } from '@/i18n/language';
 import { referenceWhat, type FindingMessages } from '../findings';
 import { STUDIO_FINDING_MESSAGES } from '../findings.messages';
@@ -25,6 +26,7 @@ export function ChatTurns({
   onChangePick,
   onAnswer,
   onWhich,
+  noteSlot,
 }: {
   chat: Chat;
   runningTurn?: string;
@@ -36,6 +38,8 @@ export function ChatTurns({
   onAnswer: (turnId: string, answer: 'rewrite' | 'keep') => void;
   /** The answer to "Which draft do you mean?" (k-0535); absent = the buttons are not offered. */
   onWhich?: (turnId: string, choice: number | 'all' | 'new') => void;
+  /** Drawn under each finished reply (k-0598: the review Note box, develop builds on the desktop only). */
+  noteSlot?: (turnId: string) => ReactNode;
 }) {
   const m = useMessages(STUDIO_CHAT_MESSAGES);
   // Only the newest pick can be changed: older ones are history.
@@ -51,22 +55,24 @@ export function ChatTurns({
             {turn.text || (turn.draftNo === undefined ? m.likeThis(chat.settings.count) : '')}
           </div>
         ) : (
-          <AiReply
-            key={turn.id}
-            turn={turn}
-            chat={chat}
-            m={m}
-            running={turn.id === runningTurn}
-            latest={turn.id === lastTurn}
-            language={language}
-            pickEditable={turn.id === lastPickTurn && !runningTurn}
-            onJump={onJump}
-            onRetry={() => onRetry(turn.id)}
-            onDismiss={() => onDismiss(turn.id)}
-            onChangePick={onChangePick}
-            onAnswer={(answer) => onAnswer(turn.id, answer)}
-            onWhich={onWhich && !runningTurn ? (choice) => onWhich(turn.id, choice) : undefined}
-          />
+          <Fragment key={turn.id}>
+            <AiReply
+              turn={turn}
+              chat={chat}
+              m={m}
+              running={turn.id === runningTurn}
+              latest={turn.id === lastTurn}
+              language={language}
+              pickEditable={turn.id === lastPickTurn && !runningTurn}
+              onJump={onJump}
+              onRetry={() => onRetry(turn.id)}
+              onDismiss={() => onDismiss(turn.id)}
+              onChangePick={onChangePick}
+              onAnswer={(answer) => onAnswer(turn.id, answer)}
+              onWhich={onWhich && !runningTurn ? (choice) => onWhich(turn.id, choice) : undefined}
+            />
+            {noteSlot && turn.id !== runningTurn ? noteSlot(turn.id) : null}
+          </Fragment>
         ),
       )}
     </>
