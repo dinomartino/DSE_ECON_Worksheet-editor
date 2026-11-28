@@ -5,11 +5,8 @@ import { clearDialectCache, createClient } from '@/ai/client';
 import { MENTOR_MODEL, PRESETS, presetFor } from '@/ai/providers';
 import type { AiClient, ProviderConfig } from '@/ai/types';
 import { evaluateReply, generateDiagram } from '@/diagramGen/run';
-import type { DiagramGenInput } from '@/diagramGen/types';
-import type { Diagram } from '@/model/diagram';
-import { plainOf } from '@/diagramGen/text';
 import { diagramSvg } from '@/render/diagram';
-import { GRAPH_CASES, type GraphCase } from './graphs/cases';
+import { GRAPH_CASES } from './graphs/cases';
 
 /**
  * The studio's diagram step on the frozen graph set (k-0577), live against Mentor: the same
@@ -18,44 +15,21 @@ import { GRAPH_CASES, type GraphCase } from './graphs/cases';
  * credits charged and the figure as SVG in English and 中文, then `summary.json`.
  *
  *   EVAL_MENTOR_API=http://localhost:3124/api/app/v1 EVAL_MENTOR_TOKEN=… EVAL_OUT=Outbox/k-0577/before
- *   [EVAL_ONLY=e-tax-dwl,e-quota] npx vitest run --config vitest.eval.config.ts evals/graphs.eval.ts
+ *   EVAL_ONLY=e-tax-dwl,e-quota (or EVAL_ALL=1 for the whole set, ~1,000 credits) npx vitest run --config vitest.eval.config.ts evals/graphs.eval.ts
  *
  * Each case is one or two requests (a repair turn when the first reply fails a check).
  */
 
-const letter = (i: number) => 'ABCD'[i] ?? '?';
+import { inputOf, printedLabels } from './graphs/shared';
 
-export function inputOf(c: GraphCase): DiagramGenInput {
-  const statements = c.statements ?? [];
-  const question = [c.stem, ...statements.map((t, i) => `(${i + 1}) ${t}`), ...c.options.map((o, i) => `${letter(i)}. ${o}`)].join('\n');
-  const key = `Correct answer: ${letter(c.answer)}. ${c.options[c.answer]}\n${c.explanation}`;
-  return { question, key, sides: ['en', 'zh'], figure: c.figure, mcq: { stem: c.stem, statements: [...statements], options: [...c.options], answer: c.answer } };
-}
-
-/** Every label printed on a figure (curve names, point names, ticks, areas, free labels), as plain text. */
-export function printedLabels(d: Diagram): string[] {
-  const out: string[] = [];
-  const add = (t: unknown) => {
-    if (!t) return;
-    const s = (plainOf(t as never, 'en') || plainOf(t as never, 'zh')).trim();
-    if (s) out.push(s);
-  };
-  for (const c of d.curves) add(c.label);
-  for (const p of d.points) {
-    add(p.label);
-    add(p.xTickLabel);
-    add(p.yTickLabel);
-  }
-  for (const a of d.areas ?? []) add(a.label);
-  for (const l of d.labels) add(l.text);
-  for (const s of d.spans ?? []) add(s.label);
-  for (const s of d.pie?.slices ?? []) add(s.label);
-  return out;
-}
+export { inputOf, printedLabels };
 
 const norm = (s: string) => s.replace(/[\s_{}]/g, '').replace(/[₀-₉]/g, (ch) => String(ch.charCodeAt(0) - 0x2080)).replace(/\*/g, '*').toUpperCase();
 
-describe.skipIf(!process.env.EVAL_MENTOR_TOKEN)('graph set, live (k-0577)', () => {
+// The whole set costs ~1,000 credits: it runs only when asked for by name (EVAL_ONLY) or in full (EVAL_ALL=1), k-0601.
+const asked = Boolean(process.env.EVAL_ONLY?.trim()) || process.env.EVAL_ALL === '1';
+
+describe.skipIf(!process.env.EVAL_MENTOR_TOKEN || !asked)('graph set, live (k-0577)', () => {
   it('draws every case', async () => {
     clearDialectCache();
     const config: ProviderConfig = {

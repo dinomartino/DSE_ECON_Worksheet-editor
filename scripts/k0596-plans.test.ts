@@ -13,7 +13,7 @@ import { Q22_KEY, Q22_MCQ } from '@/diagramGen/q22.fixture';
 import { diagramSvg } from '@/render/diagram';
 import { parseSpec } from '@/diagramGen/schema';
 import { GRAPH_CASES } from '../evals/graphs/cases';
-import { inputOf } from '../evals/graphs.eval';
+import { inputOf } from '../evals/graphs/shared';
 
 const OUT = process.env.PROOF_OUT ?? '/tmp/k0596-plans';
 const compound = compoundPlan();

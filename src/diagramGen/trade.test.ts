@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { questionLayer } from '@/model/diagramAnswers';
 import { GRAPH_CASES } from '../../evals/graphs/cases';
-import { inputOf } from '../../evals/graphs.eval';
+import { inputOf } from '../../evals/graphs/shared';
 import { DIAGRAM_TEMPLATES, buildFromTemplate } from '@/model/diagramTemplates';
 import { SCENE_TEMPLATES, sceneMenu, systemPrompt, templateMenu } from './prompt';
 import { evaluateSpec } from './run';

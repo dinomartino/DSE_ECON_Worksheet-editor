@@ -8,7 +8,7 @@ import fixture from '@/diagramGen/k0600Fixture.json';
 import { generateDiagram } from '@/diagramGen/run';
 import type { DiagramSpec } from '@/diagramGen/types';
 import { diagramSvg } from '@/render/diagram';
-import { printedLabels } from './graphs.eval';
+import { printedLabels } from './graphs/shared';
 
 /**
  * k-0600 follow-up, live: the studio review's third message, "help me regen the graph with the

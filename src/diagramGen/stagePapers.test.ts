@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GRAPH_CASES } from '../../evals/graphs/cases';
-import { inputOf } from '../../evals/graphs.eval';
+import { inputOf } from '../../evals/graphs/shared';
 import { tickKey } from './compile';
 import { diagramLabels } from './labels';
 import MM_LATTICE_2_LIVE from './mmLattice2.live.json';
