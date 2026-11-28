@@ -2,7 +2,7 @@
  * Typed requests with the key point(s) a teacher would call right (k-0514), for measuring
  * step 1 (`pick.ts`): invented by hand, English and Chinese, specific and vague. `ok` lists
  * every code that counts as a hit (a vague request has more than one). Not a test oracle for
- * CI: the model's answers are run by `pickEval.test.ts` on demand.
+ * CI: the model’s answers are run by `scripts/pickEval.test.ts` on demand.
  */
 export interface TypedCase {
   text: string;

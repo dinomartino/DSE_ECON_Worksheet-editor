@@ -55,7 +55,7 @@ describe('reading a message with the drafts (k-0535): ~40 real phrasings', () =>
     const { read, fast, reply } = finalRead(p);
     // Fast rows cost no reading request; every other row has a recorded answer.
     expect(fast).toBe(Boolean(p.fast));
-    if (!fast) expect(reply, 'record this row: intent.record.test.ts').toBeDefined();
+    if (!fast) expect(reply, 'record this row: scripts/intent.record.test.ts').toBeDefined();
     expect(read.kind).toBe(p.want.kind);
     if (p.want.drafts) expect(read.drafts).toEqual(p.want.drafts);
     if (read.kind === 'ask') expect(read.reply?.length ?? 0).toBeGreaterThan(10);

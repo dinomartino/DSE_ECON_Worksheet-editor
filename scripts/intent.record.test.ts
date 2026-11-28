@@ -2,13 +2,13 @@ import { writeFileSync } from 'node:fs';
 import { describe, it } from 'vitest';
 import { presetFor } from '@/ai/providers';
 import { buildUnderstandRequest } from '@/questionStudio/understand';
-import { readLocally } from './intent';
-import { PAGE, PHRASINGS } from './intentPhrasings';
+import { readLocally } from '@/components/studio/chat/intent';
+import { PAGE, PHRASINGS } from '@/components/studio/chat/intentPhrasings';
 
 /**
  * Not a check: writes the live prompt of every phrasing the computer is not sure of, so the
  * AI's answers can be recorded (`intentPhrasings.recorded.json`). Run with
- * `K0535_RECORD=/tmp/prompts.json npx vitest run src/components/studio/chat/intent.record.test.ts`,
+ * `K0535_RECORD=/tmp/prompts.json npx vitest run scripts/intent.record.test.ts`,
  * send each `{system, user}` to the model, and keep its reply text by id.
  */
 describe.skipIf(!process.env.K0535_RECORD)('record the reading prompts (k-0535)', () => {

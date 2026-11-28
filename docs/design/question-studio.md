@@ -540,7 +540,7 @@ The first studio made the teacher choose a key point and sent only words. Three 
 - **Pick one yourself.** `references.ts:searchRows` / `:loadReference` over the bank's search index (words in either
   language, source line, tag; newest HKDSE first); `components/studio/ReferencePicker.tsx` in the source panel.
 
-Step 1's accuracy: `pickEval.test.ts` (`PICK_EVAL=dump|score|live`, bank copy in `PICK_EVAL_DIR`). First run, stand-in
+Step 1's accuracy: `scripts/pickEval.test.ts` (`PICK_EVAL=dump|score|live npx vitest run scripts/pickEval.test.ts`, bank copy in `PICK_EVAL_DIR`). First run, stand-in
 model Claude Haiku, not Gemini: 22/33 (67%) from a real HKDSE question alone, 27/28 from a specific typed request,
 50/63 overall; the misses are mostly neighbouring key points. A Gemini run needs a key (`PICK_EVAL=live`).
 

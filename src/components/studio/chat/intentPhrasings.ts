@@ -5,7 +5,7 @@ import type { IntentKind } from './intent';
  * Real phrasings of a teacher's message once drafts are on the page (k-0535, u-yu7s), with
  * what each should do. `intent.test.ts` runs every row through the computer's rules and, where
  * those are not sure, through the AI's recorded answer (`intentPhrasings.recorded.json`, made
- * with the live prompt by `intent.record.test.ts`).
+ * with the live prompt by `scripts/intent.record.test.ts`).
  */
 
 /** Three drafts: 1 plain, 2 with a table, 3 with a diagram and statements. */

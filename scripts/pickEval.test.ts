@@ -4,15 +4,17 @@ import { describe, expect, it } from 'vitest';
 import { createClient } from '@/ai/client';
 import { presetFor } from '@/ai/providers';
 import { parseManifest, parseTopic, type TopicEntry } from '@/pastpapers/pack';
-import { keyPointsOfCode } from './frequency';
-import { buildPickRequest, parsePicks } from './pick';
-import { TYPED_CASES } from './pickRequests';
-import { referenceOf } from './references';
-import type { SourceQuestion } from './types';
+import { keyPointsOfCode } from '@/questionStudio/frequency';
+import { buildPickRequest, parsePicks } from '@/questionStudio/pick';
+import { TYPED_CASES } from '@/questionStudio/pickRequests';
+import { referenceOf } from '@/questionStudio/references';
+import type { SourceQuestion } from '@/questionStudio/types';
 
 /**
  * Step 1's accuracy on real requests (k-0514). Skipped unless `PICK_EVAL` is set; it reads a
  * copy of the public question bank, so nothing here runs in CI.
+ * In `scripts/` (k-0611), so `npx vitest run src` never collects it: live mode calls Gemini
+ * and must only ever run when named.
  *
  *   PICK_EVAL_DIR=<dir with manifest.json and topics/*.json>
  *   PICK_EVAL=dump   writes <dir>/cases.json (each case's exact request: system + user turn)
