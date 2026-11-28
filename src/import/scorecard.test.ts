@@ -29,10 +29,14 @@ function run(fx: ExpectedFixture): Row {
 describe('paste import scorecard', () => {
   const rows = FIXTURES.map(run);
 
-  it('prints the scorecard', () => {
-    const pct = (n: number) => `${Math.round(n * 100)}%`.padStart(5);
-    const lines = rows.map((s) => `${s.file.padEnd(38)} ${s.category.padEnd(6)} q ${String(s.got).padStart(2)}/${String(s.expected).padEnd(2)} split ${pct(s.split)}  detail ${pct(s.detail)}${s.failures.length ? `  ✗ ${s.failures.slice(0, 3).join('; ')}` : ''}`);
-    console.log(['paste import scorecard', ...lines].join('\n'));
+  // The scorecard prints only when asked (k-0611): `SCORECARD=1 npx vitest run src/import/scorecard.test.ts`.
+  const pct = (n: number) => `${Math.round(n * 100)}%`.padStart(5);
+  const print = (lines: string[]) => {
+    if (process.env.SCORECARD) console.log(lines.join('\n'));
+  };
+
+  it('scores every paste fixture', () => {
+    print(['paste import scorecard', ...rows.map((s) => `${s.file.padEnd(38)} ${s.category.padEnd(6)} q ${String(s.got).padStart(2)}/${String(s.expected).padEnd(2)} split ${pct(s.split)}  detail ${pct(s.detail)}${s.failures.length ? `  ✗ ${s.failures.slice(0, 3).join('; ')}` : ''}`)]);
     expect(rows.length).toBeGreaterThanOrEqual(12);
   });
 
@@ -51,17 +55,11 @@ describe('paste import scorecard', () => {
     return { keys, parts, merged: sheet.lines.filter((l) => /→/.test(l.raw) && /\(1\)/.test(l.raw)).length };
   })();
 
-  it('prints the OCR rows', () => {
-    const pct = (n: number) => `${Math.round(n * 100)}%`.padStart(5);
-    console.log(
-      [
-        ...ocrRows.map((s) => `${s.name.padEnd(38)} ocr    q ${String(s.got).padStart(2)}/${String(s.expected).padEnd(2)} split ${pct(s.split)}  detail ${pct(s.detail)}${s.failures.length ? `  ✗ ${s.failures.slice(0, 3).join('; ')}` : ''}`),
-        `${'ocr pages: key grid + 2 scheme tables'.padEnd(38)} ocr    key ${scheme.keys}/45 (one cell misread)  scheme parts ${scheme.parts}/4  merged lines ${scheme.merged}`,
-      ].join('\n'),
-    );
-  });
-
   it('keeps recognised pages at the PDF floor', () => {
+    print([
+      ...ocrRows.map((s) => `${s.name.padEnd(38)} ocr    q ${String(s.got).padStart(2)}/${String(s.expected).padEnd(2)} split ${pct(s.split)}  detail ${pct(s.detail)}${s.failures.length ? `  ✗ ${s.failures.slice(0, 3).join('; ')}` : ''}`),
+      `${'ocr pages: key grid + 2 scheme tables'.padEnd(38)} ocr    key ${scheme.keys}/45 (one cell misread)  scheme parts ${scheme.parts}/4  merged lines ${scheme.merged}`,
+    ]);
     for (const row of ocrRows) {
       expect(row.split, `${row.name}: ${row.failures.join('; ')}`).toBeGreaterThanOrEqual(FLOOR.pdf.split);
       expect(row.detail, `${row.name}: ${row.failures.join('; ')}`).toBeGreaterThanOrEqual(FLOOR.pdf.detail);
