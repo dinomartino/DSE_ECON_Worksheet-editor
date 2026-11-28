@@ -283,6 +283,12 @@ export function renderMarkScheme(
       ...(options.teacherOnly ? { teacherOnly: true } : {}),
       ...(options.language ? { language: options.language } : {}),
     });
+    // The blank line a table opens with keeps with it too: a plain blank is where the keep
+    // chain would break, leaving the point's "(1)" at a sheet's foot and its table on the
+    // next (k-0607, found by the answer-key packing property).
+    for (let index = start; index < nodes.length && nodes[index].kind === 'spacer'; index++) {
+      (nodes[index] as { keepNext?: boolean }).keepNext = true;
+    }
     if (!options.teacherOnly) return;
     for (let index = start; index < nodes.length; index++) {
       (nodes[index] as { teacherOnly?: boolean }).teacherOnly = true;
