@@ -17,6 +17,14 @@ import { registeredCatalogues, type MessageEntry } from './catalogue';
 
 const DOUBLE_CLICK = /double[\s\-‐‑]*click|雙擊|双击|按兩下/i;
 
+/**
+ * Only a file whose raw text could hold a match is parsed (k-0611: the parse of every file
+ * was this guard's 3 s and its timeouts). The same detection: a literal's text differs from
+ * its source only through an escape (`\u`, `\x`, octal) or a line continuation, and a file
+ * holding any of those is parsed too; otherwise a match in the text is a match in the source.
+ */
+const MAY_MATCH = /double|雙擊|双击|按兩下|\\u|\\x|\\[0-7]|\\\r?\n/i;
+
 /** `catalogue file:key` → why that action still takes a double-click. */
 const STILL_DOUBLE_CLICK: Record<string, string> = {
   'components/editor/DocumentSettings.messages.ts:dragHint':
@@ -129,7 +137,10 @@ describe('one click types: no interface text asks for a double-click', () => {
   it('no hard-coded string or JSX text says double-click', () => {
     const wrong = files
       .filter((f) => !CATALOGUE.test(path.basename(f)) && !NOT_READ.has(rel(f)))
-      .flatMap((f) => hardCodedIn(readFileSync(f, 'utf8'), f).map((hit) => `${rel(f)}:${hit.line} ${hit.text}`));
+      .flatMap((f) => {
+        const source = readFileSync(f, 'utf8');
+        return MAY_MATCH.test(source) ? hardCodedIn(source, f).map((hit) => `${rel(f)}:${hit.line} ${hit.text}`) : [];
+      });
     expect(wrong, 'interface text belongs in a messages.ts catalogue, and one click types').toEqual([]);
   });
 });
