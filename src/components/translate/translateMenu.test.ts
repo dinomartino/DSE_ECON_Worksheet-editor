@@ -3,6 +3,8 @@ import type { SlotMeta, TextSlot } from '@/model/textSlots';
 import type { BiText } from '@/model/types';
 import type { EditTarget } from '@/render/ir';
 import { fillVerbFor, pageAiScope, toolbarSettingsEntries, type PageMenuSources } from './translateMenu';
+import { collectTexts, slotsForTarget } from '@/model/textWalk';
+import { buildTranslateFixture } from '@/test/translateFixture';
 
 const t = (en: string, zh: string): BiText => ({ en: en ? [{ text: en }] : [], zh: zh ? [{ text: zh }] : [] });
 const target: EditTarget = { kind: 'blockText', blockId: 'b1' };
@@ -20,7 +22,7 @@ function slot(path: string, text: BiText, over: Partial<TextSlot & SlotMeta> = {
   };
 }
 
-/** Hand-built slots; `translateMenu.integration.test.ts` runs the real walker. */
+/** Hand-built slots; the last block of this file runs the real walker. */
 const sources = (slots: TextSlot[]): PageMenuSources => ({
   slotsForTarget: (t2) => slots.filter((s) => JSON.stringify(s.target) === JSON.stringify(t2)),
   slots: () => slots,
@@ -119,5 +121,22 @@ describe('toolbarSettingsEntries', () => {
     expect(toolbarSettingsEntries({ hasSettings: false })).toEqual([]);
     expect(toolbarSettingsEntries({ hasSettings: true, settingsHint: '⌘,' })).toEqual([{ label: 'Settings…', hint: '⌘,' }]);
     expect(toolbarSettingsEntries({ hasSettings: true })).toEqual([{ label: 'Settings…' }]);
+  });
+});
+
+// The page's AI entry over the real walker (the unit tests stand one in).
+describe('page AI entry over the real walker', () => {
+  const ws = buildTranslateFixture();
+
+  it('narrows to the one text for every slot target the walker reports', () => {
+    const slots = collectTexts(ws);
+    const sources = { slotsForTarget: (t: Parameters<typeof slotsForTarget>[1]) => slotsForTarget(ws, t), slots: () => slots };
+    const targeted = slots.filter((s) => s.target && !s.unprinted);
+    expect(targeted.length).toBeGreaterThan(10);
+    for (const slot of targeted) {
+      const scope = pageAiScope({ kind: 'text', target: slot.target!, questionId: slot.questionId }, sources);
+      expect(scope.kind === 'paths' || scope.kind === 'questions', slot.path).toBe(true);
+      if (scope.kind === 'paths') expect(scope.paths, slot.path).toEqual([slot.path]);
+    }
   });
 });

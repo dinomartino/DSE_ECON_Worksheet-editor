@@ -3630,7 +3630,7 @@ The AI door's `check.quality` verb (`src/assist/verbs/quality.ts`) over the engi
   (`tone: 'finding'`) pointing at the page text it concerns, or at the whole question.
 - **Read from the model, through the registry.** A type's `qualityView?` lists its anchors
   (stem, lead-in, statements, options with the key, parts with printed marks and scheme) in
-  print order; `src/quality/` never names a type (`noTypeBranching.test.ts`).
+  print order; `src/quality/` never names a type (`src/test/noTypeBranching.test.ts`).
 - **Deterministic first, never a call**: a scheme totalling other than the printed marks
   (`schemeMismatch`), an option naming a statement that isn't there. Blank questions are
   not sent. The prompt tells the model to skip what the paper check already covers.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isSettingsShortcut, shouldOpenSettings, type KeyLike } from './shortcut';
+import { isAiShortcut, shouldOpenAi } from '@/components/ai/shortcut';
 
 const key = (extra: Partial<KeyLike>): KeyLike => ({
   key: ',',
@@ -33,5 +34,28 @@ describe('the Settings shortcut', () => {
     expect(shouldOpenSettings(cmd, { ...ctx, modalOpen: true })).toBe(false);
     expect(shouldOpenSettings(cmd, { ...ctx, editableFocused: true })).toBe(false);
     expect(shouldOpenSettings(cmd, { ...ctx, sections: 0 })).toBe(false);
+  });
+});
+
+const keyAi = (over: Partial<{ key: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean }>) => ({
+  key: 'j', metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, ...over,
+});
+const free = { mac: true, modalOpen: false, editableFocused: false, readOnly: false };
+
+describe('AI shortcut', () => {
+  it('is ⌘J on macOS and Ctrl+J elsewhere', () => {
+    expect(isAiShortcut(keyAi({ metaKey: true }), true)).toBe(true);
+    expect(isAiShortcut(keyAi({ ctrlKey: true }), true)).toBe(false);
+    expect(isAiShortcut(keyAi({ ctrlKey: true }), false)).toBe(true);
+    expect(isAiShortcut(keyAi({ metaKey: true, shiftKey: true }), true)).toBe(false);
+    expect(isAiShortcut(keyAi({ key: 'k', metaKey: true }), true)).toBe(false);
+  });
+
+  it('stands down behind a modal layer, while typing and when read-only', () => {
+    const e = keyAi({ metaKey: true });
+    expect(shouldOpenAi(e, free)).toBe(true);
+    expect(shouldOpenAi(e, { ...free, modalOpen: true })).toBe(false);
+    expect(shouldOpenAi(e, { ...free, editableFocused: true })).toBe(false);
+    expect(shouldOpenAi(e, { ...free, readOnly: true })).toBe(false);
   });
 });

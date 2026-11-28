@@ -54,7 +54,7 @@ Guard: `src/model/textWalk.census.test.ts` (every stored `{en, zh}` is a slot),
 
 All three backends or none: a node the exporter cannot draw is a silent data loss.
 
-Guard: `src/export/docx/docx.test.ts`, `src/render/gaps.test.ts`.
+Guard: `src/export/docx/docx.test.ts`, `src/render/questionGap.test.ts`.
 
 ## Add a layout element
 
@@ -69,7 +69,7 @@ Guard: `src/export/docx/docx.test.ts`, `src/render/gaps.test.ts`.
 
 An insert writes both `layout` and `flow`, always through `applyOrder`.
 
-Guard: `src/model/flow.test.ts`, `src/render/gaps.test.ts`.
+Guard: `src/model/flow.test.ts`, `src/render/questionGap.test.ts`.
 
 ## Add an optional Worksheet field
 

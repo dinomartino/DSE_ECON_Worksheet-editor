@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { presetFor } from '@/ai/providers';
 import { AiError, type CompletionRequest } from '@/ai/types';
@@ -242,17 +241,5 @@ describe('runAnswers and apply', () => {
     const outcome = await runAnswers(split, deps(scriptedClient([down, (req: CompletionRequest) => cannedReply(req)])), new AbortController().signal);
     expect(outcome.results.get('a1')).toMatchObject({ status: 'failed', notes: ['The provider had a problem. Nothing inserted'] });
     expect(outcome.results.get('a2')?.status).toBe('ok');
-  });
-});
-
-describe('src/answers', () => {
-  it('never branches on a question type: leaves reach it only through the registry hook', () => {
-    const files = readdirSync('src/answers').filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'));
-    expect(files.length).toBeGreaterThan(5);
-    for (const path of [...files.map((name) => `src/answers/${name}`), 'src/model/answerLeaves.ts', 'src/assist/verbs/writeAnswers.ts']) {
-      const source = readFileSync(path, 'utf8');
-      expect(source, `${path} must not branch on 'mcq'`).not.toMatch(/['"]mcq['"]/);
-      expect(source, `${path} must not branch on 'structured'`).not.toMatch(/['"]structured['"]/);
-    }
   });
 });

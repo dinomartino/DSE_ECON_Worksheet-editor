@@ -373,7 +373,7 @@ from WP-0's contracts, not from that package's branch.
   `StoreChange`), `indexer.ts` (`rowsOf(worksheet, summary)`), `contentKey.ts` (content
   hash ignoring ids and lineage), `search.ts` (`searchRows`), `group.ts` (`groupRows` by
   `rootId`, then `contentKey`), `history.ts` (`usedIn`), `fill.ts` (`pickFill`),
-  `noTypeBranching.test.ts`.
+  `src/test/noTypeBranching.test.ts`.
 - `src/library/useBank.ts`: the one hook both surfaces read — `useBank(): { status,
   rows, groups, refresh }`. WP-0 ships a **naive working provider** (scan `list()` +
   `load()` in memory, rescan on `refresh`); WP-B replaces its internals, never its API.

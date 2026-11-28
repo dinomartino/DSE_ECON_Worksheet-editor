@@ -156,7 +156,7 @@ New question 新題目
 ```
 
 - **Type comes from the registry**, never a literal. Default: the Filter's type, then the
-  type chosen last (per viewer), then the first registered. `src/library/noTypeBranching.test.ts`
+  type chosen last (per viewer), then the first registered. `src/test/noTypeBranching.test.ts`
   guards any pure module placed in `src/library/`.
 - **Enter writes it**; Esc cancels (the popover claims the modal layer, like every overlay).
 
