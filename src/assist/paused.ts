@@ -1,3 +1,5 @@
+import { OWN_KEY_AI_ENABLED } from '@/ai/launch';
+
 /**
  * Verbs built and registered but hidden from teachers until the AI is good enough: the
  * menu never lists them and `startVerb` refuses them. Remove an id to bring it back.
@@ -8,6 +10,7 @@ export const PAUSED_VERBS: ReadonlySet<string> = new Set(['write.answers', 'crea
 let paused: ReadonlySet<string> = PAUSED_VERBS;
 
 export function isPaused(verbId: string): boolean {
+  if (!OWN_KEY_AI_ENABLED) return true; // the own-key AI is hidden as a whole (ai/launch.ts)
   for (let id = verbId; ; id = id.slice(0, id.lastIndexOf('.'))) {
     if (paused.has(id)) return true;
     if (!id.includes('.')) return false;

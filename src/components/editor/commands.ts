@@ -1,3 +1,4 @@
+import { OWN_KEY_AI_ENABLED } from '@/ai/launch';
 import { openAi } from '@/assist/menuStore';
 import { isMacPlatform } from '@/components/settings/shortcut';
 import { resolveMessages, sideOf, type Catalogue, type Messages } from '@/i18n/catalogue';
@@ -213,8 +214,10 @@ export function buildCommands({ worksheet, readOnly, afterId, labelFor }: Comman
       { id: 'more:save', label: pick(bar, 'saveNow'), where: more, keywords: 'save 儲存', shortcut: key('S'), run: () => void store.save().catch(() => {}) },
       { id: 'more:undo', label: pick(bar, 'undo'), where: more, keywords: 'undo 復原', run: store.undo },
       { id: 'more:redo', label: pick(bar, 'redo'), where: more, keywords: 'redo 重做', run: store.redo },
-      { id: 'more:ai', label: pick(own, 'aiTools'), where: more, keywords: 'ai translate generate answers 翻譯', shortcut: key('J'), run: () => openAi() },
     );
+    if (OWN_KEY_AI_ENABLED) {
+      commands.push({ id: 'more:ai', label: pick(own, 'aiTools'), where: more, keywords: 'ai translate generate answers 翻譯', shortcut: key('J'), run: () => openAi() });
+    }
   }
   commands.push(
     { id: 'more:settings', label: pick(own, 'settings'), where: more, keywords: 'settings preferences appearance dark language 設定 外觀 語言', shortcut: key(','), run: () => useAppDialogs.getState().openSettings() },

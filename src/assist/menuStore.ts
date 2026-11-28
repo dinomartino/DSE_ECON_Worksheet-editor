@@ -1,4 +1,5 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
+import { OWN_KEY_AI_ENABLED } from '@/ai/launch';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { scopeFromSelection, scopeLabel } from './scope';
 import type { AiScope } from './types';
@@ -39,5 +40,6 @@ export const useAiMenu: UseBoundStore<StoreApi<AiMenuState>> = create<AiMenuStat
 
 /** What every entry point calls. */
 export function openAi(opts?: Partial<AiMenuOpen>): void {
+  if (!OWN_KEY_AI_ENABLED) return;
   useAiMenu.getState().openMenu(opts);
 }
