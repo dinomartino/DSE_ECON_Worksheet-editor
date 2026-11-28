@@ -79,9 +79,37 @@ expected values changed without a code change, suppressions and loosened test se
 Don't work around a flag: name the change in your report. Only the user or the lead can OK
 it (`zo-space/local-ci.md` → Test integrity).
 
+## Growing the tests
+
+The suite doubled every three months, and almost nothing left it (k-0604 audit). So
+(k-0611, the user's "go recommended"; how-to: `docs/RECIPES.md` § Add or grow a test file):
+
+- **One test file per module.** A feature adds to its module's test file; a fix adds an
+  assertion to the existing file. A new file only for a new source module, and before
+  adding one, see whether a sibling file of the same module should take it. Never a file
+  named after a task.
+- **A generated table over ~60 cases samples itself** in `npm test` and runs whole under
+  `TEST_FULL=1` (`npm run test:full`): `src/test/sample.ts`; property tests use `holds`
+  (`src/test/property.ts`). A sample is fixed, never random.
+- **Every test asserts something.** No empty `it()`, no test that only prints.
+- **Logic tests don't load the editor.** Outside `src/components`, don't import
+  `Preview.tsx`, `EditorHost.tsx` or the editor panels for a helper.
+- **Behaviour over wording.** Read interface text from its catalogue; a class name,
+  markup or source-text pin needs a comment saying why.
+- **Shared fixtures live in `src/test/`.** Don't redefine an MC question, a `.docx`
+  reader or a fake `Storage` in another file.
+- **A file passes alone and in the shared lane.** `npm test` shares a module cache;
+  `src/test/freshModules.ts` resets modules and puts back globals, env and timers between
+  files. A test that only passes alone is broken: fix the test.
+- **One-off harnesses and develop-only shapes** carry a note naming the task that removes them.
+- **Budget:** the fast lane stays under **100 CPU-seconds** on Zo (warn at 100, fail at 130;
+  local-ci's check is k-0612). Measure with `time npm test` (user + sys).
+
 ## Verifying work
 
-- `npm test` — ~3300 tests, ~10s. `npm run typecheck`, `npm run lint` (40 pre-existing
+- `npm test` — the fast lane (shared module cache, sampled tables; about a minute).
+  `npm run test:full` — the full lane: every file isolated, every table whole, 120 sync
+  seeds; CI, nightly and the release gate run it. `npm run typecheck`, `npm run lint` (40 pre-existing
   problems: 3 errors in `Preview.tsx` and `InlineEditable.tsx`, 37 warnings spread
   across other files; `lint-baseline.json` in the `jev` skill lists them).
 - `node .claude/skills/jev/bin/verify-plan.mjs` lists which of the checks below a diff

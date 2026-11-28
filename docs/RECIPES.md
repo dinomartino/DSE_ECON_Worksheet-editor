@@ -383,6 +383,28 @@ After any UI work, open an exported `.docx` in Word: it is the load-bearing outp
 
 Guard: `npm test`, `npm run typecheck`, `npm run lint` (41 pre-existing problems).
 
+## Add or grow a test file
+
+Two lanes (k-0611): `npm test` is the fast lane, `npm run test:full` the full one (CI,
+nightly, release gate). Rules: `AGENTS.md` § Growing the tests.
+
+1. **Find the module's test file** (`<module>.test.ts` beside it) and add there. A new file
+   only for a new source module. A second file for one module needs a reason (a different
+   harness that cannot share the file, e.g. a `vi.mock` that would change the other tests).
+2. **A table of more than ~60 generated cases** samples itself in the fast lane:
+   ```ts
+   import { FULL, seedCount, slopeSizeTriples } from '@/test/sample';
+   for (const { demand, supply, size } of slopeSizeTriples(SLOPES, SLOPES, SIZES)) { … } // 5 of 27 fast, 27 full
+   const SEEDS = seedCount(process.env.MY_SEEDS, 30, 120);
+   const cases = FULL ? all : chosen;  // a fixed, named sample: extremes plus the plain case
+   ```
+   Pick the sample so it still kills what the whole table kills (try a planted bug).
+3. **Run both lanes once before merging** when you add a table or touch globals:
+   `npm test`, then `npm run test:full`. A file that passes alone but not in `npm test`
+   leaks state; `src/test/freshModules.ts` puts back globals, env and timers between files,
+   so look for module state kept outside the module registry.
+4. **Check the budget:** `time npm test`; user + sys should stay under 100 CPU-seconds on Zo.
+
 ## Write a property test
 
 A property states a rule from the spec that must hold for every generated input
