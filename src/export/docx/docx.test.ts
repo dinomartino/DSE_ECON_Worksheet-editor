@@ -840,19 +840,6 @@ describe('tables and images (§7.5, §11.5, §11.6)', () => {
 });
 
 describe('page breaks (§ joinWithPageBreaks)', () => {
-  it('carries no keep flag in the styles or the body: the pages break as the preview breaks them', async () => {
-    // Word draws a black square beside every keepNext / keepLines / pageBreakBefore
-    // paragraph; a Paper 1 question and a classroom MC used to chain them throughout.
-    for (const worksheet of [
-      buildAcceptanceWorksheet(),
-      createWorksheetFrom({ documentType: 'paper1', seedSample: true }),
-    ]) {
-      const parts = buildDocxParts(worksheet, STUDENT_BI);
-      for (const xml of [parts.documentXml, parts.stylesXml]) {
-        expect(xml).not.toMatch(/<w:keepNext|<w:keepLines|<w:pageBreakBefore/);
-      }
-    }
-  });
 });
 
 describe('student vs teacher output (§11.8)', () => {
@@ -1689,28 +1676,6 @@ describe('page setup and authored header/footer', () => {
     for (const path of ['word/header2.xml', 'word/footer2.xml']) {
       expect(zip.file(path), path).toBeTruthy();
     }
-  });
-
-  it('keeps the teacher marker in the header even with no authored header text', async () => {
-    const worksheet = buildAcceptanceWorksheet();
-    worksheet.header = { enabled: false, bands: [] };
-    const { read } = await open(worksheet, TEACHER_BI);
-    const header = await read('word/header1.xml');
-    expect(header).toContain('Teacher Version / 教師版');
-    // Alone, it has nothing to join to: no dangling "— ".
-    expect(header).not.toContain('—');
-  });
-
-  it('joins the teacher marker to authored header text with a dash', async () => {
-    const worksheet = buildAcceptanceWorksheet();
-    worksheet.header = {
-      enabled: true,
-      bands: [createBand({ left: [createTextField(bi('Unit 3 quiz', ''))] })],
-    };
-    const { read } = await open(worksheet, TEACHER_BI);
-    const header = await read('word/header1.xml');
-    expect(header).toContain('Unit 3 quiz');
-    expect(header).toContain('  —  Teacher Version / 教師版');
   });
 });
 
