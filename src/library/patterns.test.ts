@@ -22,8 +22,29 @@ import {
   rowPatterns,
   setPatternsEdit,
   thenEdit,
+  likelyType,
+  rowHasPatternName,
+  startingSubTopics,
+  subTopicList,
+  subTopicTallies,
+  sortBuckets,
+  sortIntoEdit,
+  sortProgress,
+  sortSections,
+  topicsToSort,
+  unsortEdit,
 } from './patterns';
 import { addTopics, bulkTopicEdit, removeTopics, replaceTopics, writeTags } from './tagWrites';
+import { createMcqQuestion, createStructuredQuestion } from '@/model/factories';
+import {
+  NO_FILTERS,
+  activeFilters,
+  blockingFilter,
+  clearFilter,
+  tabPatternChoices,
+  visibleGroups,
+  type TabFilters,
+} from './tabFilters';
 
 const MCQ = choiceQuestion('x').type;
 const LQ = partsQuestion('x').type;
@@ -223,3 +244,139 @@ describe('題型 on a question tagged per part', () => {
   });
 });
 
+const MCQPm = createMcqQuestion().type;
+const LQPm = createStructuredQuestion().type;
+const f = (patch: Partial<TabFilters>): TabFilters => ({ ...NO_FILTERS, ...patch });
+const ctx = { openDocId: 'open' };
+
+// Three PED questions (one LQ), one market-intervention one, a coarse-only one; one PED MCQ has two copies.
+const rows = [
+  row({ docId: 'a', rootId: 'q1', typeId: MCQPm, tags: ['C', 'C.ped', 'C.ped::PED and total revenue'] }),
+  row({ docId: 'b', rootId: 'q1', typeId: MCQPm, tags: ['C', 'C.ped', 'C.ped::PED and total revenue'] }),
+  row({ docId: 'a', rootId: 'q2', typeId: MCQPm, tags: ['C.ped'] }),
+  row({ docId: 'a', rootId: 'q3', typeId: LQPm, tags: ['C.ped', 'C.ped::PED and total revenue'] }),
+  row({ docId: 'a', rootId: 'q4', typeId: MCQPm, tags: ['C.intervention'] }),
+  row({ docId: 'a', rootId: 'q5', typeId: LQPm, tags: ['C.intervention'] }),
+  row({ docId: 'a', rootId: 'q6', typeId: LQPm, tags: ['C.intervention'] }),
+  row({ docId: 'a', rootId: 'q7', typeId: MCQPm, tags: ['D'] }),
+  row({ docId: 'open', rootId: 'q8', typeId: MCQPm, tags: ['C.ped', 'C.ped::Calculate PED'] }),
+];
+
+describe('the 題型 map’s tallies', () => {
+  it('counts each sub-topic’s questions once per question, and those without a 題型 there, by type', () => {
+    const tallies = subTopicTallies(rows);
+    expect(tallies.get('C.ped')).toEqual({ topic: 'C.ped', questions: 4, without: 1, withoutByType: { [MCQPm]: 1 } });
+    expect(tallies.get('C.intervention')).toEqual({ topic: 'C.intervention', questions: 3, without: 3, withoutByType: { [MCQPm]: 1, [LQPm]: 2 } });
+    // A coarse topic holds no 題型: it is never a tally.
+    expect(tallies.has('C')).toBe(false);
+    expect(tallies.has('D')).toBe(false);
+  });
+
+  it('starts where the most questions lack a 題型, and a new 題型 there takes their usual type', () => {
+    const tallies = subTopicTallies(rows);
+    expect(startingSubTopics(tallies).map((tally) => tally.topic)).toEqual(['C.intervention', 'C.ped']);
+    expect(startingSubTopics(tallies, 1).map((tally) => tally.topic)).toEqual(['C.intervention']);
+    expect(likelyType(tallies.get('C.intervention'), [MCQPm, LQPm])).toBe(LQPm);
+    expect(likelyType(tallies.get('C.ped'), [MCQPm, LQPm])).toBe(MCQPm);
+    expect(likelyType(undefined, [MCQPm, LQPm])).toBe(MCQPm);
+  });
+
+  it('lists a sub-topic’s 題型 as one list: by name, MCQ before LQ for a shared name', () => {
+    const items = listPatterns(rows, { patterns: [{ topic: 'C.ped', typeId: LQPm, name: 'Explain TR with a diagram' }] });
+    expect(subTopicList(items, 'C.ped').map((item) => [item.name, item.typeId, item.count])).toEqual([
+      ['Calculate PED', MCQPm, 1],
+      ['Explain TR with a diagram', LQPm, 0],
+      ['PED and total revenue', MCQPm, 1],
+      ['PED and total revenue', LQPm, 1],
+    ]);
+  });
+});
+
+describe('the editor 題庫 tab’s 題型 filter', () => {
+  it('matches a row by name under the sub-topic, whatever its type, ignoring case', () => {
+    expect(rowHasPatternName(rows[0], 'C.ped', 'ped AND total revenue')).toBe(true);
+    expect(rowHasPatternName(rows[0], 'C.pes', 'PED and total revenue')).toBe(false);
+    expect(rowHasPatternName(rows[2], 'C.ped', 'PED and total revenue')).toBe(false);
+  });
+
+  it('offers the names questions outside the open paper carry, with their types', () => {
+    expect(tabPatternChoices(rows, 'C.ped', '', 'open')).toEqual([{ name: 'PED and total revenue', typeIds: [MCQPm, LQPm], count: 2 }]);
+    expect(tabPatternChoices(rows, 'C.ped', LQPm, 'open')).toEqual([{ name: 'PED and total revenue', typeIds: [LQPm], count: 1 }]);
+    // Under a coarse topic, or one with no 題型 in use: nothing to offer.
+    expect(tabPatternChoices(rows, 'C', '', 'open')).toEqual([]);
+    expect(tabPatternChoices(rows, 'C.intervention', '', 'open')).toEqual([]);
+  });
+
+  it('narrows the list, by type too when one is set', () => {
+    const roots = (filters: TabFilters) => visibleGroups(rows, filters, ctx).map((entry) => entry.group.rootId);
+    expect(roots(f({ topic: 'C.ped', pattern: 'PED and total revenue' }))).toEqual(['q1', 'q3']);
+    expect(roots(f({ topic: 'C.ped', typeId: LQPm, pattern: 'PED and total revenue' }))).toEqual(['q3']);
+    // A 題型 left over under a coarse topic narrows nothing.
+    expect(roots(f({ topic: 'C', pattern: 'PED and total revenue' }))).toHaveLength(6);
+  });
+
+  it('is a filter of its own: listed, cleared alone, and cleared with its topic', () => {
+    const filters = f({ topic: 'C.ped', pattern: 'PED and total revenue' });
+    expect(activeFilters(filters, ctx)).toEqual(['pattern', 'topic']);
+    expect(activeFilters(f({ topic: 'C', pattern: 'x' }), ctx)).toEqual(['topic']);
+    expect(clearFilter(filters, 'pattern')).toEqual(f({ topic: 'C.ped' }));
+    expect(clearFilter(filters, 'topic')).toEqual(NO_FILTERS);
+    expect(blockingFilter(rows, f({ topic: 'C.ped', typeId: LQPm, pattern: 'Nothing like it' }), ctx)).toBe('pattern');
+  });
+});
+
+const MCQPs = createMcqQuestion().type;
+const LQPs = createStructuredQuestion().type;
+
+// C: four PED questions (one sorted, one with two copies), two intervention; D: one; a coarse-only one.
+const rowsPs = [
+  row({ docId: 'a', rootId: 'q1', typeId: MCQPs, marks: 1, tags: ['C.ped', 'C.ped::Calculate PED'] }),
+  row({ docId: 'a', rootId: 'q2', typeId: LQPs, marks: 6, tags: ['C.ped'], excerpt: { en: 'Explain', zh: '' } }),
+  row({ docId: 'b', rootId: 'q2', typeId: LQPs, marks: 6, tags: ['C.ped'], excerpt: { en: 'Explain', zh: '' } }),
+  row({ docId: 'a', rootId: 'q3', typeId: MCQPs, marks: 1, tags: ['C.ped'], excerpt: { en: 'B stem', zh: '' } }),
+  row({ docId: 'a', rootId: 'q4', typeId: MCQPs, marks: 1, tags: ['C.ped', 'C.intervention'], excerpt: { en: 'A stem', zh: '' } }),
+  row({ docId: 'a', rootId: 'q5', typeId: MCQPs, tags: ['C.intervention'] }),
+  row({ docId: 'a', rootId: 'q6', typeId: MCQPs, tags: ['D.structure', 'D.structure::Features'] }),
+  row({ docId: 'a', rootId: 'q7', typeId: MCQPs, tags: ['E'] }),
+];
+
+describe('sorting questions into 題型', () => {
+  it('counts each question once: sorted when every sub-topic it carries has a 題型', () => {
+    const progress = sortProgress(rowsPs);
+    expect(progress.questions).toBe(6);
+    expect(progress.sorted).toBe(2);
+    expect(progress.topics).toEqual([
+      { topic: 'C', questions: 5, notSorted: 4 },
+      { topic: 'D', questions: 1, notSorted: 0 },
+    ]);
+    expect(topicsToSort(progress).map((entry) => entry.topic)).toEqual(['C']);
+  });
+
+  it('lays a topic out per sub-topic, one card per question, MCQ first, then marks and text', () => {
+    const sections = sortSections(rowsPs, 'C');
+    expect(sections.map((section) => [section.topic, section.sorted, section.notSorted.map((r) => r.rootId)])).toEqual([
+      ['C.ped', 1, ['q4', 'q3', 'q2']],
+      ['C.intervention', 0, ['q5', 'q4']],
+    ]);
+    expect(sortSections(rowsPs, 'Z')).toEqual([]);
+  });
+
+  it('a name listed under MCQ and LQ is one bucket', () => {
+    const items = listPatterns(rowsPs, {
+      patterns: [
+        { topic: 'C.ped', typeId: LQPs, name: 'calculate ped' },
+        { topic: 'C.ped', typeId: LQPs, name: 'Explain TR' },
+      ],
+    });
+    expect(sortBuckets(items, 'C.ped')).toEqual([
+      { name: 'Calculate PED', typeIds: [MCQPs, LQPs], count: 1 },
+      { name: 'Explain TR', typeIds: [LQPs], count: 0 },
+    ]);
+  });
+
+  it('sets the 題型 only on lists that hold the sub-topic, and takes it back', () => {
+    expect(sortIntoEdit('C.ped', 'Calculate PED')(['C', 'C.ped'])).toEqual(['C', 'C.ped', 'C.ped::Calculate PED']);
+    expect(sortIntoEdit('C.ped', 'Calculate PED')(['D.structure'])).toEqual(['D.structure']);
+    expect(unsortEdit('C.ped')(['C.ped', 'C.ped::Calculate PED', 'x'])).toEqual(['C.ped', 'x']);
+  });
+});
