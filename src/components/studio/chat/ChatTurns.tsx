@@ -131,6 +131,8 @@ function noteWords(note: Note, m: M, language: LanguageMode, fm: FindingMessages
       return m.noteWritten(note.ok, note.look, note.failed);
     case 'changed':
       return m.noteChanged(note.draftNo, note.version);
+    case 'figureKept':
+      return m.noteFigureKept(note.draftNo);
     case 'another':
       return m.noteAnother(note.draftNo);
     case 'stopped':

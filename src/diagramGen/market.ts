@@ -2,7 +2,7 @@ import type { Diagram, DiagramCurve } from '@/model/diagram';
 import { curveXAt, curveYAt } from '@/model/diagramAnchors';
 import { curveCrossing } from '@/model/diagramAreas';
 import { bandName, DEMAND_LIKE, SUPPLY_LIKE, type Compiled } from './compile';
-import { cornerAreasIn, optionCorners, optionLetters, type McqWords } from './sceneCheck';
+import { cornerAreasIn, optionCorners, optionLetters, ORIGIN_AT, ORIGIN_CORNER, type McqWords } from './sceneCheck';
 import { plainOf } from './text';
 import { isAreaAsk, type AreaAsk, type DiagramIssue, type DiagramSpec, type SolvedKey, type SpecMarket } from './types';
 
@@ -289,6 +289,8 @@ export function letterPlaces(diagram: Diagram): Map<string, Pt> {
     const l = plainOf(p.label ?? { en: [], zh: [] }).trim();
     if (/^[A-Za-z]$/.test(l) && !out.has(l)) out.set(l, p.at);
   }
+  // Corner 0 is the origin ("area 0abc", k-0600), where the figure prints it.
+  if (diagram.showOrigin !== false && diagram.axes !== 'none') out.set(ORIGIN_CORNER, ORIGIN_AT);
   return out;
 }
 

@@ -1,0 +1,366 @@
+{
+ "_about": "k-0600: the studio review export \"Make it to be subsidy\" (2026-11-28), draft 1 as the studio stored it. The question names area 0abc; the plan names points b and c; the stored figure printed no letters at all and every check passed.",
+ "mcq": {
+  "stem": "The following diagram shows the supply and demand curves of a good. Suppose the government provides a per-unit subsidy on the production of the good.\nWhich of the following statements about the provision of the per-unit subsidy are correct?",
+  "statements": [
+   "The consumers enjoy no subsidy benefit.",
+   "The decrease in total social surplus is area 0abc.",
+   "There is deadweight loss after the provision of the subsidy."
+  ],
+  "options": [
+   "(1) and (2) only",
+   "(1) and (3) only",
+   "(2) and (3) only",
+   "(1), (2) and (3)"
+  ],
+  "answer": 1
+ },
+ "key": "Since demand is perfectly elastic (horizontal), the market price remains unchanged after the subsidy, so consumers enjoy no subsidy benefit and (1) is correct. Overproduction occurs beyond the original equilibrium quantity, creating a deadweight loss represented by the triangle between S0 and D to the right of b, so (3) is correct. Area 0abc represents the increase in producer surplus rather than the decrease in total social surplus, so (2) is incorrect.",
+ "spec": {
+  "kind": "curves",
+  "reason": "",
+  "placement": "question",
+  "template": "",
+  "title": {
+   "en": "",
+   "zh": ""
+  },
+  "xAxis": {
+   "en": "Quantity",
+   "zh": ""
+  },
+  "yAxis": {
+   "en": "Price",
+   "zh": ""
+  },
+  "curves": [
+   {
+    "id": "D",
+    "role": "horizontal",
+    "slope": "normal",
+    "place": "mid",
+    "label": "D",
+    "through": []
+   },
+   {
+    "id": "S0",
+    "role": "supply",
+    "slope": "normal",
+    "place": "mid",
+    "label": "S_0",
+    "through": []
+   }
+  ],
+  "shifts": [
+   {
+    "of": "S0",
+    "id": "S1",
+    "direction": "right",
+    "size": "normal",
+    "label": "S_1",
+    "through": []
+   }
+  ],
+  "levels": [],
+  "points": [
+   {
+    "a": "D",
+    "b": "S0",
+    "name": "b",
+    "yTick": "",
+    "xTick": "",
+    "dot": false
+   },
+   {
+    "a": "D",
+    "b": "S1",
+    "name": "c",
+    "yTick": "",
+    "xTick": "",
+    "dot": false
+   }
+  ],
+  "gaps": [],
+  "brackets": [],
+  "bands": [],
+  "shades": [],
+  "marks": [],
+  "changeArrows": false,
+  "asks": {
+   "what": "none",
+   "state": "before",
+   "markets": []
+  },
+  "chart": {
+   "type": "bar",
+   "categories": [],
+   "series": [],
+   "yTitle": {
+    "en": "",
+    "zh": ""
+   },
+   "xTitle": {
+    "en": "",
+    "zh": ""
+   }
+  },
+  "scene": {
+   "type": "none",
+   "market": "goods",
+   "externality": "none",
+   "demand": "normal",
+   "supply": "normal",
+   "size": "normal",
+   "labels": [],
+   "areas": [],
+   "points": [],
+   "ask": "none",
+   "gap": false,
+   "stage": "none",
+   "binds": "both",
+   "mc": "flat",
+   "given": [],
+   "trade": {
+    "tot": 0,
+    "totLine": false,
+    "grow": 0,
+    "xGood": {
+     "en": "",
+     "zh": ""
+    },
+    "yGood": {
+     "en": "",
+     "zh": ""
+    },
+    "countries": []
+   }
+  },
+  "flow": {
+   "layout": "columns",
+   "nodes": [],
+   "arrows": []
+  },
+  "lorenz": {
+   "panels": [],
+   "equality": true,
+   "grid": true,
+   "axes": "percent"
+  }
+ },
+ "storedFigureWords": "Axes: Price (up), Quantity (across).\nLines: D: a horizontal curve; S0: a supply curve (upward-sloping); S1: S0 shifted to the right.\nPrice ticks from the bottom up: D (marked).",
+ "storedBlock": {
+  "kind": "diagram",
+  "id": "PFkMYkcsXr",
+  "diagram": {
+   "x": {
+    "title": {
+     "en": [
+      {
+       "text": "Quantity"
+      }
+     ],
+     "zh": [
+      {
+       "text": "Quantity"
+      }
+     ]
+    }
+   },
+   "y": {
+    "title": {
+     "en": [
+      {
+       "text": "Price"
+      }
+     ],
+     "zh": [
+      {
+       "text": "Price"
+      }
+     ]
+    }
+   },
+   "curves": [
+    {
+     "id": "ZTqsQ4eCY3",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.48
+      },
+      {
+       "x": 0.9,
+       "y": 0.48
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "D"
+       }
+      ],
+      "zh": [
+       {
+        "text": "D"
+       }
+      ]
+     },
+     "labelAt": "end",
+     "derive": {
+      "kind": "level",
+      "y": 0.48,
+      "from": 0,
+      "to": 0.9
+     }
+    },
+    {
+     "id": "CCOMLs9ddB",
+     "points": [
+      {
+       "x": 0.06,
+       "y": 0.1
+      },
+      {
+       "x": 0.7,
+       "y": 0.86
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "S"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "S"
+       },
+       {
+        "text": "0",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "labelAt": "end"
+    },
+    {
+     "id": "g3svKpbyCX",
+     "points": [
+      {
+       "x": 0.24,
+       "y": 0.1
+      },
+      {
+       "x": 0.8799999999999999,
+       "y": 0.86
+      }
+     ],
+     "shape": "straight",
+     "label": {
+      "en": [
+       {
+        "text": "S"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ],
+      "zh": [
+       {
+        "text": "S"
+       },
+       {
+        "text": "1",
+        "vertAlign": "subscript"
+       }
+      ]
+     },
+     "labelAt": "end",
+     "derive": {
+      "kind": "shift",
+      "of": "CCOMLs9ddB",
+      "by": {
+       "x": 0.18,
+       "y": 0
+      }
+     }
+    }
+   ],
+   "points": [
+    {
+     "id": "vINdUk9TSz",
+     "at": {
+      "x": 0.3799999999999999,
+      "y": 0.48
+     },
+     "dot": false,
+     "anchor": {
+      "cross": [
+       "ZTqsQ4eCY3",
+       "CCOMLs9ddB"
+      ]
+     },
+     "dropTo": []
+    },
+    {
+     "id": "3meNE0PDUp",
+     "at": {
+      "x": 0.5599999999999999,
+      "y": 0.48
+     },
+     "dot": false,
+     "anchor": {
+      "cross": [
+       "ZTqsQ4eCY3",
+       "g3svKpbyCX"
+      ]
+     },
+     "dropTo": []
+    }
+   ],
+   "labels": [],
+   "arrows": [
+    {
+     "id": "B9sM24NwC5",
+     "from": {
+      "x": 0.5990000000000001,
+      "y": 0.708
+     },
+     "to": {
+      "x": 0.7250000000000001,
+      "y": 0.708
+     },
+     "follows": "g3svKpbyCX",
+     "followOffset": {
+      "x": 0.032,
+      "y": 0.038
+     }
+    }
+   ],
+   "showOrigin": true,
+   "spans": [],
+   "areas": []
+  },
+  "widthPx": 400,
+  "heightPx": 320,
+  "altText": {
+   "en": [
+    {
+     "text": "Diagram"
+    }
+   ],
+   "zh": [
+    {
+     "text": "圖示"
+    }
+   ]
+  }
+ }
+}

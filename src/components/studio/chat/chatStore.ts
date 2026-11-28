@@ -528,7 +528,16 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
     async function act(chatId: string, turnId: string, intent: TurnIntent, text: string, wanted: IntentKind, signal: AbortSignal) {
       const chat = get().chats.find((c) => c.id === chatId);
       if (!chat) return;
-      const targets = intent.drafts.map((n) => chat.drafts.find((d) => d.no === n && editable(d))).filter((d): d is ChatDraft => d !== undefined);
+      let targets = intent.drafts.map((n) => chat.drafts.find((d) => d.no === n && editable(d))).filter((d): d is ChatDraft => d !== undefined);
+      // One draft open: "which draft?" has one answer (k-0600: "help me regen the graph" asked it).
+      // A change or one more like it goes ahead on it; a question still needs the AI's answer.
+      const open = chat.drafts.filter(editable);
+      if ((intent.kind === 'unsure' || targets.length === 0) && open.length === 1 && wanted !== 'ask' && intent.kind !== 'ask') {
+        targets = open;
+        intent = { ...intent, kind: wanted === 'another' ? 'another' : 'edit', drafts: [open[0].no] };
+        trace(chatId, turnId, { t: 'decision', what: 'intent', value: { ...intent, by: 'computer', oneDraft: true } });
+        setStep(chatId, turnId, { kind: 'understand', state: 'done', intent: intent.kind, drafts: intent.drafts, by: 'computer' });
+      }
       if (intent.kind === 'unsure' || targets.length === 0) {
         const options = (intent.drafts.length ? intent.drafts : chat.drafts.filter(editable).map((d) => d.no)).filter((n) => chat.drafts.some((d) => d.no === n && editable(d)));
         const kind = wanted === 'ask' || wanted === 'another' ? wanted : 'edit';
@@ -613,6 +622,7 @@ export function createChatStore(deps: ChatDeps): UseBoundStore<StoreApi<ChatStat
           }));
           done.push(draftId);
           addNote(chatId, turnId, { kind: 'changed', draftNo: target.no, version });
+          if (outcome.notes.some((n) => n.id === 'run.figureNotRedrawn')) addNote(chatId, turnId, { kind: 'figureKept', draftNo: target.no });
         }
       }
       settle(chatId, turnId);

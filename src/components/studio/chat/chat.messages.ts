@@ -143,6 +143,10 @@ export const STUDIO_CHAT_MESSAGES = defineMessages({
     zh: (ok: number, look: number, warned: number) =>
       `${ok + look + warned} 份草稿已完成。${look ? `其中 ${look} 份請細閱：見其檢查結果。` : ''}${warned ? `${warned} 份有警告：使用前請先看其檢查結果。` : ''}`,
   },
+  noteFigureKept: {
+    en: (n: number) => `I could not redraw the diagram of draft ${n} as you asked, so it is as it was. Point at "Read the diagram" on the draft to see why.`,
+    zh: (n: number) => `未能按你的要求重畫草稿 ${n} 的圖表，圖表維持原樣。將指標移到草稿上的「請細閱圖表」可看原因。`,
+  },
   noteChanged: { en: (n: number, v: number) => `Draft ${n} is now v${v}. Older versions are kept.`, zh: (n: number, v: number) => `草稿 ${n} 現為第 ${v} 版，舊版本已保留。` },
   noteAnother: { en: (n: number) => `Added draft ${n}.`, zh: (n: number) => `已加入草稿 ${n}。` },
   noteStopped: { en: 'Stopped. Nothing was kept from this request.', zh: '已停止。這次要求沒有保留任何內容。' },

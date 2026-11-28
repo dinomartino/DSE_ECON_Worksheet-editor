@@ -164,6 +164,10 @@ export const STUDIO_FINDING_MESSAGES = defineMessages({
     en: (what: string) => `The question you based this on has ${what}. The studio can make only one diagram per question for now (more is coming), so the new question carries the rest in words.`,
     zh: (what: string) => `你所參考的題目${what}。擬題工作室目前每題只能繪畫一幅圖（稍後會支援更多），所以新題目以文字表達其餘內容。`,
   },
+  runFigureNotRedrawn: {
+    en: 'The diagram could not be redrawn as asked, so it is as it was. Point at "Read the diagram" on the draft to see why.',
+    zh: '未能按要求重畫圖表，圖表維持原樣。將指標移到草稿上的「請細閱圖表」可看原因。',
+  },
   runKeyNotChecked: {
     en: 'The keys could not be checked this time, so read each one yourself.',
     zh: '這次未能檢查答案，請自己逐題核對。',

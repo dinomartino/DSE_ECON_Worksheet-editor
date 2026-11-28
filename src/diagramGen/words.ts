@@ -110,6 +110,10 @@ export function figureWords(spec: DiagramSpec, diagram: Diagram): string {
   const ys = ticks('y');
   if (xs.length) lines.push(`${x || 'x'} ticks from the origin outward: ${xs.map((t) => `${t.label} (${byTick.get(`x:${tickKey(t.label)}`) ?? 'marked'})`).join(', ')}.`);
   if (ys.length) lines.push(`${y || 'y'} ticks from the bottom up: ${ys.map((t) => `${t.label} (${byTick.get(`y:${tickKey(t.label)}`) ?? 'marked'})`).join(', ')}.`);
+  // The letters printed beside points (k-0600): the blind solve and the chat read where b and c are, and that a is not there.
+  const printed = new Set(diagram.points.map((p) => tickKey(plainOf(p.label ?? { en: [], zh: [] }))).filter(Boolean));
+  const lettered = spec.points.filter((p) => p.name.trim() && printed.has(tickKey(p.name)));
+  if (lettered.length) lines.push(`Lettered points: ${lettered.map((p) => `${sym(p.name)} (${what(p)})`).join(', ')}.`);
 
   // Market crossings no tick marks: where they sit against the ticks decides many questions.
   const editor = new Map<string, DiagramCurve>();

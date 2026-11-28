@@ -80,6 +80,10 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Answer blocks** — what a model answer holds after its text: paragraphs, tables, pictures,
   diagrams, in any order, teacher-only (`answerBlocks`, schema v4 when more than one diagram).
   `src/model/answerBlocks.ts:answerBlocksOf`
+- **Corner letters** — an area a studio question names by the points at its corners ("area
+  fgmj", "area 0abc"; 0 is the origin). Every one must be printed on the figure and each side
+  must run along a line (`src/diagramGen/sceneCheck.ts:checkCornerLettersDrawn`), or the diagram
+  fails its check.
 - **Point figures** — a marking point's own diagrams, tables and pictures, printed straight
   under its line and kept with it (`MarkPoint.blocks`, k-0595, schema v4 when any). Not answer
   blocks: those sit outside the scheme, after the answer's text; "Move answer … into this

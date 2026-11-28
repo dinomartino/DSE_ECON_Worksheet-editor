@@ -40,12 +40,21 @@ const NOT_CORNERS = new Set(
   'above below under over the that this these those which where from with and are will would can may must its each both lost gain loss shown also then has have had was for not all one two lies lie lying into onto less more equal is was bounded shaded marked formed enclosed between'.split(' '),
 );
 const AREA_WORD_EN = String.raw`\b(?:[Aa]reas?|[Rr]egions?|[Tt]riangles?|[Rr]ectangles?|[Tt]rapeziums?|[Qq]uadrilaterals?|[Ss]hapes?)`;
-const CORNERS_EN = new RegExp(String.raw`${AREA_WORD_EN}\s+((?:[a-z]{3,6}|[A-Z]{3,6})(?:\s*(?:,|and|or|\+|&)\s*(?:[a-z]{3,6}|[A-Z]{3,6}))*)(?![A-Za-z])`, 'g');
-const CORNERS_ZH = /(?:面積|區域|三角形|長方形|梯形|四邊形)\s*((?:[a-z]{3,6}|[A-Z]{3,6})(?:\s*(?:、|及|和|與|\+|＋)\s*(?:[a-z]{3,6}|[A-Z]{3,6}))*)(?![A-Za-z])/g;
+const CORNERS_EN = new RegExp(String.raw`${AREA_WORD_EN}\s+((?:[a-z0]{3,6}|[A-Z]{3,6})(?:\s*(?:,|and|or|\+|&)\s*(?:[a-z0]{3,6}|[A-Z]{3,6}))*)(?![A-Za-z0-9])`, 'g');
+const CORNERS_ZH = /(?:面積|區域|三角形|長方形|梯形|四邊形)\s*((?:[a-z0]{3,6}|[A-Z]{3,6})(?:\s*(?:、|及|和|與|\+|＋)\s*(?:[a-z0]{3,6}|[A-Z]{3,6}))*)(?![A-Za-z0-9])/g;
 const POINT_LETTER_EN = /\b[Pp]oints?\s+([a-z](?:\s*(?:,|and|or|&)\s*[a-z])*)(?![A-Za-z])/g;
 const POINT_LETTER_ZH = /點\s*([a-z])(?![A-Za-z])|(?<![A-Za-z])([a-z])\s*點/g;
 
-const isCorners = (token: string) => !NOT_CORNERS.has(token.toLowerCase()) && new Set(token).size === token.length;
+/**
+ * The origin is a corner too (k-0600): HKDSE 2025 P1 Q22 names "area 0abc", 0 where the axes
+ * meet. At most one 0 and at least two letters, so "area 100" stays a number.
+ */
+const isCorners = (token: string) =>
+  !NOT_CORNERS.has(token.toLowerCase()) && new Set(token).size === token.length && token.replace(/0/g, '').length >= Math.max(2, token.length - 1);
+
+/** Corner 0 is the origin: where the axes meet, printed "0" unless the figure hides it. */
+export const ORIGIN_CORNER = '0';
+export const ORIGIN_AT = { x: 0, y: 0 } as const;
 
 /** The corner-named areas a text names ("efj", "fgmj"), in order, each once. */
 export function cornerAreasIn(text: string): string[] {
@@ -53,14 +62,14 @@ export function cornerAreasIn(text: string): string[] {
   const add = (t: string) => {
     if (isCorners(t) && !out.includes(t)) out.push(t);
   };
-  for (const re of [CORNERS_EN, CORNERS_ZH]) for (const m of text.matchAll(re)) for (const t of m[1].match(/[A-Za-z]{3,6}/g) ?? []) add(t);
+  for (const re of [CORNERS_EN, CORNERS_ZH]) for (const m of text.matchAll(re)) for (const t of m[1].match(/[A-Za-z0]{3,6}/g) ?? []) add(t);
   return out;
 }
 
 /** An option that is only a corner-named area ("fgk", "Area efj", "面積 egn"); null otherwise. */
 export function optionCorners(option: string): string | null {
   const bare = option.replace(/[.。]\s*$/, '').replace(/\b(?:the\s+)?(?:areas?|regions?|triangles?)\b|面積|區域/gi, ' ').trim();
-  if (/^[a-z]{3,6}$/.test(bare) || /^[A-Z]{3,6}$/.test(bare)) return isCorners(bare) ? bare : null;
+  if (/^[a-z0]{3,6}$/.test(bare) || /^[A-Z]{3,6}$/.test(bare)) return isCorners(bare) ? bare : null;
   const named = cornerAreasIn(option);
   return named.length === 1 ? named[0] : null;
 }
@@ -80,15 +89,16 @@ export function cornerLettersIn(text: string): string[] {
  * consumers" or "the area left of S" once in an explanation is English, not corners.
  */
 export function namedCorners(mcq: { stem: string; statements: readonly string[]; options: readonly string[] }, explanation: string): { areas: string[]; letters: string[] } {
-  const fromOptions = [...new Set(mcq.options.flatMap(cornerAreasIn))];
+  // A statement question's "(1) … area 0abc" is what its options pick (k-0600): it counts as an option's.
+  const fromOptions = [...new Set([...mcq.options, ...mcq.statements].flatMap(cornerAreasIn))];
   const optionLetters = new Set(fromOptions.flatMap((a) => [...a]));
-  const others = [mcq.stem, ...mcq.statements, explanation];
+  const others = [mcq.stem, explanation];
   const seen = new Map<string, number>();
-  for (const t of [...mcq.options, ...others]) for (const a of cornerAreasIn(t)) seen.set(a, (seen.get(a) ?? 0) + (t.split(a).length - 1));
+  for (const t of [...mcq.options, ...mcq.statements, ...others]) for (const a of cornerAreasIn(t)) seen.set(a, (seen.get(a) ?? 0) + (t.split(a).length - 1));
   const extra = [...new Set(others.flatMap(cornerAreasIn))].filter((a) => !fromOptions.includes(a) && ([...a].filter((l) => optionLetters.has(l)).length >= 2 || (seen.get(a) ?? 0) >= 2));
   const areas = [...fromOptions, ...extra];
   const letters = new Set(areas.flatMap((a) => [...a]));
-  for (const t of [...mcq.options, ...others]) for (const re of [POINT_LETTER_EN, POINT_LETTER_ZH]) for (const m of t.matchAll(re)) for (const l of (m[1] ?? m[2] ?? '').match(/[a-z]/g) ?? []) letters.add(l);
+  for (const t of [...mcq.options, ...mcq.statements, ...others]) for (const re of [POINT_LETTER_EN, POINT_LETTER_ZH]) for (const m of t.matchAll(re)) for (const l of (m[1] ?? m[2] ?? '').match(/[a-z]/g) ?? []) letters.add(l);
   return { areas, letters: [...letters] };
 }
 
@@ -150,8 +160,15 @@ export function sameArea(corners: Pt[], regions: ReadonlyArray<readonly Pt[]>): 
 }
 
 /** The figure's lines as polylines: its curves, and each dashed drop from a point to an axis. */
+/** The figure prints "0" where its axes meet. */
+function originShown(diagram: Diagram): boolean {
+  return diagram.showOrigin !== false && diagram.axes !== 'none';
+}
+
 function figureLines(diagram: Diagram): Pt[][] {
   const out: Pt[][] = diagram.curves.map((c) => c.points);
+  // The axes are lines too: a side from the origin (0a, b0) runs along one (k-0600).
+  if (diagram.axes !== 'none') out.push([ORIGIN_AT, { x: 1, y: 0 }], [ORIGIN_AT, { x: 0, y: 1 }]);
   for (const p of diagram.points) for (const axis of p.dropTo ?? []) out.push([p.at, axis === 'x' ? { x: p.at.x, y: 0 } : { x: 0, y: p.at.y }]);
   return out;
 }
@@ -282,6 +299,8 @@ export function checkCornerLettersDrawn(diagram: Diagram, mcq: McqWords, explana
   const printed = new Set<string>();
   for (const p of diagram.points) for (const side of ['en', 'zh'] as const) p.label?.[side].forEach((r) => printed.add(r.text.trim()));
   for (const l of diagram.labels) for (const side of ['en', 'zh'] as const) l.text?.[side].forEach((r) => printed.add(r.text.trim()));
+  const origin = originShown(diagram);
+  if (origin) printed.add(ORIGIN_CORNER);
   const missing = named.filter((l) => !printed.has(l));
   // Every side of each corner-named area runs along a line of the figure, as on a scene (k-0596, path A).
   if (!missing.length) {
@@ -290,6 +309,7 @@ export function checkCornerLettersDrawn(diagram: Diagram, mcq: McqWords, explana
       const l = plainOf(p.label ?? { en: [], zh: [] }).trim();
       if (/^[A-Za-z]$/.test(l) && !at.has(l)) at.set(l, p.at);
     }
+    if (origin) at.set(ORIGIN_CORNER, ORIGIN_AT);
     const lines = figureLines(diagram);
     const out: DiagramIssue[] = [];
     for (const area of namedCorners(mcq, explanation).areas) {
@@ -319,7 +339,7 @@ export function checkCornerLettersDrawn(diagram: Diagram, mcq: McqWords, explana
         {
           level: 'error',
           code: 'figure.cornerMissing',
-          text: `The question names areas or points by corner letters, but ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not on the figure. Use a scene that has the points (scene.points: a tax raised from t1 to t2 is taxChange, a ceiling made effective by a rise in demand is priceCeiling with stage demandRise, binds after), or name each point where the explanation puts it.`,
+          text: `The question names areas or points by corner letters, but ${missing.map((l) => (l === ORIGIN_CORNER ? '0 (the origin, hidden on this figure)' : l)).join(', ')} ${missing.length === 1 ? 'is' : 'are'} not on the figure. Every letter the question or its key names must be a point's name on the figure: give each spec point the name the question uses for it (points[].name). Use a scene that has the points (scene.points: a tax raised from t1 to t2 is taxChange, a ceiling made effective by a rise in demand is priceCeiling with stage demandRise, binds after), or name each point where the explanation puts it.`,
         },
       ]
     : [];

@@ -47,6 +47,7 @@ const SAMPLES: Finding[] = [
   { id: 'run.stopped' },
   { id: 'run.keyNotChecked', params: { message: 'Gemini took too long to answer.' } },
   { id: 'run.referenceShape', params: { pictures: 4, optionPictures: 0, optionTables: 0 } },
+  { id: 'run.figureNotRedrawn' },
   { id: 'shape.referenceForm', params: { pictures: 0, optionPictures: 1, optionTables: 0 } },
 ];
 

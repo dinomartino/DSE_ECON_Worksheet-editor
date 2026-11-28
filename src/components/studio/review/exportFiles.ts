@@ -98,6 +98,8 @@ function noteLine(note: Note): string {
       return `Said: ${note.ok} draft(s) passed every check, ${note.look} to read, ${note.failed} with a red warning.`;
     case 'changed':
       return `Said: draft ${note.draftNo} changed (version ${note.version}).`;
+    case 'figureKept':
+      return `Said: the diagram of draft ${note.draftNo} could not be redrawn as asked; it is as it was.`;
     case 'another':
       return `Said: one more like it, draft ${note.draftNo}.`;
     case 'stopped':

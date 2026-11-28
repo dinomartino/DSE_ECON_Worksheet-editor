@@ -4,7 +4,11 @@ import { EXAMPLE, okOutcome, studioDraft } from '@/questionStudio/fixtures';
 import { EMPTY_CORPUS } from '@/questionStudio/nearCopy';
 import type { StudioEnv } from '@/questionStudio/session';
 import type { Refinement, StudioDraft, StudioRequest } from '@/questionStudio/types';
-import type { TurnRead } from '@/questionStudio/understand';
+import { draftsPayload, turnSystemPrompt, type TurnRead } from '@/questionStudio/understand';
+import type { DraftDiagram } from '@/questionStudio/types';
+import type { DiagramBlock } from '@/model/types';
+import fixture from '@/diagramGen/k0600Fixture.json';
+import { figureBrief } from './intent';
 import { localChatStorage } from './chatStorage';
 import { createChatStore } from './chatStore';
 import type { AiTurn, Chat } from './chatTypes';
@@ -229,5 +233,70 @@ describe('the Jev pre-router (k-0567, u-5sy9)', () => {
     await useChat.getState().send('Q2 太易');
     await useChat.getState().send('why is B wrong?', chat().drafts[0].id);
     expect(seen).toHaveLength(0);
+  });
+});
+
+describe('one draft open (k-0600, "help me regen the graph with the label")', () => {
+  async function withOne(read?: Parameters<typeof setup>[0]) {
+    const t = setup(read);
+    t.useChat.getState().setSettings({ count: 1 });
+    t.useChat.getState().addReference(EXAMPLE, 'C.ped');
+    await t.useChat.getState().send('');
+    expect(t.chat().drafts.map((d) => d.no)).toEqual([1]);
+    t.calls.picks.length = 0;
+    return t;
+  }
+
+  it('an unsure read does not ask "which draft?": the change runs on draft 1', async () => {
+    const { useChat, calls, lastAi } = await withOne(() => ai({ intent: 'unsure', drafts: [1], parts: ['diagram'] }));
+    await useChat.getState().send('help me regen the graph with the label');
+    expect(lastAi().ask).toBeUndefined();
+    expect(calls.refines).toEqual([expect.objectContaining({ refinement: { kind: 'change', text: 'help me regen the graph with the label', parts: ['diagram'] }, target: expect.objectContaining({ id: 'd1' }) })]);
+    expect(lastAi().steps.find((s) => s.kind === 'understand')).toMatchObject({ state: 'done', intent: 'edit', drafts: [1], by: 'computer' });
+  });
+
+  it('nor when Jev is unsure', async () => {
+    const t = await withOne();
+    (t.engine as StudioEngine).read = async () => ({ route: 'act', kind: 'unsure', drafts: [1], wanted: 'edit', parts: ['diagram'] });
+    await t.useChat.getState().send('the graph needs its labels');
+    expect(t.lastAi().ask).toBeUndefined();
+    expect(t.calls.refines).toHaveLength(1);
+  });
+
+  it('a diagram that could not be redrawn is said plainly, beside the new version', async () => {
+    const t = await withOne(() => ai({ intent: 'edit', drafts: [1], parts: ['diagram'] }));
+    t.engine.refine = async (_request, target, refinement) => {
+      t.calls.refines.push({ refinement, target });
+      return { ...okOutcome([studioDraft('r1')]), notes: [{ id: 'run.figureNotRedrawn' }] };
+    };
+    await t.useChat.getState().send('help me regen the graph with the label');
+    expect(t.lastAi().notes).toEqual([
+      { kind: 'changed', draftNo: 1, version: 2 },
+      { kind: 'figureKept', draftNo: 1 },
+    ]);
+  });
+});
+
+describe('what the read is told of a draft’s figure (k-0600, "where is the label")', () => {
+  const stored = fixture.storedBlock as unknown as DiagramBlock;
+  const diagram = (block: DiagramBlock): DraftDiagram => ({ status: 'ok', block, placement: 'question', issues: [], figureWords: fixture.storedFigureWords });
+
+  it('says when no letter is printed, so "they should be there" cannot be the answer', () => {
+    const brief = figureBrief(diagram(stored))!;
+    expect(brief).toMatch(/^Axes: Price \(up\), Quantity \(across\)\./);
+    expect(brief).toMatch(/Letters printed beside points: none\./);
+  });
+
+  it('lists the letters it prints and what the checks found', () => {
+    const lettered: DiagramBlock = { ...stored, diagram: { ...stored.diagram, points: stored.diagram.points.map((p, i) => ({ ...p, label: { en: [{ text: 'bc'[i] }], zh: [{ text: 'bc'[i] }] } })) } };
+    const brief = figureBrief({ ...diagram(lettered), status: 'look', issues: [{ level: 'error', code: 'figure.cornerMissing', text: 'a is not on the figure.' }] })!;
+    expect(brief).toMatch(/Letters printed beside points: b, c\./);
+    expect(brief).toMatch(/Its checks found: a is not on the figure\./);
+  });
+
+  it('goes to the AI with the drafts, and the rules say to answer from it', () => {
+    const payload = draftsPayload([{ no: 1, stem: 's', statements: [], options: ['A', 'B', 'C', 'D'], answer: 'B', table: false, diagram: true, figure: figureBrief(diagram(stored)), state: 'open' }]);
+    expect(payload[0].figure).toMatch(/Letters printed beside points: none/);
+    expect(turnSystemPrompt(false)).toMatch(/answered from its "figure".*never say what it "should" show/);
   });
 });

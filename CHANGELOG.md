@@ -378,6 +378,13 @@ a version heading is edited afterwards.
   <!-- zh: **課題名稱一律跟隨試卷語言。** 題型總覽、題型分類板及擬題工作室的學習要點清單，現在會以你正在查看的題目語言顯示課程課題名稱（英文試卷或檢視顯示英文名稱，中文則顯示中文名稱），與編輯器其他地方一致。按鈕及標題仍使用程式介面語言。 -->
 
 ### Fixed
+- **A studio diagram that leaves out the letters its question uses no longer passes.** A question
+  naming an area by its corners, the origin included ("area 0abc"), in its options or in its
+  statements (1)–(3), now fails the diagram check when the figure does not print those letters,
+  instead of showing a figure with none and "Diagram: ok". Asked about a draft's diagram, the chat
+  now answers from what the figure really shows. With only one draft it no longer asks which draft
+  you mean, and when it cannot redraw a diagram as asked it says so plainly.
+  <!-- zh: **擬題工作室的圖表若缺少題目所用的字母，不會再通過檢查。** 若題目的選項或陳述 (1)–(3) 以頂點字母（包括原點，如「面積 0abc」）指稱面積，而圖表沒有印出這些字母，圖表檢查會不合格，不會再顯示一幅沒有字母的圖並標示「圖表：正常」。問及草稿的圖表時，對話會按圖表實際顯示的內容回答。只有一份草稿時不會再問你指哪一份；未能按要求重畫圖表時，會清楚說明。 -->
 - **A section heading's marks now follow its text size.** Select a heading's words and change
   the size, and the "(22 marks)" after it — or "(19 marks)" after a part header — changes with it
   on the page, in Word and in the PDF, instead of staying at 14pt (10pt in a mock exam booklet).

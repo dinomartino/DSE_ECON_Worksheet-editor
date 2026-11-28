@@ -1,3 +1,5 @@
+import { plainOf } from '@/diagramGen/text';
+import type { DraftDiagram } from '@/questionStudio/types';
 import type { DraftBrief, TurnPart, TurnRead } from '@/questionStudio/understand';
 import { toTraditional } from '@/translate/simplified';
 import type { AiTurn, Chat, ChatDraft } from './chatTypes';
@@ -49,10 +51,34 @@ export function briefsOf(chat: Pick<Chat, 'drafts'>, explain?: number): DraftBri
       answer: q.answerIndex >= 0 && q.answerIndex < 4 ? LETTERS[q.answerIndex] : '',
       table: /^\s*\|.*\|/m.test(q.stem.en) || /^\s*\|.*\|/m.test(q.stem.zh),
       diagram: Boolean(d.entry.draft.diagram?.block || d.entry.draft.diagramSet?.figures.some((f) => f.block)),
+      ...(figureBrief(d.entry.draft.diagram) ? { figure: figureBrief(d.entry.draft.diagram) } : {}),
       state: d.state,
       ...(d.no === explain ? { explanation: side(q.explanation) } : {}),
     };
   });
+}
+
+/**
+ * A draft's one diagram as drawn, for the read (k-0600): its words, the letters printed on it
+ * ("none" says so), and what its checks found. Asked "where is the label", the AI had only
+ * `diagram: true` and answered that the labels "should" be there; they were not.
+ */
+export function figureBrief(diagram: DraftDiagram | undefined): string | undefined {
+  if (!diagram?.block) return undefined;
+  const d = diagram.block.diagram;
+  const letters = new Set<string>();
+  for (const p of d.points) {
+    const l = plainOf(p.label ?? { en: [], zh: [] }).trim();
+    if (l) letters.add(l);
+  }
+  for (const l of d.labels) {
+    const t = plainOf(l.text ?? { en: [], zh: [] }).trim();
+    if (t && t.length <= 3) letters.add(t);
+  }
+  const lines = [diagram.figureWords?.trim() ?? '', `Letters printed beside points: ${letters.size ? [...letters].join(', ') : 'none'}.`];
+  const issues = diagram.edited ? [] : diagram.issues.map((i) => i.text.trim()).filter(Boolean);
+  if (issues.length) lines.push(`Its checks found: ${issues.join(' ')}`);
+  return lines.filter(Boolean).join('\n');
 }
 
 /** Drafts the newest reply wrote or changed, by number ("this one", "上面嗰題"). */

@@ -102,6 +102,8 @@ export function findingText(finding: Finding, m: FindingMessages): string {
       return m.runKeyNotChecked;
     case 'run.referenceShape':
       return m.runReferenceShape(referenceWhat(p, m));
+    case 'run.figureNotRedrawn':
+      return m.runFigureNotRedrawn;
     default:
       return (finding.id.startsWith('style.') && styleFindingText(finding, m)) || m.unknown(finding.id);
   }
@@ -112,5 +114,5 @@ export const KNOWN_FINDINGS: readonly string[] = [
   'shape.stemEmpty', 'shape.optionCount', 'shape.optionEmpty', 'shape.optionsSame', 'shape.keyRange', 'shape.statementEmpty',
   'shape.statementCount', 'shape.notCombination', 'shape.narrates', 'shape.figureFailed', 'shape.figuresSame', 'shape.figureSet', 'shape.referenceForm', 'key.differs', 'key.ambiguous', 'key.edited', 'check.edited', 'topic.off', 'topic.notChecked', 'numbers.differ', 'terms.note', 'syllabus.limited',
   'lint.keyLongest', 'lint.uneven', 'lint.allNone', 'lint.negativeStem', 'lint.shapeAsked', 'lint.keySpread', 'copy.close', 'copy.wordsOnly', 'copy.reference',
-  'run.fewer', 'run.stopped', 'run.keyNotChecked', 'run.referenceShape',
+  'run.fewer', 'run.stopped', 'run.keyNotChecked', 'run.referenceShape', 'run.figureNotRedrawn',
 ];

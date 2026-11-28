@@ -99,6 +99,25 @@ describe('a follow-up edits the figure, not a new draft', () => {
     return out.drafts[0];
   };
 
+  it('an edit that cannot be drawn keeps the old figure and says so (k-0600: "regen the graph with the label")', async () => {
+    const target = await first();
+    // A point on a curve that is not drawn: nothing to put the letters on, twice.
+    const broken = JSON.stringify({ ...floor.spec, points: [...floor.spec.points, { a: 'D9', b: 'S1', name: 'a', xTick: '', yTick: '', dot: true }], questionChange: '' });
+    const client = scriptedClient([broken, broken]);
+    const out = await refine(REQUEST, target, { kind: 'change', text: 'regen the graph with the labels' }, [], deps(client), { signal: ctl() });
+    if (!out.ok) throw new Error('refine failed');
+    expect(out.notes).toEqual([{ id: 'run.figureNotRedrawn' }]);
+    expect(out.drafts[0].diagram?.block).toBe(target.diagram?.block);
+    expect(out.drafts[0].diagram?.status).toBe('look');
+  });
+
+  it('an edit that draws reports nothing more', async () => {
+    const target = await first();
+    const client = scriptedClient([JSON.stringify({ ...floor.spec, questionChange: '' })]);
+    const out = await refine(REQUEST, target, { kind: 'change', text: 'redraw it' }, [], deps(client), { signal: ctl() });
+    expect(out.ok && out.notes).toEqual([]);
+  });
+
   it('"move the arrow label": one edit request with the spec; the words stay byte for byte', async () => {
     const target = await first();
     const edited = { ...floor.spec, shifts: [{ ...floor.spec.shifts[0], size: 'small' }], questionChange: '' };

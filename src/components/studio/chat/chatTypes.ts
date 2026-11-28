@@ -50,6 +50,8 @@ export type ChangeHow = 'harder' | 'easier' | 'change' | 'another';
 export type Note =
   | { kind: 'written'; ok: number; look: number; failed: number }
   | { kind: 'changed'; draftNo: number; version: number }
+  /** A change to a draft's diagram that could not be drawn (k-0600): the figure is as it was. */
+  | { kind: 'figureKept'; draftNo: number }
   | { kind: 'another'; draftNo: number }
   | { kind: 'stopped' }
   | { kind: 'noPick' }

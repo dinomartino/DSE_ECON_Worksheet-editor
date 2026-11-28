@@ -758,5 +758,6 @@ async function changeWithFigure(
   emit({ type: 'draft', index: 0, draft });
   emit({ type: 'diagram', index: 0, state: 'done' });
   hooks.progress?.(1, 1, 'diagram');
-  return { ok: true, drafts: [draft], notes: [], model: out.model, usage };
+  // Said plainly (k-0600): "draft 1 changed" over the same figure read as a redraw that worked.
+  return { ok: true, drafts: [draft], notes: edited.block ? [] : [{ id: 'run.figureNotRedrawn' }], model: out.model, usage };
 }

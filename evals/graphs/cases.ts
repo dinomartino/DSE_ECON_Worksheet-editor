@@ -542,6 +542,30 @@ const PLAN_CASES: GraphCase[] = [
   },
 ];
 
+/**
+ * Studio reviews (k-0600): a teacher's chat, exported. "Make it to be subsidy" (after HKDSE 2025
+ * P1 Q22): statement (2) names area 0abc, 0 the origin; the stored figure printed no letter and
+ * passed. A right figure draws S0 from the origin and S1 from a on the quantity axis with every
+ * letter; one that cannot must fail, never pass without them.
+ */
+const REVIEW_CASES: GraphCase[] = [
+  {
+    id: 'r-subsidy-elastic-0abc',
+    type: 'Per-unit subsidy, perfectly elastic demand, area 0abc in a statement (studio review k-0600)',
+    family: 'E',
+    stem: 'The following diagram shows the supply and demand curves of a good. Suppose the government provides a per-unit subsidy on the production of the good.\nWhich of the following statements about the provision of the per-unit subsidy are correct?',
+    statements: ['The consumers enjoy no subsidy benefit.', 'The decrease in total social surplus is area 0abc.', 'There is deadweight loss after the provision of the subsidy.'],
+    options: ['(1) and (2) only', '(1) and (3) only', '(2) and (3) only', '(1), (2) and (3)'],
+    answer: 1,
+    explanation:
+      'Since demand is perfectly elastic (horizontal), the market price remains unchanged after the subsidy, so consumers enjoy no subsidy benefit and (1) is correct. Overproduction occurs beyond the original equilibrium quantity, creating a deadweight loss represented by the triangle between S0 and D to the right of b, so (3) is correct. Area 0abc represents the increase in producer surplus rather than the decrease in total social surplus, so (2) is incorrect.',
+    figure:
+      'Price on vertical axis, Quantity on horizontal axis, origin 0. Horizontal demand curve D. Upward-sloping supply curve S0 (before subsidy) starting from origin 0 and meeting D at b. Parallel upward-sloping supply curve S1 (after subsidy) shifted downwards/rightwards, starting from a on the horizontal Quantity axis and meeting D at c.',
+    want: 'Horizontal D; S0 from the origin meeting D at b; S1 parallel, from a on the quantity axis, meeting D at c; letters a, b, c printed (0 at the origin). Or a failed figure that names what it cannot draw.',
+    labels: ['D', 'S_0', 'S_1', 'a', 'b', 'c'],
+  },
+];
+
 export const GRAPH_CASES: GraphCase[] = [
   ...LORENZ_GRAPH_CASES,
   {
@@ -798,4 +822,5 @@ export const GRAPH_CASES: GraphCase[] = [
   ...MONOPOLY_CASES,
   ...TRADE_CASES,
   ...PLAN_CASES,
+  ...REVIEW_CASES,
 ];
