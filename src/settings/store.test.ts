@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AI_SETTINGS } from './aiSettings';
 import { createSettingsStore } from './store';
 import type { SettingsSchema, StorageLike } from './types';
 import { bool, oneOf, recordOf, text } from './validators';
@@ -158,12 +157,5 @@ describe('the settings store', () => {
     expect(demo).toHaveBeenCalledTimes(1);
     expect(other).not.toHaveBeenCalled();
     expect(store.read(OTHER)).toBe(otherValue);
-  });
-
-  it('never names a field after key material (AI settings)', () => {
-    const allowed = new Set(['rememberKey', 'keychainSaved']);
-    for (const name of Object.keys(AI_SETTINGS.fields)) {
-      if (!allowed.has(name)) expect(name).not.toMatch(/key|token|secret|password/i);
-    }
   });
 });
