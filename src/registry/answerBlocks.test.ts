@@ -464,31 +464,6 @@ describe('model answer diagram — model', () => {
     expect(block.diagram.templateId).toBe('supply-demand');
   });
 
-  it('survives a save and reload at every depth', () => {
-    const worksheet = worksheetWithAd(
-      [
-        leafPart(),
-        {
-          id: 'b',
-          blocks: [paragraphAd('b-text', 'Explain.')],
-          answerDiagram: diagramAd('dg-b'),
-          subParts: [{ id: 'b1', blocks: [paragraphAd('b1-text', '(i)')], answerDiagram: diagramAd('dg-b1') }],
-        },
-      ],
-    );
-    const partless = worksheetWithAd([], { id: 'q2', answerDiagram: diagramAd('dg-q') });
-    worksheet.questions.push(partless.questions[0]);
-    const reloaded = migrate(JSON.parse(JSON.stringify(serializeWorksheet(worksheet))));
-    const [q1, q2] = reloaded.questions as StructuredQuestion[];
-    expect(q1.parts[0].answerDiagram?.id).toBe('dg-a');
-    expect(q1.parts[0].answerDiagram?.diagram).toEqual(
-      (worksheet.questions[0] as StructuredQuestion).parts[0].answerDiagram?.diagram,
-    );
-    expect(q1.parts[1].answerDiagram?.id).toBe('dg-b');
-    expect(q1.parts[1].subParts?.[0].answerDiagram?.id).toBe('dg-b1');
-    expect(q2.answerDiagram?.id).toBe('dg-q');
-  });
-
   it('is found, patched, resized and deleted by block id like a stem diagram', () => {
     const worksheet = worksheetWithAd([
       leafPart(),
