@@ -34,6 +34,9 @@ describe.skipIf(!process.env.EVAL_MENTOR_TOKEN)('k-0600 "regen the graph with th
     const client: AiClient = {
       listModels: (s) => base.listModels(s),
       complete: async (req) => {
+        // A hard stop (k-0601): no call that could take the run past EVAL_CAP_CREDITS (a diagram call is ≤ ~40).
+        const cap = Number(process.env.EVAL_CAP_CREDITS ?? Infinity);
+        if (charged + 40 > cap) throw new Error(`cap: ${charged.toFixed(2)} credits charged, the next call could pass ${cap}`);
         const res = await base.complete(req);
         replies.push(res.text);
         charged += res.charged ?? 0;
