@@ -390,7 +390,7 @@ a version heading is edited afterwards.
   the page could break between the point's line and the table, leaving "(1)" at the foot of one page
   and its table on the next. The line and its table now move together, in the marking scheme and the
   teacher's copy, on screen, in the PDF and in Word.
-  <!-- zh: **評分要點的表格不會再與要點分開，獨自排到下一頁。** 以往評分要點附有表格時，分頁可能落在要點與表格之間，令「(1)」留在一頁底部，表格卻在下一頁。現在要點與其表格會一同移動，評分參考及教師版本、螢幕、PDF 及 Word 均如此。 -->
+  <!-- zh: **評分要點的表格不會再與要點分開，獨自排到下一頁。** 以往評分要點附有表格時，分頁可能落在要點與表格之間，令「(1)」留在一頁底部，表格卻在下一頁。現在要點與其表格會一同移動，評分參考及教師版本、屏幕、PDF 及 Word 均如此。 -->
 - **A studio diagram that leaves out the letters its question uses no longer passes.** A question
   naming an area by its corners, the origin included ("area 0abc"), in its options or in its
   statements (1)–(3), now fails the diagram check when the figure does not print those letters,
