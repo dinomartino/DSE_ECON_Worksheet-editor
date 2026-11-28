@@ -9,7 +9,7 @@ import { installLocalStorage, localFeed } from '@/library/bankTestKit';
 import { groupRows } from '@/library/group';
 import { choiceQuestion, docWith } from '@/library/testKit';
 import { DEFAULT_FILTERS, filterRows } from './bankPage';
-import { firstThese, tagLanding } from './bankReturn';
+import { firstThese, tagLanding, tagIndexOf, useBankReturn, useKeptTarget } from './bankReturn';
 
 /**
  * 題庫 only (import): the bank opens on its Untagged questions at the first question the
@@ -106,5 +106,31 @@ describe('題庫 only lands on the first question added', () => {
     expect(firstThese(groups, ['a', 'b', 'gone']).map((g) => g.rootId)).toEqual(['a', 'b', 'x', 'y', 'z']);
     expect(firstThese(groups, undefined)).toBe(groups);
     expect(firstThese(groups, ['gone'])).toBe(groups);
+  });
+});
+
+describe('bankReturn', () => {
+  beforeEach(() => useBankReturn.getState().clear());
+
+  it('remembers the place until cleared', () => {
+    const place = { level: { kind: 'review', topic: '1.1' } as const, filters: DEFAULT_FILTERS, focusKey: 'a/b' };
+    useBankReturn.getState().set(place);
+    expect(useBankReturn.getState().saved).toEqual(place);
+    useBankReturn.getState().clear();
+    expect(useBankReturn.getState().saved).toBeNull();
+  });
+
+  it('keeps the Add-to target until forgotten, apart from the way back', () => {
+    useKeptTarget.getState().keep({ targetId: 't', lookedAt: 'l' });
+    useBankReturn.getState().clear();
+    expect(useKeptTarget.getState().kept).toEqual({ targetId: 't', lookedAt: 'l' });
+    useKeptTarget.getState().forget();
+    expect(useKeptTarget.getState().kept).toBeNull();
+  });
+
+  it('finds the tagged question again, or starts over when it is gone', () => {
+    expect(tagIndexOf(['a', 'b', 'c'], 'c')).toBe(2);
+    expect(tagIndexOf(['a', 'b'], 'zzz')).toBe(0);
+    expect(tagIndexOf(['a'], undefined)).toBe(0);
   });
 });
