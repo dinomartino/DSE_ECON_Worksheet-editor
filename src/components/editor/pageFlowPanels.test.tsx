@@ -105,3 +105,54 @@ describe('a choice that changes nothing', () => {
     expect(panel(paper('classroom', [createStructuredQuestion(), s]), s)).not.toContain('already opens the paper');
   });
 });
+
+/**
+ * Space above is in the sidebar panel of both kinds of question, on every paper shape. It was
+ * the MC panel's, on a Paper 1 only; a long question had nowhere to set it.
+ */
+
+describe.each<[string, DocumentType]>([
+  ['a classroom worksheet', 'classroom'],
+  ['an LQ worksheet', 'lqWorksheet'],
+  ['a booklet', 'lqMock'],
+  ['a Paper 1', 'paper1'],
+])('the question panels on %s', (_name, documentType) => {
+  it('offers Space above on an MC question, once', () => {
+    const q = createMcqQuestion();
+    const markup = panel(paper(documentType, [createMcqQuestion(), q]), q);
+    expect(count(markup, 'Space above')).toBe(1);
+    expect(markup).toContain('Paper default (');
+  });
+
+  it('offers Space above on a structured question, once', () => {
+    const q = createStructuredQuestion();
+    const markup = panel(paper(documentType, [createStructuredQuestion(), q]), q);
+    expect(count(markup, 'Space above')).toBe(1);
+    expect(markup).toContain('Paper default (');
+  });
+});
+
+describe('the panels in 中文', () => {
+  it('say 上方空位 on both kinds of question', () => {
+    const m = createMcqQuestion();
+    const s = createStructuredQuestion();
+    const worksheet = paper('classroom', [createMcqQuestion(), m, s]);
+    expect(panel(worksheet, m, 'zh-HK')).toContain('上方空位');
+    expect(panel(worksheet, s, 'zh-HK')).toContain('上方空位');
+  });
+});
+
+describe('a number the page cannot use', () => {
+  it('is explained under the control on a structured question, as on an MC', () => {
+    const m = createMcqQuestion();
+    const s: StructuredQuestion = { ...createStructuredQuestion(), gapBefore: 4 };
+    const markup = panel(paper('classroom', [m, s]), s);
+    expect(markup).toContain('The question above is a different kind');
+  });
+
+  it('is not explained while there is nothing set', () => {
+    const m = createMcqQuestion();
+    const s = createStructuredQuestion();
+    expect(panel(paper('classroom', [m, s]), s)).not.toContain('different kind');
+  });
+});

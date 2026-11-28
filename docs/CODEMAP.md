@@ -125,7 +125,7 @@ Invariants:
   cannot be used); the drag handle on the page reads `RenderedQuestion.adjustableGap`. No new field. Tests:
   `src/render/questionGap.test.ts` (the rule, with the 0.8.4 rule frozen beside it), `src/render/questionGapSurfaces.test.tsx`
   (every surface), `src/components/editor/SpaceAboveField.test.tsx`, `src/components/editor/BetweenQuestionsField.test.tsx`,
-  `src/components/editor/spaceAbovePanels.test.tsx`, `src/store/questionGapActions.test.ts`; fixtures
+  `src/components/editor/pageFlowPanels.test.tsx`, `src/store/questionGapActions.test.ts`; fixtures
   `src/test/questionGapFixture.ts:buildQuestionGapPaper` and `test-fixtures/manual/question-gap-mix.json`; browser proof
   `scripts/question-gap-verify.mjs`
 - `src/render/pageFlow.ts:sheetStart` · `:sheetOpeners` · `:startsPageStatus` · `:isKeptWhole` — what a question asks of its page:
