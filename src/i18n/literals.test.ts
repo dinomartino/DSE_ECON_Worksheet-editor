@@ -12,9 +12,6 @@ const found = scan();
 const baseline = (readBaseline() ?? {}) as Record<string, number>;
 
 const { grown, shrunk } = compare(found, baseline);
-const ignored = Object.entries(found).flatMap(([file, list]) =>
-  list.filter((l) => l.ignored).map((l) => `${file}:${l.line} (${l.ignored}) ${JSON.stringify(l.text)}`),
-);
 
 describe('English-only interface text', () => {
   it('no file gains UI literals over its baseline', () => {
@@ -33,8 +30,6 @@ describe('English-only interface text', () => {
     expect(bare, 'write the reason: // i18n-ignore: <reason>').toEqual([]);
   });
 
-  // One line per exemption in the verbose report, so each reason stays visible.
-  for (const entry of ignored) it(`i18n-ignore ${entry}`, () => {});
 });
 
 describe('the literal scanner', () => {
