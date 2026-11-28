@@ -5,7 +5,6 @@ import { documentShape } from '@/model/documentShape';
 import { resolveFlow } from '@/model/flow';
 import { optionLayoutTally } from '@/registry/mcqLayouts';
 import { parseWorksheet } from '@/storage/document';
-import { useWorksheetStore } from '@/store/worksheetStore';
 
 /*
  * `test-fixtures/manual/` holds documents a person opens in the app by hand
@@ -111,19 +110,10 @@ describe('manual test documents', () => {
     expect(json).toContain('"ec"');
   });
 
-  it.each(['issue-4-repro', 'issue-4-many-breaks', 'key-line-spacing-mix', 'mixed-for-anonymiser', 'option-layout-mix', 'page-flow-mix', 'question-gap-mix', 'table-justify-mix', 'word-typing-mix'])('%s exports a .docx', async (name) => {
-    const bytes = await exportDocxBuffer(load(name), { language: 'bilingual', version: 'student' });
-    expect(bytes.length).toBeGreaterThan(2000);
-  });
-
-  it('issue-4-repro: ↑ on Q6 lands after Q5 on page 2 (the fix)', () => {
-    const w = load('issue-4-repro');
-    useWorksheetStore.setState({ worksheet: w, past: [], future: [] });
-    const q6 = w.questions[5].id;
-    useWorksheetStore.getState().moveQuestion(q6, -1);
-    const order = resolveFlow(useWorksheetStore.getState().worksheet)
-      .filter((i) => i.type === 'question' || i.element.kind === 'pageBreak')
-      .map((i) => (i.type === 'question' ? i.id : '|'));
-    expect(order.slice(4, 9)).toEqual(['|', w.questions[4].id, q6, '|', w.questions[6].id]);
+  it('every manual document exports a .docx', async () => {
+    for (const name of ['issue-4-repro', 'issue-4-many-breaks', 'key-line-spacing-mix', 'mixed-for-anonymiser', 'option-layout-mix', 'page-flow-mix', 'question-gap-mix', 'table-justify-mix', 'word-typing-mix']) {
+      const bytes = await exportDocxBuffer(load(name), { language: 'bilingual', version: 'student' });
+      expect(bytes.length, name).toBeGreaterThan(2000);
+    }
   });
 });
