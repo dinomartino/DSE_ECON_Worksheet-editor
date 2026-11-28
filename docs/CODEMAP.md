@@ -429,7 +429,7 @@ Invariants:
 - Copies are independent; identity is `lineage.rootId`, never a shared id.
 - "Already in this paper" is by question: the paper holds any copy of the pick's root, edited or not. Add to skips those and says so (`src/components/bank/page/addToOpen.ts:splitAlreadyInPaper`); a set of picks keeps one copy per root (`:uniquePicks`); the tab marks them In this paper (`src/library/tabFilters.ts:paperRoots`).
 - A use is a paper with `classes`, dated `satOn ?? createdAt`; never `updatedAt`, which only stamps index freshness. Drafts list where a question lives but never count as uses.
-- No module in `src/library/` branches on a type id (`src/library/noTypeBranching.test.ts`).
+- No module in `src/library/` branches on a type id (`src/test/noTypeBranching.test.ts`).
 - A 題型 is (sub-topic, type id, name); the question's own type decides its list, and the name on the question is the truth. It never reaches the IR (`src/components/editor/topicTags.test.ts`).
 - On a question with parts, topics live per part and `BankRow.tags` is derived from them; readers use the derived list, writers go through `src/library/tagWrites.ts` (never write `QuestionPart.tags` directly), and one `tagsAt` covers every list. Part tags and roots never print and never change `contentKey`.
 - The index follows `list()`, never storage keys (a trashed web document keeps its key); it holds no images and no teacher's work — §Persistence.

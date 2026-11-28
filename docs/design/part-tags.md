@@ -409,7 +409,7 @@ withSlotTags?: (question: Q, owns: ReadonlyMap<string, string[] | undefined>) =>
   via the hook, question list via spread), `slotAtTarget(slots, editTargetKey)` (block and
   answer ids; finest wins, a sub-part before its part), `isTopicalTag`, `sameShape`,
   `matchSlots` (§ D). Add `src/model/tagSlots.ts` to the grep list in
-  `registry.test.ts:141-162`; `src/library` is already guarded (`noTypeBranching.test.ts`).
+  `registry.test.ts:141-162`; `src/library` is already guarded (`src/test/noTypeBranching.test.ts`).
 - **Part roots are stamped structurally, not by a hook:** `copyQuestion` (lineage.ts:99-113)
   walks `questionIdOwners` (lineage.ts:53-71) of the source and of the `freshIds` result in
   parallel (same order, same clone) and sets `copy.rootId = partRootOf(source)` for every
