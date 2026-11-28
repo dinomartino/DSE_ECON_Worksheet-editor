@@ -293,6 +293,8 @@ class Walk implements TextWalker {
                   alternatives: pw.list('alt', point.alternatives, (i) =>
                     teacher('schemePoint', `alternative ${i + 1}`),
                   ),
+                  // The point's own figures (k-0595): teacher-only, like the answer's blocks.
+                  blocks: pw.optionalBlocks('blocks', point.blocks, { role: 'teacher', paragraphKind: 'answer' }),
                 });
               }),
             });

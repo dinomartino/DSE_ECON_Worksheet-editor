@@ -594,7 +594,8 @@ export const MC_KEY_RENDERERS: Record<McKeyLayout, McKeyRenderer> = {
 // --- Long questions ------------------------------------------------------------------
 
 /** Whether any of these nodes prints a label in the marks position. */
-const carriesMarks = (nodes: TextNode[]) => nodes.some((node) => node.trail !== undefined || node.marks !== undefined);
+const carriesMarks = (nodes: RenderNode[]) =>
+  nodes.some((node) => node.kind === 'text' && (node.trail !== undefined || node.marks !== undefined));
 
 /** Question or part wording before an answer: italic, typed where it prints. */
 function stemNodes(lines: KeyLine[] | undefined, indent: number): TextNode[] {
@@ -626,16 +627,22 @@ function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectio
   const stems = layout.showStems ? stemNodes(scheme.stem, question[0].left) : [];
   const total = layout.questionTotals && scheme.total > 0;
   const inColumn = (node: TextNode): TextNode => (column ? { ...node, marksColumn: column } : node);
+  const inColumnText = (node: RenderNode): RenderNode => (node.kind === 'text' ? inColumn(node) : node);
 
   // The rows' scheme nodes first: whether a row's marks move into the column depends on them.
+  // A point's figures (k-0595) come with them, their answer layers drawn as the whole key's are.
   const rows = scheme.rows.map((row) => ({
     row,
-    schemeNodes: renderMarkScheme(row.scheme, {
-      indent: row.depth === 1 ? partText : subPartText,
-      ...(row.schemeAt ? { at: row.schemeAt } : {}),
-      ...(context.editing ? { editing: true } : {}),
-      omitEc: true,
-    }),
+    schemeNodes: withAnswerLayers(
+      renderMarkScheme(row.scheme, {
+        indent: row.depth === 1 ? partText : subPartText,
+        ...(row.schemeAt ? { at: row.schemeAt } : {}),
+        ...(context.editing ? { editing: true } : {}),
+        omitEc: true,
+        language,
+      }),
+      { language, version: 'teacher' },
+    ),
   }));
   /** A line's own total: "(n marks)" at the line end, or "(n)" in an unclaimed column. */
   const marksOf = (marks: number | undefined, claimed: boolean): Partial<TextNode> => {
@@ -697,7 +704,6 @@ function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectio
       ));
     }
     const blockNodes = answerBlockNodes(row, answerIndent, 'Marking Scheme', language);
-    const inColumnText = (node: RenderNode): RenderNode => (node.kind === 'text' ? inColumn(node) : node);
     // HKEAA (the Marks column): the points under "Indicate in Figure n:" (the answer's first
     // figure), then the answer's blocks, each diagram captioned "Figure n". Elsewhere the
     // blocks precede the scheme, uncaptioned.
@@ -713,7 +719,7 @@ function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectio
             indent: answerIndent,
             keepNext: true,
           }),
-          ...schemeNodes.map(inColumn),
+          ...schemeNodes.map(inColumnText),
         );
       }
       let figure = 0;
@@ -731,7 +737,7 @@ function renderScheme(nodes: RenderNode[], scheme: KeyScheme, context: KeySectio
     }
     // Not teacher-only: the whole key is the teacher's, answer layer included.
     nodes.push(...blockNodes.map(inColumnText));
-    nodes.push(...schemeNodes.map(inColumn));
+    nodes.push(...schemeNodes.map(inColumnText));
   });
   if (total) {
     // The total belongs to its question: whatever printed last keeps with it.
@@ -842,7 +848,7 @@ function renderAnswers(nodes: RenderNode[], scheme: KeyScheme, context: KeySecti
     const asParagraph = layout.schemeAsPoints && schemeDisplay(row.scheme) === 'paragraph';
     const [paragraph] = asParagraph ? schemeParagraphs(row.scheme, row.schemeAt ? { at: row.schemeAt } : {}) : [];
     const [route] = layout.schemeAsPoints && !asParagraph ? schemePointGroups(row.scheme, row.schemeAt) : [];
-    const bullets: Array<ColumnsNode | TextNode> = paragraph
+    const bullets: RenderNode[] = paragraph
       ? [
           {
             kind: 'text',
@@ -850,8 +856,10 @@ function renderAnswers(nodes: RenderNode[], scheme: KeyScheme, context: KeySecti
             text: paragraph.text,
             indent,
             keepLines: true,
+            ...(paragraph.blocks ? { keepNext: true } : {}),
             ...(paragraph.segments ? { segments: paragraph.segments } : {}),
           },
+          ...answerBlockNodes(paragraph, indent, 'Body', language),
         ]
       : [];
     const bullet = (point: PointLine): ColumnsNode => ({
@@ -882,7 +890,12 @@ function renderAnswers(nodes: RenderNode[], scheme: KeyScheme, context: KeySecti
           ...(group.headingEdit ? { edit: group.headingEdit } : {}),
         });
       }
-      bullets.push(...group.points.map(bullet));
+      // A point's own figures (k-0595) under its bullet, at its text column, kept with it.
+      for (const point of group.points) {
+        const node = bullet(point);
+        if (point.blocks) node.keepNext = true;
+        bullets.push(node, ...answerBlockNodes(point, indent + BULLET_HANG, 'Body', language));
+      }
     }
     return { row, indent, bullets };
   });
@@ -1129,6 +1142,12 @@ function renderSchemeTable(nodes: RenderNode[], scheme: KeyScheme, context: KeyS
         keepNext: false,
         opensPart: head.opensPart || routeIndex > 0,
       });
+      // The route's points' figures (k-0595) end the table and print under the row, as an
+      // answer's figure does, the row kept with them.
+      if (paragraph.blocks) {
+        flush(true);
+        nodes.push(...answerBlockNodes(paragraph, 0, 'Marking Scheme', language));
+      }
     });
     groups.forEach((route, routeIndex) => {
       route.forEach((group, groupIndex) => {
@@ -1174,6 +1193,12 @@ function renderSchemeTable(nodes: RenderNode[], scheme: KeyScheme, context: KeyS
             keepNext: line + 1 < count && line + 1 >= group.points.length,
             opensPart: head.opensPart || (routeIndex > 0 && groupIndex === 0 && line === 0 && !group.heading),
           });
+          // A point's own figures (k-0595) end the table under the point's row, kept with
+          // it, as an answer's figure does; the table goes on below.
+          if (point?.blocks) {
+            flush(true);
+            nodes.push(...answerBlockNodes(point, 0, 'Marking Scheme', language));
+          }
         }
       });
     });

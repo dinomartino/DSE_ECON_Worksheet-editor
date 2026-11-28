@@ -80,6 +80,11 @@ Words this repository uses in its own way. One line each, with where the thing l
 - **Answer blocks** — what a model answer holds after its text: paragraphs, tables, pictures,
   diagrams, in any order, teacher-only (`answerBlocks`, schema v4 when more than one diagram).
   `src/model/answerBlocks.ts:answerBlocksOf`
+- **Point figures** — a marking point's own diagrams, tables and pictures, printed straight
+  under its line and kept with it (`MarkPoint.blocks`, k-0595, schema v4 when any). Not answer
+  blocks: those sit outside the scheme, after the answer's text; "Move answer … into this
+  point" turns one into the other. `src/model/markScheme.ts:pointBlocksOf` ·
+  `src/model/answerBlocks.ts:moveAnswerBlockToPoint`
 - **Answer layer** — elements of an axes diagram flagged `answer: true` (Draw answer on the
   canvas): red in the teacher version and answer key, absent with their dependents from the
   student version. `src/model/diagramAnswers.ts:answerLayer`
