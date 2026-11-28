@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { choiceQuestion } from '@/library/testKit';
-import { createParagraphBlock, createWorksheet } from '@/model/factories';
+import { createParagraphBlock, createWorksheet, createMcqQuestion } from '@/model/factories';
 import { createStimulusElement } from '@/model/flow';
-import { bi } from '@/model/text';
+import { bi, plain } from '@/model/text';
 import type { LayoutElement, Question, Worksheet } from '@/model/types';
 import type { WorksheetStore } from '@/storage';
 import { useWorksheetStore } from '@/store/worksheetStore';
@@ -13,8 +13,21 @@ import { createMemoryCache, cacheKey } from './cache';
 import { fileUrl, PAST_PAPER_SETTINGS, sourceAddress, sourceUrl } from './config';
 import { createSettingsStore } from '@/settings/store';
 import { planCopies } from './copy';
-import { liftStimulusLead, matchItem, parseManifest, parseTopic, sourceOf, type TopicEntry } from './pack';
+import {
+  liftStimulusLead,
+  matchItem,
+  parseManifest,
+  parseTopic,
+  sourceOf,
+  type TopicEntry,
+  withMcqTopicTag,
+  type Manifest,
+  shortSourceLabel,
+  sourceLabel,
+} from './pack';
 import type { FetchResult } from './net';
+import { viewCodesOf } from '@/model/mcqView';
+import { sourceTrail } from '@/render/questionSource';
 
 /**
  * The Past paper bank (k-0443) on synthetic data: the real bank lives in its own public
@@ -335,5 +348,61 @@ describe('into the open paper and into my bank', () => {
     expect(second).toMatchObject({ copied: 1, already: 1 });
     expect(map.size).toBe(1);
     expect([...map.values()][0].questions).toHaveLength(3);
+  });
+});
+
+/** The Past paper bank and the teacher's MCQ topics (k-0569). */
+describe('past-paper topics that are MCQ topics', () => {
+  it('are named as the editor names them, whatever an older export wrote', () => {
+    const manifest = parseManifest({
+      topics: [
+        { id: 'tax', file: 'topics/tax.json', title: { en: 'Tax', zh: '稅' } },
+        { id: 'not-an-mcq-topic', file: 'topics/x.json', title: { en: 'Kept', zh: '保留' } },
+      ],
+    }) as Manifest;
+    expect(manifest.topics.map((topic) => topic.title)).toEqual([
+      { en: 'Tax', zh: '稅項' },
+      { en: 'Kept', zh: '保留' },
+    ]);
+  });
+
+  it('file every question exactly: @mcq: only where its EDB codes do not already say the topic', () => {
+    const tax = { ...createMcqQuestion(), tags: ['I.fiscal'] };
+    expect(withMcqTopicTag(tax, 'tax').tags).toEqual(['I.fiscal', '@mcq:tax']);
+    expect(viewCodesOf(withMcqTopicTag(tax, 'tax').tags)).toEqual(['@mcq:tax']);
+    const ped = { ...createMcqQuestion(), tags: ['C.ped'] };
+    expect(withMcqTopicTag(ped, 'elasticity')).toBe(ped);
+    expect(withMcqTopicTag(ped, 'not-an-mcq-topic')).toBe(ped);
+    // Untagged: it gains the topic's EDB codes too, so the coverage check and older builds see it.
+    const bare = createMcqQuestion();
+    expect(withMcqTopicTag(bare, 'quota').tags).toEqual(['C.intervention', '@mcq:quota']);
+  });
+});
+
+/** The short source label (user u-rvgs, k-0556): the editor's existing Short form, built from the tag. */
+describe('shortSourceLabel', () => {
+  it.each([
+    ['DSE2024/P1/Q38', 'DSE2024/P1/Q38'],
+    ['CE1990/P2/Q47', 'CE1990/P2/Q47'],
+    ['AL2005/P1/Q12', 'AL2005/P1/Q12'],
+    ['DSESP/P1/Q13', 'DSESP/P1/Q13'],
+    ['DSEPP/P1/Q5', 'DSEPP/P1/Q5'],
+  ])('%s reads %s', (tag, label) => {
+    expect(shortSourceLabel(sourceOf({ tags: [tag] }))).toBe(label);
+  });
+
+  it('is what a paper prints in Short, on both language sides', () => {
+    for (const tag of ['DSE2024/P1/Q38', 'CE1990/P2/Q47', 'AL2005/P1/Q12', 'DSESP/P1/Q13', 'DSEPP/P1/Q5']) {
+      const source = sourceOf({ tags: [tag] });
+      const words = sourceLabel(source);
+      const printed = sourceTrail({ en: [{ text: words.en }], zh: [{ text: words.zh }] }, 'short');
+      expect(plain(printed.en)).toBe(`(${shortSourceLabel(source)})`);
+      expect(plain(printed.zh)).toBe(`(${shortSourceLabel(source)})`);
+    }
+  });
+
+  it('shows a tag it cannot read as it is', () => {
+    expect(shortSourceLabel({ exam: 'other', tag: 'Mock 2024 Q3' })).toBe('Mock 2024 Q3');
+    expect(shortSourceLabel(sourceOf({ tags: [] }))).toBe('');
   });
 });
