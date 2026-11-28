@@ -59,6 +59,26 @@ broke.
 The full policy — collapsing migrations, their size budget, files from a newer build
 (opened read-only, never overwritten) — is `SYSTEM_ARCHITECTURE.md` § Schema evolution.
 
+## Tests are the spec
+
+**Never make a check pass by changing the check.** Don't delete, skip (`.skip`, `.only`,
+`.todo`, `xit`, `{ skip: true }`) or loosen a test (`toEqual(x)` → `toBeTruthy()`), and
+don't rewrite its expected values or snapshots to match what the code now does. Don't
+special-case test inputs or detect the test runner (`process.env.VITEST`,
+`NODE_ENV === 'test'`). Don't add `@ts-ignore`, `@ts-expect-error`, `any`,
+`eslint-disable` or empty catches to get green. Don't loosen tsconfig, lint, test-runner
+or `package.json` script settings, or local-ci's. Changing a test is right only when the
+task changes the behaviour it pins: say so in the commit message (a
+`Test-Change: <task> <reason>` line). **If a test looks wrong, or the job can't be done
+cleanly, stop and say why.** That is a good result, better than a green check that lies. A
+person reviews every diff. End your report with **Tests changed:** added / edited /
+removed / skipped, each with one reason.
+
+local-ci's `test-integrity` commit status flags removed, skipped or loosened tests,
+expected values changed without a code change, suppressions and loosened test settings.
+Don't work around a flag: name the change in your report. Only the user or the lead can OK
+it (`zo-space/local-ci.md` → Test integrity).
+
 ## Verifying work
 
 - `npm test` — ~3300 tests, ~10s. `npm run typecheck`, `npm run lint` (40 pre-existing
