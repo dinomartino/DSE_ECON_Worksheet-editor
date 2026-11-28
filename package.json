@@ -21,6 +21,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run src",
+    "test:full": "vitest run src --config vitest.full.config.ts",
     "test:watch": "vitest src",
     "typecheck": "tsc --noEmit",
     "samples": "node scripts/emit-samples.mjs",

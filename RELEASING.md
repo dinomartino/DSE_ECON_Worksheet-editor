@@ -80,7 +80,7 @@ the release body is copied from it. `scripts/release-notes.mjs` refuses (exit 1)
 that version has no section or **Unreleased** still has entries.
 
 ```bash
-npm run typecheck && npm test        # green before tagging
+npm run typecheck && npm run test:full   # the full lane (isolated, every table whole) is the release gate
 npm version patch                    # or: minor | major
 git push --follow-tags origin HEAD:main
 ```
