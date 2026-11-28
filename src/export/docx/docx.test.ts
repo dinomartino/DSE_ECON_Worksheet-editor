@@ -839,9 +839,6 @@ describe('tables and images (§7.5, §11.5, §11.6)', () => {
   });
 });
 
-describe('page breaks (§ joinWithPageBreaks)', () => {
-});
-
 describe('student vs teacher output (§11.8)', () => {
   it('student export contains no answers, explanations or marking scheme anywhere', async () => {
     const { read, zip } = await unzip(STUDENT_BI);
