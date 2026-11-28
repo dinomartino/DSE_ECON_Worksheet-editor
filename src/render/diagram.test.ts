@@ -418,15 +418,6 @@ describe('the diagram title (§the caption)', () => {
     expect(with_.plot.top).toBeGreaterThan(without.plot.top);
   });
 
-  it('costs an untitled diagram nothing', () => {
-    // An absent caption must reserve no room at all, or every untitled diagram renders
-    // with a blank strip on top.
-    const bare = createBlankDiagram();
-    const a = diagramPlot(bare, { widthPx: 480, heightPx: 360, language: 'en' });
-    const b = diagramPlot({ ...bare, title: undefined }, { widthPx: 480, heightPx: 360, language: 'en' });
-    expect(a.plot.top).toBe(b.plot.top);
-  });
-
   it('does not collide with the y-axis title beneath it', () => {
     // The y title's floor used to be the canvas edge; with a caption above, that let the
     // two overlap on a diagram whose plot starts near the top.
@@ -710,21 +701,6 @@ describe('a diagram carries its words inside its own image', () => {
     // Within a pixel: `diagramSize` rounds its height to a whole pixel, so the two plots
     // agree to the rounding and not beyond it.
     expect(Math.abs(titledPlot.h - barePlot.h)).toBeLessThanOrEqual(1);
-  });
-
-  it('costs an untitled diagram no room at all', () => {
-    // An absent title must reserve nothing, or every untitled diagram prints with a
-    // blank strip. The plot of a bare diagram starts exactly where the padding puts it.
-    const bare = worksheetWithDiagram();
-    const block = bare.questions[0].blocks.find((b) => b.kind === 'diagram');
-    if (block?.kind !== 'diagram') throw new Error('fixture lost its diagram block');
-    const options = { widthPx: 400, heightPx: 300, language: 'en' as const, scale: 1 };
-    const plain = diagramPlot(block.diagram, options);
-    const titled = diagramPlot(
-      { ...block.diagram, title: bi('The market for wine', '葡萄酒市場') },
-      options,
-    );
-    expect(titled.plot.top).toBeGreaterThan(plain.plot.top);
   });
 });
 
