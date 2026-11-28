@@ -7,11 +7,11 @@ import type { DiagramBlock, LanguageMode } from '@/model/types';
 import type { Diagram } from '@/model/diagram';
 import type { Side } from '@/model/textSlots';
 import { diagramSize } from '@/render/diagram';
-import { compileSpec, type Compiled } from './compile';
+import { compileSpec, tickKey, type Compiled } from './compile';
 import { buildDiagramRequest, buildRepairRequest } from './prompt';
 import { parseSpec } from './schema';
-import { phrase } from './text';
-import { checkLabels } from './labels';
+import { phrase, plainOf } from './text';
+import { checkLabels, labelsIn } from './labels';
 import { solveKey } from './solve';
 import type { DiagramGenDeps, DiagramGenInput, DiagramGenOutcome, DiagramIssue, DiagramSpec, SolvedKey } from './types';
 import { checkDiagram, checkStem } from './validate';
@@ -80,8 +80,34 @@ export function evaluateSpec(spec: DiagramSpec, input: Pick<DiagramGenInput, 'si
   return evaluated;
 }
 
+/**
+ * A plan's point names the question never uses ("e_1", kept by the plan to end a band) are
+ * not printed (k-0596 live run: e_f, e_1, e_0 on a figure whose question names Q_1 and Q_0);
+ * the points stay, so their bands and ticks still hold.
+ */
+function hideUnnamedPoints(spec: DiagramSpec, compiled: Compiled, words: string): Compiled {
+  const diagram = compiled.diagram;
+  if (!diagram || !words.trim()) return compiled;
+  const named = new Set(labelsIn(words));
+  const corners = new Set(cornerLettersIn(words));
+  // Only the plan's own point names; a PPC's marks (A, B, C) are left alone.
+  const planNames = new Set(spec.points.map((p) => tickKey(p.name)).filter(Boolean));
+  const extra = (p: Diagram['points'][number]) => {
+    const raw = plainOf(p.label ?? { en: [], zh: [] }).trim();
+    if (!raw || !planNames.has(tickKey(raw))) return false;
+    // A lowercase letter is a corner ("area abc", "point a"); the keys are upper case, so area A is not point a.
+    if (/^[a-z]$/.test(raw)) return !corners.has(raw);
+    return !named.has(tickKey(raw));
+  };
+  if (!diagram.points.some(extra)) return compiled;
+  return { ...compiled, diagram: { ...diagram, points: diagram.points.map((p) => (extra(p) ? { ...p, label: undefined, labelOffset: undefined } : p)) } };
+}
+
 function evaluateDrawing(spec: DiagramSpec, input: Pick<DiagramGenInput, 'sides' | 'key' | 'mcq'> & { question?: string }, parseIssues: DiagramIssue[]): Evaluated {
-  const compiled = compileSpec(spec);
+  let compiled = compileSpec(spec);
+  if (spec.kind === 'curves' && spec.placement === 'question' && input.mcq) {
+    compiled = hideUnnamedPoints(spec, compiled, [input.mcq.stem, ...input.mcq.statements, ...input.mcq.options, input.key].join('\n'));
+  }
   if (spec.kind === 'scene') return evaluateScene(spec, compiled as SceneBuilt, input, parseIssues);
   if (spec.kind === 'lorenz') {
     // Lorenz curves (k-0584): drawn by code, so only the question's words against the figure.

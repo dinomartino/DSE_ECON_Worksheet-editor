@@ -294,6 +294,15 @@ export function letterPlaces(diagram: Diagram): Map<string, Pt> {
 
 type Shape = { name: string; inside: (p: Pt) => boolean };
 
+const AREA_LETTERS_EN = /\b(?:[Aa]reas?|[Rr]egions?)\s+([A-H](?:\s*(?:\+|,|and|&)\s*[A-H])*)(?![A-Za-z])/g;
+const AREA_LETTERS_ZH = /(?:面積|區域)\s*([A-H](?:\s*(?:\+|＋|、|及|和|與)\s*[A-H])*)(?![A-Za-z])/g;
+
+/** The one lettered area a sentence names ("the deadweight loss increases by area A", "areas A and B"); null when none or several. */
+export function areaLettersIn(text: string): string[] | null {
+  const found = [...text.matchAll(AREA_LETTERS_EN), ...text.matchAll(AREA_LETTERS_ZH)].map((m) => m[1].match(/[A-H]/g) ?? []);
+  return found.length === 1 ? found[0] : null;
+}
+
 /** The area an option names on this figure: corner letters' outline, or the union of lettered bands; null when it names none. */
 function shapeOfOption(option: string, diagram: Diagram, compiled: Compiled): Shape | string | null {
   const curveNames = new Set(diagram.curves.map((c) => plainOf(c.label).replace(/\s+/g, '')));
@@ -306,7 +315,7 @@ function shapeOfOption(option: string, diagram: Diagram, compiled: Compiled): Sh
     if (shape.length < 3) return `area ${corners}: its letters do not enclose an area`;
     return { name: `area ${corners}`, inside: (p) => inPolygon(p, shape) };
   }
-  const letters = optionLetters(option);
+  const letters = optionLetters(option) ?? areaLettersIn(option);
   const bands = compiled.bands ?? [];
   const lettered = new Map(bands.filter((b) => b.band.label && b.polygon).map((b) => [b.band.label, b.polygon!]));
   if (letters && (/area|region|面積|區域/i.test(option) || letters.every((l) => lettered.has(l)))) {

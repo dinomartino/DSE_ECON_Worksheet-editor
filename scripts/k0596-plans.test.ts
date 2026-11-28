@@ -3,7 +3,7 @@
  * checks. Run: `PROOF_OUT=<dir> npx vitest run scripts/k0596-plans.test.ts`, then
  * `node scripts/k0577-sheet.mjs <dir> "k-0596 plans"`.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { it } from 'vitest';
 import { blockOf, evaluateSpec } from '@/diagramGen/run';
@@ -11,6 +11,9 @@ import { compoundPlan, P, q21Plan, q22Plan } from '@/diagramGen/planFixtures';
 import { Q21_KEY, Q21_MCQ } from '@/diagramGen/q21.fixture';
 import { Q22_KEY, Q22_MCQ } from '@/diagramGen/q22.fixture';
 import { diagramSvg } from '@/render/diagram';
+import { parseSpec } from '@/diagramGen/schema';
+import { GRAPH_CASES } from '../evals/graphs/cases';
+import { inputOf } from '../evals/graphs.eval';
 
 const OUT = process.env.PROOF_OUT ?? '/tmp/k0596-plans';
 const compound = compoundPlan();
@@ -20,6 +23,16 @@ const CASES = [
   { id: 'q22-plan', type: 'HKDSE 2018 P1 Q22 as a plan (change in DWL)', spec: q22Plan(), mcq: Q22_MCQ, key: Q22_KEY },
   { id: 'tax-floor', type: 'unit tax under a price floor, lettered bands', spec: compound.spec, mcq: compound.mcq, key: compound.key },
 ];
+
+// A live run's specs drawn again with this build (LIVE_DIR=<run dir>): the model's own plans.
+const LIVE = process.env.LIVE_DIR;
+if (LIVE) {
+  for (const c of GRAPH_CASES.filter((k) => existsSync(path.join(LIVE, `${k.id}.spec.json`)))) {
+    const spec = parseSpec(readFileSync(path.join(LIVE, `${c.id}.spec.json`), 'utf8'))!.spec;
+    const input = inputOf(c);
+    CASES.push({ id: `live-${c.id}`, type: `live spec, redrawn: ${c.type}`, spec, mcq: input.mcq!, key: input.key });
+  }
+}
 
 it('draws the plans', () => {
   mkdirSync(path.join(OUT, 'svg'), { recursive: true });

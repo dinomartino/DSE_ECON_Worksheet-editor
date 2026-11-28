@@ -535,10 +535,10 @@ const PLAN_CASES: GraphCase[] = [
     options: ['The deadweight loss decreases by area A.', 'The deadweight loss increases by area A.', 'The deadweight loss increases by area B.', 'The deadweight loss does not change.'],
     answer: 1,
     explanation:
-      'Under the tax, output is Q_1, where D meets S_1, and the deadweight loss is area B, between D and S_0 from Q_1 to Q_0. Under the minimum price P_f with no tax, buyers buy only Q_2, where D meets P_f, so the deadweight loss is areas A + B, between D and S_0 from Q_2 to Q_0. The deadweight loss increases by area A.',
-    figure: 'D, S_0 and S_1 (S_0 shifted up by the tax), P_f a line above where D meets S_1. Q_2 where D meets P_f, Q_1 where D meets S_1, Q_0 where D meets S_0. Area A between D and S_0 from Q_2 to Q_1; area B between D and S_0 from Q_1 to Q_0. Key B.',
+      'Under the tax, output is Q_2, where D meets S_1, and the deadweight loss is area B, between D and S_0 from Q_2 to Q_3. Under the minimum price P_f with no tax, buyers buy only Q_1, where D meets P_f, so the deadweight loss is areas A + B, between D and S_0 from Q_1 to Q_3. The deadweight loss increases by area A.',
+    figure: 'D, S_0 and S_1 (S_0 shifted up by the tax), P_f a line above where D meets S_1. Q_1 where D meets P_f, Q_2 where D meets S_1, Q_3 where D meets S_0. Area A between D and S_0 from Q_1 to Q_2; area B between D and S_0 from Q_2 to Q_3. Key B.',
     want: 'curves with bands: two markets (D, S1, cost S0) then (D, S0, floor Pf); A, B lettered; change in DWL = A',
-    labels: ['D', 'S_0', 'S_1', 'P_f', 'Q_0', 'Q_1', 'Q_2', 'A', 'B'],
+    labels: ['D', 'S_0', 'S_1', 'P_f', 'Q_3', 'Q_1', 'Q_2', 'A', 'B'],
   },
 ];
 

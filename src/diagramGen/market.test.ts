@@ -105,6 +105,10 @@ describe('areas on the plan path (k-0596)', () => {
     const e = evaluateSpec(spec, { sides: ['en', 'zh'], key, mcq });
     expect(e.issues.filter((i) => i.level === 'error')).toEqual([]);
     expect(e.solved?.option).toBe(1);
+    // The plan's own point names (a, e, f, h end its bands; e_1 as the live run wrote) are not printed: the question never uses them.
+    spec.points = [...spec.points, P('D', 'S1', 'e_1')];
+    const printed = e.compiled.diagram!.points.map((p) => p.label?.en.map((r) => r.text).join('') ?? '').filter(Boolean);
+    expect(printed).toEqual([]);
     const wrong = evaluateSpec(spec, { sides: ['en', 'zh'], key, mcq: { ...mcq, answer: 0 } });
     expect(wrong.issues.map((i) => i.code)).toContain('area.key');
   });
@@ -156,5 +160,20 @@ describe('the live plan cases solve offline (k-0596)', () => {
     const e = evaluateSpec(spec, { sides: ['en', 'zh'], key: 'Correct answer: C. bce.', mcq });
     expect(e.issues.filter((i) => i.level === 'error')).toEqual([]);
     expect(e.solved?.option).toBe(2);
+  });
+});
+
+describe('an option sentence naming a lettered area (k-0596 live run 2)', () => {
+  it('reads "the deadweight loss increases by area A" as area A, so the gate and the key check apply', async () => {
+    const { areaLettersIn } = await import('./market');
+    expect(areaLettersIn('The deadweight loss increases by area A.')).toEqual(['A']);
+    expect(areaLettersIn('The new deadweight loss is areas A + B.')).toEqual(['A', 'B']);
+    expect(areaLettersIn('效率損失增加了面積 A 及 B。')).toEqual(['A', 'B']);
+    expect(areaLettersIn('The deadweight loss does not change.')).toBeNull();
+    const { mcq, spec, key } = compoundPlan();
+    const sentences = { ...mcq, options: ['It is area A.', 'It is area A + B.', 'It is area A + B + C.', 'It is area C.'] };
+    expect(evaluateSpec(spec, { sides: ['en', 'zh'], key, mcq: sentences }).solved?.option).toBe(1);
+    const unasked = { ...spec, asks: { what: 'none' as const, state: 'after' as const, markets: [] } };
+    expect(evaluateSpec(unasked, { sides: ['en', 'zh'], key, mcq: sentences }).issues.map((i) => i.code)).toContain('area.unchecked');
   });
 });

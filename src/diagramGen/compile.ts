@@ -47,7 +47,7 @@ import {
   type SpecBand,
 } from './types';
 import { placePointLabels } from './pointLabels';
-import { areaPolygon } from '@/model/diagramAreas';
+import { areaPolygon, polygonCentroid } from '@/model/diagramAreas';
 
 /**
  * Spec → editor diagram. Everything a scheme marks is a relation, as in the templates: a
@@ -1112,6 +1112,7 @@ export function compileSpec(given: DiagramSpec): Compiled {
   // Each one-letter point name beside its own dot, clear of every line (k-0596: the scenes' placer, on every figure).
   const lettered = new Set(diagram.points.filter((p) => /^[A-Za-z]$/.test(plainOf(p.label ?? { en: [], zh: [] }).trim())).map((p) => p.id));
   if (lettered.size) diagram = placePointLabels(diagram, lettered);
+  diagram = clearBandLetters(diagram, new Set(bandPlans.filter((b) => b.area && b.band.label).map((b) => b.area!.id)));
   const bandOutlines = bandPlans.map((b) => ({ band: b.band, polygon: b.area ? areaPolygon(diagram, { ...b.area, id: 'probe' }) : null }));
   for (const b of bandOutlines) {
     if (bandPlans.find((p) => p.band === b.band)?.area && (!b.polygon || polygonSize(b.polygon) < 1e-4)) {
@@ -1119,6 +1120,62 @@ export function compileSpec(given: DiagramSpec): Compiled {
     }
   }
   return { diagram, issues, curveIds, roles, levels: levelAt, ...(bandOutlines.length ? { bands: bandOutlines } : {}), ...(guideIds.size ? { guideIds } : {}) };
+}
+
+type UPt = { x: number; y: number };
+const segDistance = (p: UPt, a: UPt, b: UPt) => {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+};
+const polyDistance = (p: UPt, line: readonly UPt[], closed = false) => {
+  let best = Infinity;
+  for (let i = 1; i < line.length; i += 1) best = Math.min(best, segDistance(p, line[i - 1], line[i]));
+  if (closed && line.length > 2) best = Math.min(best, segDistance(p, line[line.length - 1], line[0]));
+  return best;
+};
+const insidePoly = (p: UPt, poly: readonly UPt[]) => {
+  let inner = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) {
+    const a = poly[i];
+    const b = poly[j];
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y || 1e-12) + a.x) inner = !inner;
+  }
+  return inner;
+};
+
+/**
+ * A band's letter at its centre can sit on a shift arrow drawn through the area (k-0596 live
+ * run: A under the tax arrow). Such a letter moves to the spot inside its band furthest from
+ * arrows, curves and the band's edges, as a dragged label would.
+ */
+function clearBandLetters(diagram: Diagram, ids: ReadonlySet<string>): Diagram {
+  if (!ids.size || !diagram.arrows.length) return diagram;
+  const arrows = diagram.arrows.map((a) => [a.from, a.to]);
+  const lines = diagram.curves.map((c) => c.points);
+  const areas = (diagram.areas ?? []).map((area) => {
+    if (!ids.has(area.id)) return area;
+    const poly = areaPolygon(diagram, area);
+    if (!poly || poly.length < 3) return area;
+    const centre = polygonCentroid(poly);
+    const near = (p: UPt) => Math.min(...arrows.map((s) => polyDistance(p, s)));
+    if (near(centre) >= 0.045) return area;
+    const xs = poly.map((p) => p.x);
+    const ys = poly.map((p) => p.y);
+    let best: { p: UPt; score: number } | null = null;
+    for (let i = 1; i < 24; i += 1) {
+      for (let j = 1; j < 24; j += 1) {
+        const p = { x: Math.min(...xs) + ((Math.max(...xs) - Math.min(...xs)) * i) / 24, y: Math.min(...ys) + ((Math.max(...ys) - Math.min(...ys)) * j) / 24 };
+        if (!insidePoly(p, poly)) continue;
+        const score = Math.min(near(p), polyDistance(p, poly, true), ...lines.map((l) => polyDistance(p, l)));
+        if (!best || score > best.score) best = { p, score };
+      }
+    }
+    if (!best || best.score <= Math.min(near(centre), polyDistance(centre, poly, true))) return area;
+    return { ...area, labelOffset: { x: best.p.x - centre.x, y: best.p.y - centre.y } };
+  });
+  return { ...diagram, areas };
 }
 
 const BAND_PATTERNS = ['diagonal', 'reverse', 'horizontal', 'vertical', 'cross', 'dots'] as const;
