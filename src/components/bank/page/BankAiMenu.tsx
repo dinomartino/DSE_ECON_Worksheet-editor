@@ -1,5 +1,6 @@
 'use client';
 
+import { OWN_KEY_AI_ENABLED } from '@/ai/launch';
 import { useEffect, useRef, useState } from 'react';
 import { CreditEstimate } from '@/components/ai/CreditEstimate';
 import { ProviderFooter } from '@/components/ai/ProviderFooter';
@@ -26,16 +27,7 @@ export const BANK_AI_MENU_WIDTH = 360;
  * first; one over 20 questions asks once, with a rough time. While open it owns the
  * keyboard (`useModalLayer`), so Esc closes it rather than leaving the level.
  */
-export function BankAiMenu({
-  question,
-  list,
-  shown,
-  teacherText,
-  disabled,
-  onRun,
-  untagged = [],
-  only,
-}: {
+interface BankAiMenuProps {
   question: BankRow | undefined;
   list: readonly BankRow[];
   shown: readonly BankRow[];
@@ -47,7 +39,22 @@ export function BankAiMenu({
   /** A run is going: the door waits for it. */
   disabled: boolean;
   onRun(verb: BankVerbId, rows: BankRow[]): void;
-}) {
+}
+
+export function BankAiMenu(props: BankAiMenuProps) {
+  return OWN_KEY_AI_ENABLED ? <BankAiMenuDoor {...props} /> : null;
+}
+
+function BankAiMenuDoor({
+  question,
+  list,
+  shown,
+  teacherText,
+  disabled,
+  onRun,
+  untagged = [],
+  only,
+}: BankAiMenuProps) {
   const m = useMessages(BANK_AI_MESSAGES);
   const [open, setOpen] = useState(false);
   // ⌘J / Ctrl+J opens the door, as in the editor (`AiHost`), which is not mounted here.

@@ -1,5 +1,5 @@
 import { flushSync } from "react-dom";
-import { dropEmptySchemePoint, editTargetKey, joinSchemePoint, splitSchemePoint, textOfTarget } from "@/model/edits";
+import { dropEmptySchemePoint, editTargetKey, joinSchemePoint, schemePointHasFigures, splitSchemePoint, textOfTarget } from "@/model/edits";
 import { newId } from "@/model/factories";
 import { addOptionAfterLast, lastOptionEnter, removeEmptyLastOption } from "@/model/mcqOptionEnter";
 import { joinParagraph, splitParagraph } from "@/model/paragraphs";
@@ -153,6 +153,8 @@ export function fieldJoin(target: EditTarget, side: Side, direction: "backward" 
 }
 
 function pointIsEmpty(target: Extract<EditTarget, { kind: "schemePoint" }>, side: Side): boolean {
-  const text = textOfTarget(useWorksheetStore.getState().worksheet, target);
-  return text !== undefined && richTextLength(text[side]) === 0;
+  const worksheet = useWorksheetStore.getState().worksheet;
+  const text = textOfTarget(worksheet, target);
+  // A point holding a figure (k-0595) is not empty: Enter starts the next point after it.
+  return text !== undefined && richTextLength(text[side]) === 0 && !schemePointHasFigures(worksheet, target);
 }

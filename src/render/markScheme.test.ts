@@ -12,8 +12,11 @@ import v1Corpus from '@/test/corpus/v1-published.json';
 import { withFlow } from '@/test/fixtures';
 import { renderAnswerKey } from './answerKey';
 import { trailLabel, type RenderNode, type TextNode } from './ir';
-import { MARK_SCHEME_WORDING, renderMarkScheme } from './markScheme';
+import { MARK_SCHEME_WORDING, renderMarkScheme as renderSchemeNodes } from './markScheme';
 import { renderWorksheet } from './worksheet';
+
+/** These schemes hold no figures (k-0595), so every node is a line. */
+const renderMarkScheme = (...args: Parameters<typeof renderSchemeNodes>) => renderSchemeNodes(...args) as TextNode[];
 
 const TEACHER: OutputMode = { language: 'en', version: 'teacher' };
 const STUDENT: OutputMode = { language: 'en', version: 'student' };

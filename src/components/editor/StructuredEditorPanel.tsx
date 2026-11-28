@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { editTargetKey, flattenBlocks } from '@/model/edits';
 import { ANSWER_DIAGRAM_WIDTH_PX, createAnswerDiagram, createParagraphBlock, createPart, createSubPart } from '@/model/factories';
-import { answerBlocksOf, withAnswerBlocks, type AnswerOwner } from '@/model/answerBlocks';
+import { answerBlocksOf, moveAnswerBlockToPoint, withAnswerBlocks, type AnswerOwner } from '@/model/answerBlocks';
 import { partMarks, questionMarks } from '@/model/marks';
 import { partLabel, subPartLabel } from '@/model/numbering';
 import { emptyBiText } from '@/model/text';
@@ -28,6 +28,7 @@ import { SchemeStatusChip } from './SchemeStatusChip';
 import { PageFlowFields } from './PageFlowFields';
 import { SpaceAboveField } from './SpaceAboveField';
 import type { MarkScheme } from '@/model/markSchemeTypes';
+import { schemePointBlockLists } from '@/model/markScheme';
 import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
 import { STRUCTURED_PANEL_MESSAGES } from './StructuredEditorPanel.messages';
@@ -72,14 +73,17 @@ function targetOwner(
     kind === 'blockText' || kind === 'blockCaption' || kind === 'tableCell';
   const inBlocks = (blocks: ContentBlock[] | undefined) =>
     Boolean(blocks && flattenBlocks(blocks).some((block) => block.id === id));
+  /** The leaf's teacher-only blocks: its answer's, then its mark points' figures (k-0595). */
+  const inTeacherBlocks = (leaf: AnswerOwner & { scheme?: MarkScheme }) =>
+    inBlocks(answerBlocksOf(leaf)) || schemePointBlockLists(leaf.scheme).some(inBlocks);
 
   for (const part of question.parts) {
     for (const sub of part.subParts ?? []) {
       if (kind === 'subPartAnswer' && id === sub.id) return { partId: part.id, subPartId: sub.id };
-      if (holdsBlock && (inBlocks(sub.blocks) || inBlocks(answerBlocksOf(sub)))) return { partId: part.id, subPartId: sub.id };
+      if (holdsBlock && (inBlocks(sub.blocks) || inTeacherBlocks(sub))) return { partId: part.id, subPartId: sub.id };
     }
     if (kind === 'partAnswer' && id === part.id) return { partId: part.id };
-    if (holdsBlock && (inBlocks(part.blocks) || inBlocks(part.blocksBefore) || inBlocks(answerBlocksOf(part)))) {
+    if (holdsBlock && (inBlocks(part.blocks) || inBlocks(part.blocksBefore) || inTeacherBlocks(part))) {
       return { partId: part.id };
     }
   }
@@ -133,6 +137,16 @@ function AnswerBlocks<T extends AnswerOwner>({
       answer={{ label: m.answerParagraph, translate: { kind: 'answer' } }}
     />
   );
+}
+
+/**
+ * The leaf's answer blocks a mark point may take in (k-0595): each point's menu offers
+ * "Move answer diagram n into this point" (`moveAnswerBlockToPoint`). None without blocks.
+ */
+function answerFiguresOf<T extends AnswerOwner & { scheme?: MarkScheme }>(leaf: T, set: (leaf: T) => void) {
+  const blocks = answerBlocksOf(leaf);
+  if (blocks.length === 0) return undefined;
+  return { blocks, move: (blockId: string, pointId: string) => set(moveAnswerBlockToPoint(leaf, blockId, pointId)) };
 }
 
 /**
@@ -367,6 +381,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
             scheme={question.scheme}
             printedMarks={question.marks}
             onChange={(scheme) => onChange({ scheme })}
+            answerFigures={answerFiguresOf(question, (next) => onChange({ ...answerPatch(next), scheme: next.scheme }))}
           />
         </TeacherArea>
       )}
@@ -772,6 +787,11 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                                         ),
                                       })
                                     }
+                                    answerFigures={answerFiguresOf(subPart, (next) =>
+                                      patchPart(partIndex, {
+                                        subParts: subParts.map((s, i) => (i === subIndex ? next : s)),
+                                      }),
+                                    )}
                                   />
                                   </TeacherArea>
                                 </div>
@@ -821,6 +841,7 @@ export function StructuredEditorPanel({ question, onChange }: EditorPanelProps<S
                       scheme={part.scheme}
                       printedMarks={hasSubParts ? partMarks(part) : part.marks}
                       onChange={(scheme) => setParts(replacePart(question.parts, partIndex, withScheme(part, scheme)))}
+                      answerFigures={answerFiguresOf(part, (next) => setParts(replacePart(question.parts, partIndex, next)))}
                     />
                     </TeacherArea>
                   </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { OWN_KEY_AI_ENABLED } from "@/ai/launch";
 import { fractionAt, fractionRuns, hasFraction, linearFraction, textSegments } from "@/model/fraction";
 import { AiMadeChip } from "./AiMadeChip";
 import { FractionDialog } from "./FractionDialog";
@@ -6577,7 +6578,7 @@ export function Preview({
      * an older closure), keyed by the emitting question so a duplicate's copy is the one
      * acted on. Read-only documents get nothing (the menu is absent there anyway).
      */
-    if (!store.readOnly) {
+    if (!store.readOnly && OWN_KEY_AI_ENABLED) {
       const live = store.worksheet;
       const scope = pageAiScope(payload, {
         slotsForTarget: (target) => slotsForTarget(live, target),
@@ -8484,7 +8485,7 @@ export function Preview({
             <span className="text-[11px] text-ink-subtle">
               {m.selectionKeys}
             </span>
-            {multiIds.size > 0 && !readOnly && (
+            {multiIds.size > 0 && !readOnly && OWN_KEY_AI_ENABLED && (
               <button
                 type="button"
                 title={m.aiTools}

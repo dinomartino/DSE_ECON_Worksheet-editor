@@ -78,6 +78,16 @@ const V4_FLOW_VERSION = V4_FIGURE_GRID_VERSION;
  */
 const V4_ANSWER_BLOCKS_VERSION = V4_FIGURE_GRID_VERSION;
 
+/**
+ * Also v4 (k-0595; no release has written 4 yet, so a fourth reason rather than a fifth
+ * version): a marking point holding its own figures (`MarkPoint.blocks`: a diagram, table or
+ * picture under the point's line). Every build before it reads a point's words, mark and
+ * `/` wordings and nothing else, so it opens such a paper read-only under the "newer
+ * version" bar, every point's words still showing; writing it back would drop the figures.
+ * A point with none stores no field, so it never raises the mark (`hasPointBlocks`).
+ */
+const V4_POINT_BLOCKS_VERSION = V4_FIGURE_GRID_VERSION;
+
 type RawDoc = Record<string, unknown>;
 
 /**
@@ -298,6 +308,7 @@ export function writtenSchemaVersion(version: number, doc: unknown): number {
   if (version > CURRENT_SCHEMA_VERSION) return version;
   if (hasFigureGrid(doc)) return V4_FIGURE_GRID_VERSION;
   if (hasAnswerBlocks(doc)) return V4_ANSWER_BLOCKS_VERSION;
+  if (hasPointBlocks(doc)) return V4_POINT_BLOCKS_VERSION;
   if (hasV4Flow(doc)) return V4_FLOW_VERSION;
   if (hasV3Diagram(doc)) return V3_DIAGRAM_VERSION;
   if (isRecord(doc) && (doc.answerKeyLayout !== undefined || hasAnswerAnySection(doc.layout) || hasEssayAnswer(doc.questions))) {
@@ -358,6 +369,31 @@ function hasAnswerBlocks(value: unknown): boolean {
   if (!isRecord(value)) return false;
   if (Array.isArray(value.answerBlocks) && value.answerBlocks.length > 0) return true;
   return Object.values(value).some(hasAnswerBlocks);
+}
+
+/**
+ * A marking point with figures anywhere in `value` (§ V4_POINT_BLOCKS_VERSION): a scheme's
+ * `routes` → `groups` → `points` with a non-empty `blocks`. Read structurally, so a scheme at
+ * any depth (an essay question's, a part's, a sub-part's) is found.
+ */
+function hasPointBlocks(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasPointBlocks);
+  if (!isRecord(value)) return false;
+  if (Array.isArray(value.routes) && value.routes.some(routeHasPointBlocks)) return true;
+  return Object.values(value).some(hasPointBlocks);
+}
+
+function routeHasPointBlocks(route: unknown): boolean {
+  return (
+    isRecord(route) &&
+    Array.isArray(route.groups) &&
+    route.groups.some(
+      (group) =>
+        isRecord(group) &&
+        Array.isArray(group.points) &&
+        group.points.some((point) => isRecord(point) && Array.isArray(point.blocks) && point.blocks.length > 0),
+    )
+  );
 }
 
 /** A figure grid block anywhere in `value` (§ V4_FIGURE_GRID_VERSION). */

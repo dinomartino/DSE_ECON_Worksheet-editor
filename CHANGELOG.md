@@ -19,6 +19,13 @@ a version heading is edited afterwards.
   deadweight loss, the surpluses, the tax revenue or the tax burdens out from the market itself. A
   figure whose keyed area is not that area is refused and shown as a warning, never as right.
   <!-- zh: **擬題工作室能繪畫沒有現成圖形的面積題，並仍會核對答案。** 若題目同時有兩項政策（如從量稅加最低價格、先設最高價格再徵稅），或由一項政策改為另一項，它會畫出曲線、以字母標出面積或其頂點，並按市場本身計出效率損失、消費者剩餘與生產者剩餘、稅收或稅負。若答案所指的面積不是該面積，該圖會被拒絕並以警告顯示，絕不會當作正確。 -->
+- **A marking point can hold its own diagram or table.** In a point's ⋯ menu, Add diagram or table
+  puts a diagram, table or picture under that point's line, so "(1) Correct diagram: D shifts
+  right…" carries the diagram with its mark. It moves, splits, joins and is deleted with the point,
+  prints under it in the teacher version, every Marking scheme style and Word, and never on the
+  student copy. A diagram or table you already added to the answer can be moved into a point from
+  the same menu. A paper using this opens read-only in versions before it.
+  <!-- zh: **評分要點可包含自己的圖表或表格。** 在要點的 ⋯ 選單選「加入圖表或表格」，即可在該要點下加入圖表、表格或圖片，令「(1) 正確圖表：D 右移……」連同圖表一起計分。圖表會隨要點移動、分拆、合併及刪除，印在教師版、所有評卷參考樣式及 Word 中該要點之下，學生版不會出現。已加入答案的圖表或表格，亦可在同一選單移入要點。使用此功能的試卷在較舊版本只能以唯讀方式開啟。 -->
 - **The Question studio draws import quotas with the question's own labels.** Demand, domestic
   supply, the world price and the supply with the quota (kinked at the world price, flat for the
   quota, and it keeps that shape when you drag supply or the world price), the price with the
@@ -292,6 +299,11 @@ a version heading is edited afterwards.
   <!-- zh: **匯出的檔案會靜靜註明來自 Econ Studio。** 你匯出的每個 Word 和 Excel 檔案，以及桌面版儲存的每個 PDF，現在都會在檔案本身的內容資訊中附上幾項隱藏資料：程式名稱和版本、匯出時間，以及一個代表該工作紙的隨機編號（同一份工作紙匯出的每個檔案編號都相同）。頁面上不會加入任何內容，所以列印、複製文字或使用屏幕閱讀器時都不會看到，亦不包含任何關於你或你電腦的資料。經列印對話框製作的 PDF（網頁版，或直接儲存 PDF 失敗時）無法附上這些資料。 -->
 
 ### Changed
+- **The ✦ AI menu is hidden for now.** The ✦ AI button, ⌘J, the AI entries in the command search
+  and right-click menu, the Translate buttons beside text boxes, the question bank's AI menu, the
+  import check's AI row and the AI & translation settings stay out of sight until AI comes back
+  together with DSEcon Mentor credits. Nothing is deleted, and a key you saved is never sent anywhere.
+  <!-- zh: **✦ AI 選單暫時隱藏。** ✦ AI 按鈕、⌘J、指令搜尋與右鍵選單的 AI 項目、文字框旁的翻譯按鈕、題庫的 AI 選單、匯入檢查的 AI 一列，以及「AI 與翻譯」設定，在 AI 連同 DSEcon Mentor 點數重新推出前不會顯示。沒有刪除任何內容，已儲存的金鑰不會被傳送到任何地方。 -->
 - **A picture or graph inside a question's text has a blank line above and below it.** When a
   diagram sits between two parts of a question (DSE 2021 Paper 1 Q23's production chain, a graph
   between a part's lines), the page, Word, PDF, the copied question and the bank cards now leave

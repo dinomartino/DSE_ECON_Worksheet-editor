@@ -12,6 +12,7 @@ const namesScripts = process.argv.slice(2).some((arg) => /(^|[\\/])scripts([\\/]
 export default defineConfig({
   test: {
     environment: 'node',
+    setupFiles: ['src/test/ownKeyAiOn.ts'],
     include: [
       'src/**/*.test.ts',
       'src/**/*.test.tsx',

@@ -2,6 +2,8 @@ import {
   groupHeading,
   groupPoints,
   isSchemeEmpty,
+  pointBlocksOf,
+  pointHasContent,
   routeGroups,
   routeMax,
   schemeDisplay,
@@ -11,8 +13,8 @@ import {
 } from '@/model/markScheme';
 import type { MarkGroup, MarkPoint, MarkScheme } from '@/model/markSchemeTypes';
 import { bi, isBiTextEmpty } from '@/model/text';
-import type { BiText, RichText } from '@/model/types';
-import type { EditSegment, EditTarget, SchemeAddress, TextNode } from './ir';
+import type { BiText, ContentBlock, LanguageMode, RichText } from '@/model/types';
+import { renderContentBlocks, type EditSegment, type EditTarget, type RenderNode, type SchemeAddress, type TextNode } from './ir';
 
 /**
  * A marking scheme as IR, in HKEAA layout: one paragraph per point with its mark in the
@@ -80,6 +82,8 @@ export interface MarkSchemeRenderOptions {
    * table (`answerKeySections.ts:ecTable`). The paper's teacher version keeps the lines.
    */
   omitEc?: boolean;
+  /** The paper's language, for the points' figures (`renderContentBlocks`' picture gap). */
+  language?: LanguageMode;
 }
 
 const ALTERNATIVE_SEPARATOR = ' / ';
@@ -136,6 +140,8 @@ const positive = (value: number | undefined): value is number =>
 export interface PointLine {
   point: MarkPoint;
   text: BiText;
+  /** The point's own figures (`MarkPoint.blocks`, k-0595), printed under its line; absent when none. */
+  blocks?: ContentBlock[];
   edit?: EditTarget;
   segments?: TextNode['segments'];
 }
@@ -173,10 +179,11 @@ export function schemePointGroups(scheme: MarkScheme | undefined, at?: SchemeAdd
           ...(positive(group.take) ? { take: group.take } : {}),
           ...(positive(group.each) ? { each: group.each } : {}),
           points: groupPoints(group)
-            .filter(hasWording)
+            .filter(pointHasContent)
             .map((point) => ({
               point,
               text: withAlternatives(point),
+              ...(pointBlocksOf(point).length > 0 ? { blocks: pointBlocksOf(point) } : {}),
               ...(at
                 ? (point.alternatives ?? []).length > 0
                   ? { segments: alternativeSegments(point, at) }
@@ -199,6 +206,8 @@ export interface SchemeParagraph {
   marks?: number;
   /** Each point typed where it sits in the paragraph. */
   segments?: TextNode['segments'];
+  /** The route's points' figures (`MarkPoint.blocks`, k-0595), in order, under the paragraph; absent when none. */
+  blocks?: ContentBlock[];
 }
 
 /**
@@ -216,11 +225,12 @@ export function schemeParagraphs(
   const { at } = options;
   const levels = schemeLevels(scheme).length > 0;
   return schemeRoutes(scheme)
-    .filter((route) => routeGroups(route).some((group) => groupPoints(group).some(hasWording)))
+    .filter((route) => routeGroups(route).some((group) => groupPoints(group).some(pointHasContent)))
     .map((route): SchemeParagraph => {
       const points = routeGroups(route)
         .flatMap(groupPoints)
-        .filter((point) => hasWording(point) || (options.editing && at));
+        .filter((point) => pointHasContent(point) || (options.editing && at));
+      const blocks = points.flatMap(pointBlocksOf);
       const text = (side: 'en' | 'zh'): RichText =>
         points
           .map((point) => withAlternatives(point)[side])
@@ -240,6 +250,7 @@ export function schemeParagraphs(
         text: { en: text('en'), zh: text('zh') },
         ...(!levels && total > 0 ? { marks: total } : {}),
         ...(at ? { segments: { en: segments('en'), zh: segments('zh') } } : {}),
+        ...(blocks.length > 0 ? { blocks } : {}),
       };
     });
 }
@@ -247,10 +258,10 @@ export function schemeParagraphs(
 export function renderMarkScheme(
   scheme: MarkScheme | undefined,
   options: MarkSchemeRenderOptions = {},
-): TextNode[] {
+): RenderNode[] {
   if (!scheme || isSchemeEmpty(scheme)) return [];
   const { at } = options;
-  const nodes: TextNode[] = [];
+  const nodes: RenderNode[] = [];
   const line = (text: BiText, extra: Partial<TextNode> = {}) => {
     nodes.push({
       kind: 'text',
@@ -262,9 +273,24 @@ export function renderMarkScheme(
     });
   };
   const empty: BiText = { en: [], zh: [] };
+  /** A point's figures under the line just pushed, which keeps with them; teacher-only as the scheme is. */
+  const figures = (blocks: readonly ContentBlock[]) => {
+    if (blocks.length === 0) return;
+    (nodes[nodes.length - 1] as TextNode).keepNext = true;
+    const start = nodes.length;
+    renderContentBlocks(nodes, [...blocks], 'Marking Scheme', {
+      ...(options.indent ? { indent: options.indent } : {}),
+      ...(options.teacherOnly ? { teacherOnly: true } : {}),
+      ...(options.language ? { language: options.language } : {}),
+    });
+    if (!options.teacherOnly) return;
+    for (let index = start; index < nodes.length; index++) {
+      (nodes[index] as { teacherOnly?: boolean }).teacherOnly = true;
+    }
+  };
 
   const routes = schemeRoutes(scheme).filter((route) =>
-    routeGroups(route).some((group) => groupHeading(group) || groupPoints(group).some(hasWording)),
+    routeGroups(route).some((group) => groupHeading(group) || groupPoints(group).some(pointHasContent)),
   );
   // A stated content mark (k-0475) heads the indicative content, as HKEAA prints it under
   // the EC table; where the answer key prints that table, the table's block says it.
@@ -280,6 +306,7 @@ export function renderMarkScheme(
           ...(paragraph.marks !== undefined ? { trail: MARK_SCHEME_WORDING.mark(paragraph.marks) } : {}),
           ...(paragraph.segments ? { segments: paragraph.segments } : {}),
         });
+        figures(paragraph.blocks ?? []);
       },
     );
   }
@@ -296,9 +323,9 @@ export function renderMarkScheme(
           ...(at ? { edit: { kind: 'schemeHeading', ...at, groupId: group.id } } : {}),
         });
       }
-      if (!all.some(hasWording)) return;
+      if (!all.some(pointHasContent)) return;
       // On an editing page an empty point keeps its line, to be typed in (`editOnly`).
-      const points = all.filter((point) => hasWording(point) || (options.editing && at));
+      const points = all.filter((point) => pointHasContent(point) || (options.editing && at));
       const take = positive(group.take) ? group.take : undefined;
       const each = positive(group.each) ? group.each : undefined;
       if (take !== undefined || each !== undefined) {
@@ -314,8 +341,10 @@ export function renderMarkScheme(
         // Under `n@` the lead line states the value once; a point's own mark would
         // contradict it, so only an unallocated group prints marks per point.
         const marks = each === undefined && typeof point.marks === 'number' ? point.marks : undefined;
+        // A figure-only point (k-0595) prints its line for the mark beside it; with no mark
+        // either, the line is only a place to type, and the figure prints alone.
         line(withAlternatives(point), {
-          ...(hasWording(point) ? {} : { editOnly: true as const }),
+          ...(hasWording(point) || marks !== undefined && pointBlocksOf(point).length > 0 ? {} : { editOnly: true as const }),
           ...(marks !== undefined ? { trail: MARK_SCHEME_WORDING.mark(marks) } : {}),
           ...(at
             ? (point.alternatives ?? []).length > 0
@@ -323,6 +352,7 @@ export function renderMarkScheme(
               : { edit: { kind: 'schemePoint', ...at, pointId: point.id } }
             : {}),
         });
+        figures(pointBlocksOf(point));
       });
       if (typeof group.max === 'number' && group.max >= 0) {
         line(empty, { trail: MARK_SCHEME_WORDING.max(group.max) });

@@ -1,5 +1,6 @@
 'use client';
 
+import { OWN_KEY_AI_ENABLED } from '@/ai/launch';
 import { useEffect } from 'react';
 import { openAi } from '@/assist/menuStore';
 import { isModalLayerOpen } from '@/components/ui/modalLayer';
@@ -14,6 +15,7 @@ import '@/assist/verbs';
 /** Mounted once in `EditorApp`: the AI menu, the run bar, and the one ⌘J / Ctrl+J listener. */
 export function AiHost() {
   useEffect(() => {
+    if (!OWN_KEY_AI_ENABLED) return;
     const mac = isMacPlatform();
     const onKeyDown = (event: KeyboardEvent) => {
       const ctx = {
@@ -30,6 +32,7 @@ export function AiHost() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  if (!OWN_KEY_AI_ENABLED) return null;
   return (
     <>
       <AiMenu />

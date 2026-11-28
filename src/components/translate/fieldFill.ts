@@ -1,3 +1,4 @@
+import { OWN_KEY_AI_ENABLED } from '@/ai/launch';
 import { isAiError, type AiErrorInfo, type ProviderId } from '@/ai/types';
 import type { TermCheck } from '@/glossary/types';
 import { isRichTextEmpty } from '@/model/text';
@@ -50,7 +51,7 @@ export function fillButton(input: {
   modalOpen: boolean;
 }): FillButton {
   const { translate, needs } = input;
-  if (!translate || needs === null || input.readOnly || input.language !== 'bilingual') return { show: false };
+  if (!OWN_KEY_AI_ENABLED || !translate || needs === null || input.readOnly || input.language !== 'bilingual') return { show: false };
   if (input.configured) return { show: true, side: needs, action: 'fill', label: fillLabel(needs) };
   if (input.modalOpen) {
     return { show: true, side: needs, action: 'blocked', label: fillLabel(needs), title: copyMessages().setupInSettingsTitle };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import {
   createMarkEc,
   createMarkGroup,
@@ -11,6 +11,7 @@ import {
   groupMax,
   groupPoints,
   isSchemeEmpty,
+  pointBlocksOf,
   isStandardEc,
   routeGroups,
   routesDisagree,
@@ -24,6 +25,7 @@ import {
   withContentMax,
   withSchemeDisplay,
   withoutEmptyGroupPoint,
+  withPointBlocks,
 } from '@/model/markScheme';
 import {
   createSchemeFromPattern,
@@ -39,15 +41,17 @@ import type {
   MarkRoute,
   MarkScheme,
 } from '@/model/markSchemeTypes';
-import { newId } from '@/model/factories';
+import { ANSWER_DIAGRAM_WIDTH_PX, newId } from '@/model/factories';
 import { emptyBiText, isBiTextEmpty } from '@/model/text';
 import { setSelectionOffsets } from '@/components/preview/richTextDom';
-import type { BiText } from '@/model/types';
+import type { BiText, ContentBlock } from '@/model/types';
 import { Button, CheckField, IconButton, Pill, Segmented } from '@/components/ui';
 import { Menu, type MenuItem } from '@/components/ui/Menu';
 import { useWorksheetStore } from '@/store/worksheetStore';
 import { BiTextField } from './BiTextField';
+import { BlockEditor } from './BlockEditor';
 import { MiniNumber } from './panelRows';
+import type { Messages } from '@/i18n/catalogue';
 import { useMessages } from '@/i18n/language';
 import { MARK_SCHEME_MESSAGES } from './MarkSchemeEditor.messages';
 
@@ -109,6 +113,35 @@ function Rule({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/**
+ * The leaf's answer figures a point may take in (k-0595): a diagram, table or picture added
+ * to the answer beside the scheme, offered on each point's menu as "Move … into this point".
+ * Absent (the default) offers nothing; set by `MarkSchemeEditor.answerFigures`.
+ */
+interface AnswerFigures {
+  blocks: readonly ContentBlock[];
+  move: (blockId: string, pointId: string) => void;
+}
+
+const AnswerFiguresContext = createContext<AnswerFigures | undefined>(undefined);
+
+/** The answer's blocks a point can take, each named by its kind and number among the answer's blocks of that kind. */
+function answerFigureItems(
+  figures: AnswerFigures | undefined,
+  m: Messages<typeof MARK_SCHEME_MESSAGES>,
+  pointId: string,
+): MenuItem[] {
+  if (!figures) return [];
+  const seen = { diagram: 0, table: 0, image: 0 };
+  return figures.blocks.flatMap((block, index): MenuItem[] => {
+    if (block.kind !== 'diagram' && block.kind !== 'table' && block.kind !== 'image') return [];
+    seen[block.kind] += 1;
+    const n = seen[block.kind];
+    const label = block.kind === 'diagram' ? m.moveDiagramIn(n) : block.kind === 'table' ? m.moveTableIn(n) : m.movePictureIn(n);
+    return [{ label, separated: index === 0 || undefined, onSelect: () => figures.move(block.id, pointId) }];
+  });
+}
+
 function PointRow({
   point,
   group,
@@ -135,9 +168,15 @@ function PointRow({
     const rest = omit(point, 'alternatives');
     onChange(next.length > 0 ? { ...rest, alternatives: next } : rest);
   };
+  // The point's own figures (k-0595): shown once it has one, or once asked for.
+  const figures = pointBlocksOf(point);
+  const [figuresOpen, setFiguresOpen] = useState(false);
+  const answerFigures = useContext(AnswerFiguresContext);
   const menu: MenuItem[] = [
     { label: m.addAlternative, onSelect: () => setAlternatives([...alternatives, emptyBiText()]) },
-    { label: m.moveUp, onSelect: () => onMove(-1), disabled: index === 0 },
+    ...(figures.length === 0 && !figuresOpen ? [{ label: m.addFigure, onSelect: () => setFiguresOpen(true) }] : []),
+    ...answerFigureItems(answerFigures, m, point.id),
+    { label: m.moveUp, onSelect: () => onMove(-1), disabled: index === 0, separated: true },
     { label: m.moveDown, onSelect: () => onMove(1), disabled: index === count - 1 },
     { label: m.deletePoint, danger: true, separated: true, onSelect: onRemove },
   ];
@@ -205,6 +244,18 @@ function PointRow({
           </IconButton>
         </div>
       ))}
+      {(figures.length > 0 || figuresOpen) && (
+        <div className="pl-[3.375rem]" data-point-figures={point.id}>
+          <BlockEditor
+            blocks={figures}
+            onChange={(next) => onChange(withPointBlocks(point, next))}
+            label={m.pointFigures(index + 1)}
+            labelHint={m.pointFiguresHint}
+            figureWidth={ANSWER_DIAGRAM_WIDTH_PX}
+            figuresOnly
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -254,7 +305,8 @@ function GroupBox({
    * which is how a scheme got blank lines (GitHub #7).
    */
   const pointEnter = (point: MarkPoint, side: 'en' | 'zh', range: { start: number; end: number }) => {
-    if (isBiTextEmpty(point.text) && (point.alternatives ?? []).length === 0) {
+    // A point holding a figure (k-0595) is not empty: Enter starts the next point.
+    if (isBiTextEmpty(point.text) && (point.alternatives ?? []).length === 0 && pointBlocksOf(point).length === 0) {
       const next = withoutEmptyGroupPoint(group, point.id);
       if (next !== group) onChange(next);
       (document.activeElement as HTMLElement | null)?.blur();
@@ -632,9 +684,16 @@ export function MarkSchemeEditor({
   printedMarks,
   onChange,
   ownerId,
+  answerFigures,
 }: {
   /** The leaf's id, so its row's scheme chip can bring this into view. */
   ownerId?: string;
+  /**
+   * The leaf's answer blocks and how to move one into a point (k-0595,
+   * `model/answerBlocks.ts:moveAnswerBlockToPoint`): each point's menu offers the answer's
+   * diagrams, tables and pictures. Absent offers none.
+   */
+  answerFigures?: AnswerFigures;
   scheme: MarkScheme | undefined;
   /** The marks the paper prints for this leaf, to check the scheme's total against. */
   printedMarks: number | undefined;
@@ -688,6 +747,7 @@ export function MarkSchemeEditor({
   ];
 
   return (
+    <AnswerFiguresContext.Provider value={answerFigures}>
     <div className="space-y-2 rounded-md border border-line p-2" data-scheme-editor="" data-scheme-owner={ownerId}>
       <div className="flex items-center gap-1.5">
         <span className="flex-1 text-[11px] font-medium text-ink-muted">
@@ -811,5 +871,6 @@ export function MarkSchemeEditor({
         )}
       </div>
     </div>
+    </AnswerFiguresContext.Provider>
   );
 }

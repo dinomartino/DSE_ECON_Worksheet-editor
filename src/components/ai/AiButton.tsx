@@ -1,5 +1,6 @@
 'use client';
 
+import { OWN_KEY_AI_ENABLED } from '@/ai/launch';
 import { useSyncExternalStore } from 'react';
 import { openAi, useAiMenu } from '@/assist/menuStore';
 import { useUntranslatedCount } from '@/components/editor/useUntranslatedCount';
@@ -30,7 +31,7 @@ export function AiButton() {
   const untranslated = useUntranslatedCount(worksheet, mode);
   const hint = useAiShortcutHint();
   const m = useMessages(AI_UI_MESSAGES);
-  if (readOnly) return null;
+  if (readOnly || !OWN_KEY_AI_ENABLED) return null;
 
   const title = `${m.aiToolsTitle(hint)}${untranslated > 0 ? m.untranslatedSuffix(untranslated) : ''}`;
   return (
